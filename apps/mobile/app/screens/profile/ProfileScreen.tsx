@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { useCallback, useRef } from "react"
 import { Alert, Pressable, ScrollView, StatusBar } from "react-native"
 import { useFocusEffect } from "@react-navigation/native"
 import { Text, YStack } from "tamagui"
@@ -23,6 +23,7 @@ import { ProfilePersonalCard } from "./components/ProfilePersonalCard"
 import { ProfileQuickLinkCard, type ProfileQuickLinkId } from "./components/ProfileQuickLinkCard"
 import { PsychTestCard } from "./components/PsychTestCard"
 import { StatsRadarChart } from "./components/StatsRadarChart"
+import { hasNoLocalProfileStats, hydrateProfileFromBackend } from "./hydrateProfileFromBackend"
 import { usePlayerProfile } from "./usePlayerProfile"
 import { useProfileStats } from "./useProfileStats"
 import { pickProfileImageFromGallery } from "./utils/pickProfileImage"
@@ -40,7 +41,7 @@ function getUserColor(seed: string) {
 }
 
 export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
-  const { authEmail } = useAuth()
+  const { authEmail, authToken } = useAuth()
   const userKey = authEmail ?? "guest"
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
   const {
@@ -53,11 +54,28 @@ export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
   const { tests, radarData, definitions, reload, resetAllTests, positionSuggestion } =
     useProfileStats(userKey, psychTest?.answers)
 
+  // Evita relanzar la hidratación en cada focus dentro de la misma sesión de pantalla.
+  const hydrationAttempted = useRef<string | null>(null)
+
   useFocusEffect(
     useCallback(() => {
       reload()
       reloadProfile()
-    }, [reload, reloadProfile]),
+
+      if (
+        authToken &&
+        hydrationAttempted.current !== userKey &&
+        hasNoLocalProfileStats(userKey)
+      ) {
+        hydrationAttempted.current = userKey
+        hydrateProfileFromBackend(userKey, authEmail).then((hydrated) => {
+          if (hydrated) {
+            reload()
+            reloadProfile()
+          }
+        })
+      }
+    }, [authEmail, authToken, reload, reloadProfile, userKey]),
   )
 
   const displayName = profile.displayName.trim() || getUserDisplayName(authEmail)
