@@ -462,6 +462,7 @@ Namespace `profileScreen:*` en los **7 idiomas**: stats, tests, medición, psico
 ### 2026-08-17 — Quick wins Fase 0 (`Dev-David`)
 
 - [x] `DEV_LAN_HOST` sale del código fuente: ahora se lee de `EXPO_PUBLIC_DEV_LAN_HOST` (con fallback si no está seteada); documentado en [Desarrollo en dispositivo físico](#desarrollo-en-dispositivo-físico)
+- [x] Botones sociales (Gmail/Facebook) ocultos tras el flag `SOCIAL_LOGIN_ENABLED = false` en `LoginScreen` (mobile) y en `apps/web/app/auth/sign-up/page.tsx` — no hay OAuth real implementado aún, código listo para reactivarse
 
 ### 2026-08-03 — Módulo Perfil completo (`Dev-David`)
 

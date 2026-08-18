@@ -13,6 +13,8 @@ import { useState } from 'react'
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const NAME_REGEX = /^[\p{L}\p{M}][\p{L}\p{M}\s'.-]*$/u
 const PASSWORD_COMPLEXITY = /^(?=.*[A-Za-z])(?=.*\d).+$/
+/** No hay OAuth real implementado — oculta los botones hasta que lo haya. */
+const SOCIAL_LOGIN_ENABLED = false
 
 export default function SignUpPage() {
   const [fullName, setFullName] = useState('')
@@ -169,11 +171,13 @@ export default function SignUpPage() {
         {error && <p className="text-sm text-destructive">{error}</p>}
 
         <div className="flex items-center gap-3">
-          <SocialAuthButtons
-            onProviderClick={handleSocial}
-            disabled={isLoading}
-            layout="row"
-          />
+          {SOCIAL_LOGIN_ENABLED && (
+            <SocialAuthButtons
+              onProviderClick={handleSocial}
+              disabled={isLoading}
+              layout="row"
+            />
+          )}
           <Button
             type="submit"
             className="h-11 min-w-0 flex-1 font-heading font-semibold uppercase tracking-wide"
