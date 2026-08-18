@@ -1,3 +1,6 @@
+import type { PhysicalTestId, PlayerStats } from "@/data/mockPlayerProfile"
+import type { PlayerPositionId } from "@/data/suggestPlayerPosition"
+
 /**
  * These types indicate the shape of the data you expect to receive from your
  * API endpoint, assuming it's a JSON object like we have.
@@ -63,4 +66,30 @@ export interface AuthUser {
   id: string
   email: string
   name: string
+}
+
+/** Respuesta de GET /api/profile/stats — usada para reconstruir el perfil en un dispositivo nuevo. */
+export interface ProfileStatsApiResponse {
+  stats: (PlayerStats & { updatedAt: string }) | null
+  latestTestResults: Partial<Record<PhysicalTestId, PhysicalTestResultApiDto>>
+  latestPsychAssessment: PsychAssessmentApiDto | null
+  favoritePosition: PlayerPositionId | null
+}
+
+export interface PhysicalTestResultApiDto {
+  id: string
+  testId: PhysicalTestId
+  rawData: Record<string, unknown>
+  score: number
+  completedAt: string
+}
+
+export interface PsychAssessmentApiDto {
+  id: string
+  answers: number[]
+  teamworkScore: number
+  onFieldScore: number
+  overallScore: number
+  traits: Record<string, number>
+  completedAt: string
 }

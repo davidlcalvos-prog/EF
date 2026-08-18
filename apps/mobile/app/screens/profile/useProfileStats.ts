@@ -18,7 +18,30 @@ import { scoreTestResult } from "@/data/profileTestScoring"
 import { computePsychTraits } from "@/data/psychologicalTest"
 import { suggestPlayerPosition } from "@/data/suggestPlayerPosition"
 import { translate } from "@/i18n/translate"
+import { api } from "@/services/api"
 import { loadProfileStats, saveProfileStats, clearProfileStats } from "@/utils/profileStatsStorage"
+
+/**
+ * Best-effort: guarda el resultado en el backend sin bloquear al usuario.
+ * Si falla (sin red, 409 por reintento en otro dispositivo, etc.) el resultado
+ * ya quedó persistido en MMKV — no hay reintento automático (deuda pendiente).
+ */
+function syncPhysicalTestResultToBackend(
+  testId: PhysicalTestId,
+  rawResult: TestRawResult,
+  score: number,
+): void {
+  api
+    .savePhysicalTestResult(testId, rawResult as unknown as Record<string, unknown>, score)
+    .then((result) => {
+      if (result.kind !== "ok" && __DEV__) {
+        console.warn(`[profileStats] sync de test '${testId}' falló:`, result.kind)
+      }
+    })
+    .catch((error) => {
+      if (__DEV__) console.warn(`[profileStats] sync de test '${testId}' lanzó excepción:`, error)
+    })
+}
 
 function mergeInitialState(stored?: PhysicalTestState[] | null): PhysicalTestState[] {
   const defaults = createInitialPhysicalTests()
@@ -106,6 +129,7 @@ export function useProfileStats(userKey: string, psychAnswers?: number[]) {
       setTests(nextTests)
       setStats(nextStats)
       persist(nextStats, nextTests)
+      syncPhysicalTestResultToBackend(testId, rawResult, score)
       return true
     },
     [persist, stats, tests],

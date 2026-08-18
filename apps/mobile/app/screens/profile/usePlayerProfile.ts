@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 
 import type { PlayerPositionId } from "@/data/suggestPlayerPosition"
+import { api } from "@/services/api"
 import {
   createDefaultProfile,
   loadPlayerProfile,
@@ -8,6 +9,40 @@ import {
   type PlayerProfileData,
   type PsychTestResult,
 } from "@/utils/playerProfileStorage"
+
+/** Best-effort: ver nota equivalente en useProfileStats.ts (syncPhysicalTestResultToBackend). */
+function syncPsychAssessmentToBackend(result: PsychTestResult): void {
+  if (!result.traits) return // sin traits no hay respuestas completas que enviar
+  api
+    .savePsychAssessment({
+      answers: result.answers,
+      teamworkScore: result.teamworkScore,
+      onFieldScore: result.onFieldScore,
+      overallScore: result.overallScore,
+      traits: result.traits,
+    })
+    .then((response) => {
+      if (response.kind !== "ok" && __DEV__) {
+        console.warn("[profileStats] sync de test psicológico falló:", response.kind)
+      }
+    })
+    .catch((error) => {
+      if (__DEV__) console.warn("[profileStats] sync de test psicológico lanzó excepción:", error)
+    })
+}
+
+function syncFavoritePositionToBackend(favoritePositionId: PlayerPositionId | null): void {
+  api
+    .updateFavoritePosition(favoritePositionId)
+    .then((response) => {
+      if (response.kind !== "ok" && __DEV__) {
+        console.warn("[profileStats] sync de posición favorita falló:", response.kind)
+      }
+    })
+    .catch((error) => {
+      if (__DEV__) console.warn("[profileStats] sync de posición favorita lanzó excepción:", error)
+    })
+}
 
 function mergeProfile(
   stored: PlayerProfileData | undefined,
@@ -66,6 +101,7 @@ export function usePlayerProfile(userKey: string, authEmail?: string) {
   const setFavoritePosition = useCallback(
     (favoritePositionId: PlayerPositionId | null) => {
       updateProfile({ favoritePositionId })
+      syncFavoritePositionToBackend(favoritePositionId)
     },
     [updateProfile],
   )
@@ -74,6 +110,7 @@ export function usePlayerProfile(userKey: string, authEmail?: string) {
     (result: PsychTestResult) => {
       setPsychTest(result)
       persist(profile, result)
+      syncPsychAssessmentToBackend(result)
     },
     [persist, profile],
   )

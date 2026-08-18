@@ -1,5 +1,7 @@
-import { createContext, FC, PropsWithChildren, useCallback, useContext, useMemo } from "react"
+import { createContext, FC, PropsWithChildren, useCallback, useContext, useEffect, useMemo } from "react"
 import { useMMKVString } from "react-native-mmkv"
+
+import { api } from "@/services/api"
 
 export type AuthContextType = {
   isAuthenticated: boolean
@@ -18,6 +20,12 @@ export interface AuthProviderProps {}
 export const AuthProvider: FC<PropsWithChildren<AuthProviderProps>> = ({ children }) => {
   const [authToken, setAuthToken] = useMMKVString("AuthProvider.authToken")
   const [authEmail, setAuthEmail] = useMMKVString("AuthProvider.authEmail")
+
+  // Mantiene el header Authorization del cliente API en sync con el token
+  // (login, logout, e hidratación inicial desde MMKV al abrir la app).
+  useEffect(() => {
+    api.setAuthToken(authToken)
+  }, [authToken])
 
   const logout = useCallback(() => {
     setAuthToken(undefined)

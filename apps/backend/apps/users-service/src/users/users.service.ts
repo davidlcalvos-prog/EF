@@ -32,19 +32,19 @@ export class UsersService {
     id: string,
     dto: UpdateProfileDto,
   ): Promise<UserProfile> {
-    if (!dto.name) {
-      return this.findById(id);
+    if (dto.name) {
+      const updated = await this.profileRepository.updateName(id, dto.name);
+      if (!updated) {
+        throw new NotFoundException(`User ${id} not found`);
+      }
     }
-    const updated = await this.profileRepository.updateName(id, dto.name);
-    if (!updated) {
-      throw new NotFoundException(`User ${id} not found`);
+    if (dto.favoritePosition !== undefined) {
+      await this.profileRepository.updateFavoritePosition(
+        id,
+        dto.favoritePosition,
+      );
     }
-    return {
-      id: updated.id,
-      email: updated.email,
-      name: updated.name,
-      createdAt: updated.createdAt,
-    };
+    return this.findById(id);
   }
 
   getPreferences(userId: string): Promise<UserPreferences> {
