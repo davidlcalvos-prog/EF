@@ -1,4 +1,5 @@
 export * from './auth';
+export * from './feed';
 export * from './groups';
 export * from './matches';
 export * from './profile-stats';

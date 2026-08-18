@@ -56,4 +56,14 @@ export const MESSAGE_PATTERNS = {
     LEAVE: 'matches.leave',
     UPDATE_STATUS: 'matches.update_status',
   },
+  FEED: {
+    CREATE_POST: 'feed.create_post',
+    LIST_POSTS: 'feed.list_posts',
+    GET_POST: 'feed.get_post',
+    DELETE_POST: 'feed.delete_post',
+    TOGGLE_LIKE: 'feed.toggle_like',
+    LIST_COMMENTS: 'feed.list_comments',
+    CREATE_COMMENT: 'feed.create_comment',
+    DELETE_COMMENT: 'feed.delete_comment',
+  },
 } as const;
