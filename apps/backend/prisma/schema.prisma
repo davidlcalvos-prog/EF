@@ -38,6 +38,8 @@ model User {
   psychAssessments    PsychAssessment[]
   createdGroups       Group[]              @relation("GroupCreator")
   groupMemberships    GroupMembership[]
+  createdMatches      Match[]              @relation("MatchCreator")
+  matchParticipations MatchParticipant[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -176,6 +178,9 @@ model Group {
   creator   User              @relation("GroupCreator", fields: [creatorId], references: [id], onDelete: Cascade)
   members   GroupMembership[]
 
+  matchesAsOrigin   Match[] @relation("MatchOriginGroup")
+  matchesAsOpponent Match[] @relation("MatchOpponentGroup")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -200,4 +205,61 @@ model GroupMembership {
   @@unique([groupId, userId])
   @@index([userId])
   @@map("group_memberships")
+}
+
+/**
+ * Partidos (Fase 3). Reglas completas en docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md:
+ * - internal: cualquier miembro de originGroupId lo crea; status inicial 'scheduled'.
+ * - vs: solo creator/admin de originGroupId lo crea; status inicial 'pending_opponent'
+ * hasta que creator/admin de opponentGroupId lo acepte o rechace.
+ */
+enum MatchType {
+  internal
+  vs
+}
+
+enum MatchStatus {
+  draft
+  pending_opponent
+  scheduled
+  played
+  cancelled
+}
+
+model Match {
+  id              String             @id @default(uuid()) @db.Uuid
+  originGroupId   String             @db.Uuid
+  originGroup     Group              @relation("MatchOriginGroup", fields: [originGroupId], references: [id], onDelete: Cascade)
+  opponentGroupId String?            @db.Uuid
+  opponentGroup   Group?             @relation("MatchOpponentGroup", fields: [opponentGroupId], references: [id], onDelete: Cascade)
+  type            MatchType
+  format          String
+  maxPlayers      Int
+  status          MatchStatus        @default(scheduled)
+  scheduledAt     DateTime?
+  createdBy       String             @db.Uuid
+  creator         User               @relation("MatchCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  /// Se vincula de verdad con Reservation en la Fase 4 — sin @relation todavía a propósito.
+  reservationId   String?            @unique @db.Uuid
+  participants    MatchParticipant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([originGroupId])
+  @@index([opponentGroupId])
+  @@map("matches")
+}
+
+model MatchParticipant {
+  id          String   @id @default(uuid()) @db.Uuid
+  matchId     String   @db.Uuid
+  match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  userId      String   @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  confirmedAt DateTime @default(now())
+
+  @@unique([matchId, userId])
+  @@index([userId])
+  @@map("match_participants")
 }
