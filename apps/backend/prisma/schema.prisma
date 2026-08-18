@@ -7,8 +7,8 @@ datasource db {
 }
 
 model Role {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
   description String?
 
   users User[]
@@ -30,9 +30,12 @@ model User {
   roleId Int
   role   Role @relation(fields: [roleId], references: [id])
 
-  profile      Profile?
-  ownedVenues  Venue[]       @relation("VenueOwner")
-  reservations Reservation[] @relation("ReservationUser")
+  profile             Profile?
+  ownedVenues         Venue[]              @relation("VenueOwner")
+  reservations        Reservation[]        @relation("ReservationUser")
+  playerStats         PlayerStats?
+  physicalTestResults PhysicalTestResult[]
+  psychAssessments    PsychAssessment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -51,10 +54,70 @@ model Profile {
   height Float?
   weight Float?
 
+  /**
+   * Una de las 7 posiciones de `PlayerPositionId` (mobile: suggestPlayerPosition.ts). Elegida por el jugador, distinta de la sugerida.
+   */
+  favoritePosition String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("profiles")
+}
+
+/**
+ * Snapshot vigente de las 6 estadísticas del jugador (mobile: mockPlayerProfile.ts StatKey).
+ * Se recalcula al guardar cada PhysicalTestResult.
+ */
+model PlayerStats {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attack    Int      @default(0)
+  defense   Int      @default(0)
+  endurance Int      @default(0)
+  speed     Int      @default(0)
+  passes    Int      @default(0)
+  dribbling Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@map("player_stats")
+}
+
+/**
+ * Historial de resultados de tests físicos (uno por mes calendario por testId, aplicado server-side).
+ * testId ∈ 'attackShots16m' | 'defenseControl' | 'beepTest' | 'sprint30m' | 'loughboroughPass' | 'illinoisAgility'.
+ */
+model PhysicalTestResult {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  testId      String
+  rawData     Json
+  score       Int
+  completedAt DateTime @default(now())
+
+  @@index([userId, testId])
+  @@map("physical_test_results")
+}
+
+/**
+ * Historial de evaluaciones psicológicas (mobile: psychologicalTest.ts).
+ * traits: Record<PsychTraitKey, number> (organizer, directness, discipline, creativity, competitiveness).
+ */
+model PsychAssessment {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @db.Uuid
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers       Json
+  teamworkScore Int
+  onFieldScore  Int
+  overallScore  Int
+  traits        Json
+  completedAt   DateTime @default(now())
+
+  @@index([userId])
+  @@map("psych_assessments")
 }
 
 enum ReservationStatus {
@@ -64,13 +127,13 @@ enum ReservationStatus {
 }
 
 model Venue {
-  id                String   @id @default(uuid()) @db.Uuid
-  ownerId           String   @db.Uuid
-  owner             User     @relation("VenueOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  id                String        @id @default(uuid()) @db.Uuid
+  ownerId           String        @db.Uuid
+  owner             User          @relation("VenueOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   name              String
   address           String?
-  pricePerHourCents Int      @default(0)
-  availability      Json     @default("{}")
+  pricePerHourCents Int           @default(0)
+  availability      Json          @default("{}")
   reservations      Reservation[]
 
   createdAt DateTime @default(now())
