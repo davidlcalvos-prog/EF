@@ -116,6 +116,7 @@ export class MatchRepository {
       include: {
         originGroup: { select: { name: true } },
         opponentGroup: { select: { name: true } },
+        reservation: { select: { id: true } },
         participants: {
           include: {
             user: { select: { email: true, firstname: true, lastname: true } },
@@ -148,7 +149,7 @@ export class MatchRepository {
       status: match.status as MatchStatus,
       scheduledAt: match.scheduledAt?.toISOString() ?? null,
       createdBy: match.createdBy,
-      reservationId: match.reservationId,
+      reservationId: match.reservation?.id ?? null,
       participants,
       createdAt: match.createdAt.toISOString(),
       updatedAt: match.updatedAt.toISOString(),
