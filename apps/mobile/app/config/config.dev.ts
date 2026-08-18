@@ -8,8 +8,13 @@
 import { Platform } from "react-native"
 import Constants from "expo-constants"
 
-/** LAN IP de tu PC en WiFi — actualízala si cambias de red */
-const DEV_LAN_HOST = "192.168.1.132"
+/**
+ * LAN IP de tu PC en WiFi, usada solo cuando se corre en un dispositivo físico.
+ * Configúrala en tu `.env.local` (no versionado, copia `.env.example`) como
+ * EXPO_PUBLIC_DEV_LAN_HOST=192.168.x.x — cambia cada vez que te conectas desde
+ * otra red. Ver docs/FRONTEND.md → "Desarrollo en dispositivo físico".
+ */
+const DEV_LAN_HOST = process.env.EXPO_PUBLIC_DEV_LAN_HOST ?? "192.168.1.132"
 
 function getDevApiHost(): string {
   if (Platform.OS === "web") return "localhost"

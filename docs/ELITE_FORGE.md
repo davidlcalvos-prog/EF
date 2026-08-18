@@ -363,6 +363,7 @@ La guía completa de colores y distribución UI está en el [README principal](.
 | [README.md](../README.md) | Monorepo, stack, inicio rápido, CI/CD, despliegue |
 | [FRONTEND.md](./FRONTEND.md) | App móvil: login, feed, **perfil (Dev-David)**, stack, i18n |
 | [BACKEND.md](./BACKEND.md) | API, microservicios, base de datos |
+| [GRUPOS-PARTIDOS-RESERVAS-SPEC.md](./GRUPOS-PARTIDOS-RESERVAS-SPEC.md) | Definiciones de producto Fase 0: Grupos, Partidos, Reservas y Ranking |
 | `apps/mobile/` | App React Native (Ignite + Tamagui) |
 | `apps/backend/` | Microservicios NestJS |
 | `infrastructure/` | Docker, Kubernetes, AWS |

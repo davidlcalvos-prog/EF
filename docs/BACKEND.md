@@ -14,8 +14,9 @@ Cliente (web / mobile)
         ▼
   API Gateway (:3000/api)     ← único punto HTTP público
         │ TCP
-        ├── auth-service (:3001)   → autenticación (JWT, bcrypt)
-        └── users-service (:3002)  → perfiles y preferencias
+        ├── auth-service (:3001)    → autenticación (JWT, bcrypt)
+        ├── users-service (:3002)   → perfiles y preferencias
+        └── venues-service (:3003)  → canchas y reservas (lado dueño de cancha)
                 │
         ┌───────┴───────┐
         ▼               ▼
@@ -28,12 +29,13 @@ Cliente (web / mobile)
 | **api-gateway** | Entrada HTTP REST (`/api/*`), validación de DTOs, JWT, proxy TCP |
 | **auth-service** | Registro, login, emisión/validación de JWT, creación de User + Profile |
 | **users-service** | Lectura/actualización de perfil (PostgreSQL) y preferencias (MongoDB) |
-| **PostgreSQL + Prisma** | Datos relacionales (`roles`, `users`, `profiles`) |
+| **venues-service** | Canchas y reservas del dueño de cancha (rol Empresario/Administrador) sobre PostgreSQL |
+| **PostgreSQL + Prisma** | Datos relacionales (`roles`, `users`, `profiles`, `venues`, `reservations`) |
 | **MongoDB** | Colección `user_preferences` |
 
-**Importante:** el frontend **nunca** debe llamar directamente a `auth-service` ni `users-service`. Siempre consume el API Gateway en `/api/*`.
+**Importante:** el frontend **nunca** debe llamar directamente a `auth-service`, `users-service` ni `venues-service`. Siempre consume el API Gateway en `/api/*`.
 
-El dominio activo del jugador en backend es **auth + users**. No documentamos aquí canchas/reservas como parte de ese camino.
+El dominio activo del jugador en backend es **auth + users**. El dominio de **venues-service** cubre hoy solo el lado dueño de cancha (gestión de sus canchas y de las reservas que recibe); el lado jugador (búsqueda pública de canchas y creación de reservas) todavía no existe — ver [Próximos pasos](#próximos-pasos).
 
 ---
 
@@ -165,6 +167,19 @@ Códigos relevantes: **400** validación, **401** credenciales, **409** email du
 
 No hay endpoints administrativos adicionales: se reutilizan las rutas existentes.
 
+### Venues → venues-service
+
+Gestión de canchas y reservas para el **dueño de cancha**. Todos los endpoints requieren JWT y rol **Empresario** o **Administrador**.
+
+| Método | Ruta | Auth | Notas |
+|--------|------|------|--------|
+| GET | `/api/venues/mine` | **JWT** (Empresario/Administrador) | Lista las canchas del dueño autenticado |
+| PUT | `/api/venues/mine` | **JWT** (Empresario/Administrador) | Crea o actualiza (upsert) una cancha propia |
+| GET | `/api/reservations/mine` | **JWT** (Empresario/Administrador) | Lista las reservas recibidas en las canchas del dueño |
+| PATCH | `/api/reservations/:id/status` | **JWT** (Empresario/Administrador) | Cambia el estado de una reserva propia (`pending` / `confirmed` / `cancelled`) |
+
+Modelos Prisma `Venue` y `Reservation` (`venues`, `reservations`), relacionados por `venueId`. `Reservation.userId` referencia al jugador que reservó, pero **hoy no existe un endpoint para que el jugador cree reservas** — ver [Próximos pasos](#próximos-pasos).
+
 ---
 
 ## Base de datos
@@ -191,14 +206,15 @@ Migraciones en `apps/backend/prisma/migrations/`. Seed de roles: `npm run prisma
 
 ## Desarrollo local (modo híbrido)
 
-Recomendado: PostgreSQL + MongoDB en Docker; **api-gateway**, **auth-service** y **users-service** en local.
+Recomendado: PostgreSQL + MongoDB en Docker; **api-gateway**, **auth-service**, **users-service** y **venues-service** en local.
 
 Detalle de arranque, puertos y `EADDRINUSE`: [README del monorepo](../README.md#3-backend--desarrollo-local-modo-hibrido).
 
 ```
 API Gateway (local)     :3000  HTTP  /api/*
   ├── auth-service      :3001  TCP
-  └── users-service     :3002  TCP
+  ├── users-service     :3002  TCP
+  └── venues-service    :3003  TCP
         ├── PostgreSQL  :5433 (Docker)
         └── MongoDB     :27018 (Docker)
 ```
@@ -208,6 +224,7 @@ Desde `apps/backend`:
 ```bash
 npm run start:auth
 npm run start:users
+npm run start:venues
 npm run start:gateway
 ```
 
@@ -235,11 +252,19 @@ Pendientes (no implementados aún):
 
 - Conectar el frontend móvil con las rutas de perfil/preferencias.
 - Evolucionar **Profile** solo cuando existan necesidades reales de producto (campos ya modelados en Prisma).
-- Funcionalidades deportivas o sociales futuras cuando tengan sus propios contratos y servicios.
+- **Lado jugador de venues-service**: búsqueda pública de canchas disponibles y creación de reservas por el jugador (hoy `venues-service` solo cubre el lado dueño de cancha: gestión de sus canchas y de las reservas que recibe). No se implementa en esta tarea — queda como tarea futura separada.
+- Funcionalidades deportivas o sociales futuras (Grupos, Partidos, Ranking) cuando tengan sus propios contratos y servicios — ver [docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md](./GRUPOS-PARTIDOS-RESERVAS-SPEC.md).
 
 ---
 
 ## Registro de cambios
+
+### 2026-08-17 — Documentar venues-service
+
+- Se documenta el tercer microservicio **venues-service** (:3003), ya presente en el código: gestión de canchas y reservas del lado dueño de cancha.
+- Diagrama de arquitectura, tabla de piezas y desarrollo local actualizados a 3 servicios.
+- Endpoints reales documentados: `GET/PUT /api/venues/mine`, `GET /api/reservations/mine`, `PATCH /api/reservations/:id/status`.
+- Se deja explícito que falta el lado jugador (búsqueda pública + creación de reserva).
 
 ### 2026-07-31 — Auth, users y documentación alineados al runtime
 

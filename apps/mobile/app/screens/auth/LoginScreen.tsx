@@ -25,6 +25,8 @@ type LoginScreenProps = AppStackScreenProps<"Login">
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const UI_PREVIEW_TOKEN = "dev-ui-preview-token"
 const UI_PREVIEW_EMAIL = "ui-preview@eliteforge.local"
+/** No hay OAuth real implementado — oculta los botones hasta que lo haya. */
+const SOCIAL_LOGIN_ENABLED = false
 
 /** Altura unificada input / botón login (fila responsive) */
 const FIELD_HEIGHT = 44
@@ -267,20 +269,22 @@ export const LoginScreen: FC<LoginScreenProps> = () => {
                     />
                   </YStack>
 
-                  <XStack alignItems="center" gap={isSmallScreen ? 8 : 10} flexShrink={0}>
-                    <SocialButton
-                      iconOnly
-                      provider="facebook"
-                      label={translate("loginScreen:facebookButton")}
-                      onPress={() => undefined}
-                    />
-                    <SocialButton
-                      iconOnly
-                      provider="google"
-                      label={translate("loginScreen:googleButton")}
-                      onPress={() => undefined}
-                    />
-                  </XStack>
+                  {SOCIAL_LOGIN_ENABLED ? (
+                    <XStack alignItems="center" gap={isSmallScreen ? 8 : 10} flexShrink={0}>
+                      <SocialButton
+                        iconOnly
+                        provider="facebook"
+                        label={translate("loginScreen:facebookButton")}
+                        onPress={() => undefined}
+                      />
+                      <SocialButton
+                        iconOnly
+                        provider="google"
+                        label={translate("loginScreen:googleButton")}
+                        onPress={() => undefined}
+                      />
+                    </XStack>
+                  ) : null}
                 </XStack>
 
                 {__DEV__ ? (

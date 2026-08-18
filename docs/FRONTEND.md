@@ -459,6 +459,11 @@ Namespace `profileScreen:*` en los **7 idiomas**: stats, tests, medición, psico
 
 ## Registro de cambios (sesión de implementación)
 
+### 2026-08-17 — Quick wins Fase 0 (`Dev-David`)
+
+- [x] `DEV_LAN_HOST` sale del código fuente: ahora se lee de `EXPO_PUBLIC_DEV_LAN_HOST` (con fallback si no está seteada); documentado en [Desarrollo en dispositivo físico](#desarrollo-en-dispositivo-físico)
+- [x] Botones sociales (Gmail/Facebook) ocultos tras el flag `SOCIAL_LOGIN_ENABLED = false` en `LoginScreen` (mobile) y en `apps/web/app/auth/sign-up/page.tsx` — no hay OAuth real implementado aún, código listo para reactivarse
+
 ### 2026-08-03 — Módulo Perfil completo (`Dev-David`)
 
 - [x] `ProfileScreen` con header, stats, tests, psico y accesos rápidos
@@ -570,7 +575,21 @@ Namespace `profileScreen:*` en los **7 idiomas**: stats, tests, medición, psico
 
 ### Desarrollo en dispositivo físico
 
-- [x] `config.dev.ts` detecta emulador vs móvil real — LAN IP `192.168.1.148` en dispositivo, `10.0.2.2` en emulador Android
+- [x] `config.dev.ts` detecta emulador vs móvil real — LAN IP en dispositivo físico, `10.0.2.2` en emulador Android
+- [x] La LAN IP (`DEV_LAN_HOST`) ya **no** está hardcodeada en el código: se lee de la variable de entorno `EXPO_PUBLIC_DEV_LAN_HOST`, con un valor por defecto de respaldo si no está seteada
+
+**Configurar tu IP local (cada desarrollador, en su máquina):**
+
+1. Averigua la IP LAN de tu PC en la red WiFi (`ipconfig` en Windows, `ifconfig`/`ip a` en macOS/Linux).
+2. Copia `apps/mobile/.env.example` a `apps/mobile/.env.local` (no versionado, ya cubierto por `.gitignore`) y setea tu IP:
+
+   ```bash
+   EXPO_PUBLIC_DEV_LAN_HOST=192.168.x.x
+   ```
+
+3. Reinicia Metro (`npm start` en `apps/mobile`) para que Expo recargue las variables `EXPO_PUBLIC_*`.
+
+Si cambias de red (casa, universidad, datos móviles, otro router), solo necesitas actualizar ese archivo local — no vuelve a tocar código versionado.
 
 ---
 
