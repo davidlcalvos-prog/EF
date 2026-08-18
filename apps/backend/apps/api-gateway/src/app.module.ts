@@ -9,6 +9,7 @@ import { UsersProxyModule } from './users/users-proxy.module';
 import { VenuesProxyModule } from './venues/venues-proxy.module';
 import { ProfileStatsProxyModule } from './profile-stats/profile-stats-proxy.module';
 import { GroupsProxyModule } from './groups/groups-proxy.module';
+import { MatchesProxyModule } from './matches/matches-proxy.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -33,6 +34,7 @@ import { HealthController } from './health/health.controller';
     VenuesProxyModule,
     ProfileStatsProxyModule,
     GroupsProxyModule,
+    MatchesProxyModule,
   ],
   controllers: [HealthController],
   providers: [

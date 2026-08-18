@@ -6,5 +6,6 @@ import { GroupRepository } from './repositories/group.repository';
 @Module({
   controllers: [GroupsController],
   providers: [GroupsService, GroupRepository],
+  exports: [GroupRepository],
 })
 export class GroupsModule {}
