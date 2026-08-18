@@ -35,7 +35,7 @@ Cliente (web / mobile)
 
 **Importante:** el frontend **nunca** debe llamar directamente a `auth-service`, `users-service` ni `venues-service`. Siempre consume el API Gateway en `/api/*`.
 
-El dominio activo del jugador en backend es **auth + users**. El dominio de **venues-service** cubre hoy solo el lado dueño de cancha (gestión de sus canchas y de las reservas que recibe); el lado jugador (búsqueda pública de canchas y creación de reservas) todavía no existe — ver [Próximos pasos](#próximos-pasos).
+El dominio activo del jugador en backend es **auth + users** (incluye perfil "rico": stats, tests físicos, evaluación psicológica). El dominio de **venues-service** cubre hoy solo el lado dueño de cancha (gestión de sus canchas y de las reservas que recibe); el lado jugador (búsqueda pública de canchas y creación de reservas) todavía no existe — ver [Próximos pasos](#próximos-pasos).
 
 ---
 
@@ -167,6 +167,21 @@ Códigos relevantes: **400** validación, **401** credenciales, **409** email du
 
 No hay endpoints administrativos adicionales: se reutilizan las rutas existentes.
 
+### Profile stats → users-service
+
+Perfil "rico" del jugador (6 estadísticas físicas, historial de tests físicos, evaluación psicológica, posición favorita). Sincroniza lo que antes vivía 100% en MMKV en el mobile. Todos los endpoints son **siempre "self"** (sin `:id`, se resuelven por el `sub` del JWT) — cualquier usuario autenticado gestiona únicamente su propio perfil.
+
+| Método | Ruta | Auth | Notas |
+|--------|------|------|--------|
+| GET | `/api/profile/stats` | **JWT** | `PlayerStats` + último resultado por test físico + última evaluación psicológica + `favoritePosition`. Usado por el mobile para reconstruir el perfil en un dispositivo nuevo |
+| PUT | `/api/profile/physical-tests/:testId` | **JWT** | Guarda un resultado de test físico y recalcula `PlayerStats` para ese eje. **409** si ya existe un resultado de ese `testId` en el mes calendario en curso (bloqueo mensual validado server-side, no solo en el cliente) |
+| PUT | `/api/profile/psych-assessment` | **JWT** | Guarda el resultado del test psicológico (10 escenarios). Mismo bloqueo mensual server-side, **409** si ya hay una evaluación este mes |
+| PATCH | `/api/profile` | **JWT** | Actualiza `favoritePosition` (y opcionalmente `name`) — reutiliza el mismo flujo que `PATCH /api/users/:id/profile` en vez de duplicar lógica de persistencia |
+
+Modelos Prisma `PlayerStats`, `PhysicalTestResult`, `PsychAssessment` (`player_stats`, `physical_test_results`, `psych_assessments`) y `Profile.favoritePosition`. El mapeo `testId → statKey` vive en `@ef/contracts` (`TEST_ID_TO_STAT_KEY`) y debe mantenerse en sync manualmente con `apps/mobile/app/data/mockPlayerProfile.ts` (mobile y backend son paquetes npm independientes, sin tipos compartidos).
+
+El mobile sigue siendo **local-first**: MMKV es la caché de lectura instantánea y funciona offline; el backend es la fuente de verdad. El sync al completar un test es best-effort (no bloquea al usuario si falla por falta de red — sin reintento automático todavía, deuda pendiente).
+
 ### Venues → venues-service
 
 Gestión de canchas y reservas para el **dueño de cancha**. Todos los endpoints requieren JWT y rol **Empresario** o **Administrador**.
@@ -252,12 +267,21 @@ Pendientes (no implementados aún):
 
 - Conectar el frontend móvil con las rutas de perfil/preferencias.
 - Evolucionar **Profile** solo cuando existan necesidades reales de producto (campos ya modelados en Prisma).
+- **Reintento automático / cola offline** para el sync de profile-stats: hoy el `PUT` al completar un test es best-effort (si falla, el resultado queda solo en MMKV hasta la próxima vez que el usuario complete otro test o entre a Profile con red).
+- Sincronizar el **avatar/foto de perfil** al backend (sigue siendo local por ahora).
 - **Lado jugador de venues-service**: búsqueda pública de canchas disponibles y creación de reservas por el jugador (hoy `venues-service` solo cubre el lado dueño de cancha: gestión de sus canchas y de las reservas que recibe). No se implementa en esta tarea — queda como tarea futura separada.
 - Funcionalidades deportivas o sociales futuras (Grupos, Partidos, Ranking) cuando tengan sus propios contratos y servicios — ver [docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md](./GRUPOS-PARTIDOS-RESERVAS-SPEC.md).
 
 ---
 
 ## Registro de cambios
+
+### 2026-08-18 — Sincronización de perfil (Tarea H)
+
+- Nuevos modelos Prisma: `PlayerStats`, `PhysicalTestResult`, `PsychAssessment`, `Profile.favoritePosition`.
+- Nuevos endpoints en `users-service`/gateway: `GET /api/profile/stats`, `PUT /api/profile/physical-tests/:testId`, `PUT /api/profile/psych-assessment`, `PATCH /api/profile` — ver [Profile stats → users-service](#profile-stats--users-service).
+- Bloqueo mensual de tests validado server-side (409), no solo en el cliente.
+- Mobile pasa a ser local-first con backend como fuente de verdad: MMKV sigue siendo la caché de lectura instantánea; el sync al completar un test es best-effort (sin reintento automático todavía).
 
 ### 2026-08-17 — Documentar venues-service
 

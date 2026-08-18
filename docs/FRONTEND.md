@@ -320,7 +320,7 @@ Idiomas: `en`, `es`, `fr`, `ja`, `ko`, `hi`, `ar`.
 
 ## Pantalla Perfil — implementación (rama `Dev-David`)
 
-Módulo completo de perfil de jugador en `app/screens/profile/`. **Sin backend** — persistencia local con **MMKV** por usuario (`authEmail` o `"guest"`).
+Módulo completo de perfil de jugador en `app/screens/profile/`. **Local-first**: persistencia local con **MMKV** por usuario (`authEmail` o `"guest"`) para lectura instantánea y uso offline; desde la Tarea H, stats/tests físicos/evaluación psicológica/posición favorita se sincronizan con `users-service` (backend = fuente de verdad) — ver [BACKEND.md → Profile stats](./BACKEND.md#profile-stats--users-service).
 
 ### Navegación
 
@@ -345,6 +345,7 @@ Rutas en `AppNavigator.tsx` / `navigationTypes.ts`:
 | `suggestPlayerPosition.ts` | Sugerencia entre 7 posiciones (72% físico + 28% mental) |
 | `profileStatsStorage.ts` | MMKV `profileStats.v2.{userKey}` |
 | `playerProfileStorage.ts` | MMKV `playerProfile.v1.{userKey}` |
+| `hydrateProfileFromBackend.ts` | `GET /api/profile/stats` → puebla MMKV cuando no hay datos locales (dispositivo nuevo / datos borrados) |
 
 **Hooks:**
 
@@ -458,6 +459,14 @@ Namespace `profileScreen:*` en los **7 idiomas**: stats, tests, medición, psico
 ---
 
 ## Registro de cambios (sesión de implementación)
+
+### 2026-08-18 — Sincronización de perfil con backend, Tarea H (`Dev-David`)
+
+- [x] `Api.setAuthToken` + `AuthContext` sincroniza el header `Authorization` en login/logout/hidratación inicial
+- [x] `getProfileStats`, `savePhysicalTestResult`, `savePsychAssessment`, `updateFavoritePosition` en el cliente API
+- [x] `useProfileStats`/`usePlayerProfile` hacen `PUT` best-effort al backend tras completar un test físico/psicológico o elegir posición favorita — no bloquea si falla (sin reintento automático, deuda pendiente)
+- [x] `hydrateProfileFromBackend` reconstruye MMKV desde `GET /api/profile/stats` al entrar a `ProfileScreen` sin datos locales (dispositivo nuevo o datos borrados); backend gana si difiere de lo local
+- [x] Avatar/foto de perfil sigue siendo local — fuera de alcance de esta tarea
 
 ### 2026-08-17 — Quick wins Fase 0 (`Dev-David`)
 
