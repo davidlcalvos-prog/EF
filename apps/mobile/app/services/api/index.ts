@@ -8,11 +8,25 @@
 import { ApiResponse, ApisauceInstance, create } from "apisauce"
 
 import Config from "@/config"
-import type { AuthApiResponse, EpisodeItem, ApiConfig, ApiFeedResponse } from "@/services/api/types"
+import type { PhysicalTestId } from "@/data/mockPlayerProfile"
+import type { PlayerPositionId } from "@/data/suggestPlayerPosition"
+import type {
+  AuthApiResponse,
+  EpisodeItem,
+  ApiConfig,
+  ApiFeedResponse,
+  ProfileStatsApiResponse,
+} from "@/services/api/types"
 
 import { GeneralApiProblem, getGeneralApiProblem } from "./apiProblem"
 
-export type { AuthApiResponse, AuthUser } from "./types"
+export type {
+  AuthApiResponse,
+  AuthUser,
+  ProfileStatsApiResponse,
+  PhysicalTestResultApiDto,
+  PsychAssessmentApiDto,
+} from "./types"
 
 /**
  * Configuring the apisauce instance.
@@ -74,6 +88,95 @@ export class Api {
       accessToken: data.accessToken,
       user: data.user,
     }
+  }
+
+  /**
+   * Adjunta (o quita) el Bearer token usado por los endpoints autenticados
+   * (`/api/profile/*`, etc). Debe llamarse cada vez que `authToken` cambia
+   * (login, logout, hidratación inicial desde MMKV) — ver `AuthContext`.
+   */
+  setAuthToken(token?: string) {
+    if (token) {
+      this.apisauce.setHeader("Authorization", `Bearer ${token}`)
+    } else {
+      this.apisauce.deleteHeader("Authorization")
+    }
+  }
+
+  /**
+   * Perfil "rico" del jugador (stats, tests físicos, evaluación psicológica,
+   * posición favorita) — usado para reconstruir el perfil en un dispositivo nuevo.
+   */
+  async getProfileStats(): Promise<
+    { kind: "ok"; data: ProfileStatsApiResponse } | GeneralApiProblem
+  > {
+    const response = await this.apisauce.get<ProfileStatsApiResponse>("profile/stats")
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", data: response.data }
+  }
+
+  /**
+   * Guarda un resultado de test físico en el backend. 409 si el servidor
+   * ya tiene un resultado de ese test en el mes calendario en curso.
+   */
+  async savePhysicalTestResult(
+    testId: PhysicalTestId,
+    rawData: Record<string, unknown>,
+    score: number,
+  ): Promise<{ kind: "ok" } | GeneralApiProblem> {
+    const response = await this.apisauce.put(`profile/physical-tests/${testId}`, {
+      rawData,
+      score,
+    })
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    return { kind: "ok" }
+  }
+
+  /**
+   * Guarda el resultado del test psicológico en el backend. 409 si el
+   * servidor ya tiene una evaluación en el mes calendario en curso.
+   */
+  async savePsychAssessment(payload: {
+    answers: number[]
+    teamworkScore: number
+    onFieldScore: number
+    overallScore: number
+    traits: Record<string, number>
+  }): Promise<{ kind: "ok" } | GeneralApiProblem> {
+    const response = await this.apisauce.put("profile/psych-assessment", payload)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    return { kind: "ok" }
+  }
+
+  /** Actualiza la posición favorita del jugador. */
+  async updateFavoritePosition(
+    favoritePosition: PlayerPositionId | null,
+  ): Promise<{ kind: "ok" } | GeneralApiProblem> {
+    const response = await this.apisauce.patch("profile", { favoritePosition })
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    return { kind: "ok" }
   }
 
   /**

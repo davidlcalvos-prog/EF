@@ -60,6 +60,14 @@ test("handles not-found errors", () => {
   })
 })
 
+test("handles conflict errors", () => {
+  expect(
+    getGeneralApiProblem({ problem: "CLIENT_ERROR", status: 409 } as ApiErrorResponse<null>),
+  ).toEqual({
+    kind: "conflict",
+  })
+})
+
 test("handles other client errors", () => {
   expect(
     getGeneralApiProblem({ problem: "CLIENT_ERROR", status: 418 } as ApiErrorResponse<null>),

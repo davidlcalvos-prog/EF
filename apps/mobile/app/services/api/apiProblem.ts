@@ -26,6 +26,10 @@ export type GeneralApiProblem =
    */
   | { kind: "not-found" }
   /**
+   * The resource already exists / conflicts with current state. This is a 409.
+   */
+  | { kind: "conflict" }
+  /**
    * All other 4xx series errors.
    */
   | { kind: "rejected" }
@@ -63,6 +67,8 @@ export function getGeneralApiProblem(response: ApiResponse<any>): GeneralApiProb
           return { kind: "forbidden" }
         case 404:
           return { kind: "not-found" }
+        case 409:
+          return { kind: "conflict" }
         default:
           return { kind: "rejected" }
       }
