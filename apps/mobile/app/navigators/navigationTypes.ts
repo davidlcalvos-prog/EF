@@ -24,6 +24,8 @@ export type AppStackParamList = {
   ProfileEdit: undefined
   PsychologicalTest: undefined
   PhysicalTestSession: { testId: PhysicalTestId }
+  Groups: undefined
+  GroupDetail: { groupId: string }
   Login: undefined
   Register: undefined
   Demo: NavigatorScreenParams<DemoTabParamList>
