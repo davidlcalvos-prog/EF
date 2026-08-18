@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   ReservationDto,
   UpdateReservationStatusPayload,
@@ -24,17 +24,13 @@ export class VenuesService {
     return this.venueRepository.listReservationsForOwner(ownerId);
   }
 
-  async updateReservationStatus(
+  updateReservationStatus(
     payload: UpdateReservationStatusPayload,
-  ): Promise<void> {
-    try {
-      await this.venueRepository.updateReservationStatus(
-        payload.ownerId,
-        payload.reservationId,
-        payload.status,
-      );
-    } catch {
-      throw new NotFoundException('Reservation not found');
-    }
+  ): Promise<ReservationDto> {
+    return this.venueRepository.updateReservationStatus(
+      payload.ownerId,
+      payload.reservationId,
+      payload.status,
+    );
   }
 }

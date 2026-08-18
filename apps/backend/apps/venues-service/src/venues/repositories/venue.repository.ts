@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@ef/database';
 import { ReservationDto, VenueDto } from '@ef/contracts';
 import { ReservationStatus } from '@prisma/client';
@@ -71,14 +71,14 @@ export class VenueRepository {
     ownerId: string,
     reservationId: string,
     status: ReservationStatus,
-  ): Promise<void> {
+  ): Promise<ReservationDto> {
     const venues = await this.prisma.venue.findMany({
       where: { ownerId },
       select: { id: true },
     });
     const venueIds = venues.map((v) => v.id);
     if (venueIds.length === 0) {
-      throw new Error('No venues for owner');
+      throw new NotFoundException('Reservation not found');
     }
 
     const result = await this.prisma.reservation.updateMany({
@@ -90,8 +90,13 @@ export class VenueRepository {
     });
 
     if (result.count === 0) {
-      throw new Error('Reservation not found');
+      throw new NotFoundException('Reservation not found');
     }
+
+    const updated = await this.prisma.reservation.findUniqueOrThrow({
+      where: { id: reservationId },
+    });
+    return this.toReservationDto(updated);
   }
 
   private toVenueDto(row: {
