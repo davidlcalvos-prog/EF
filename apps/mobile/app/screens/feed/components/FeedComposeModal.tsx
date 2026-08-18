@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from "react"
-import { Dimensions, Keyboard, Modal, Platform, Pressable, View } from "react-native"
+import {
+  ActivityIndicator,
+  Dimensions,
+  Keyboard,
+  Modal,
+  Platform,
+  Pressable,
+  View,
+} from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
@@ -14,6 +22,7 @@ import { FeedAvatar } from "./FeedAvatar"
 export interface FeedComposeModalProps {
   visible: boolean
   onClose: () => void
+  onPost: (content: string) => Promise<boolean>
 }
 
 /** Altura fija compacta — comentario corto (sin teclado) */
@@ -65,11 +74,13 @@ function AttachChip({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; lab
   )
 }
 
-export function FeedComposeModal({ visible, onClose }: FeedComposeModalProps) {
+export function FeedComposeModal({ visible, onClose, onPost }: FeedComposeModalProps) {
   const { authEmail } = useAuth()
   const { insets, isSmallScreen } = useResponsiveLayout()
   const [draft, setDraft] = useState("")
   const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const [posting, setPosting] = useState(false)
+  const [error, setError] = useState(false)
 
   /** Altura estable de pantalla (no se encoge al abrir el teclado → evita doble offset) */
   const screenHeight = useMemo(() => Dimensions.get("screen").height, [])
@@ -118,12 +129,27 @@ export function FeedComposeModal({ visible, onClose }: FeedComposeModalProps) {
   }, [isSmallScreen, keyboardOpen, keyboardHeight, screenHeight])
 
   const handleClose = () => {
+    if (posting) return
     setDraft("")
+    setError(false)
     Keyboard.dismiss()
     onClose()
   }
 
-  const handlePost = () => {
+  const handlePost = async () => {
+    const content = draft.trim()
+    if (!content || posting) return
+
+    setError(false)
+    setPosting(true)
+    const success = await onPost(content)
+    setPosting(false)
+
+    if (!success) {
+      setError(true)
+      return
+    }
+
     setDraft("")
     Keyboard.dismiss()
     onClose()
@@ -196,22 +222,35 @@ export function FeedComposeModal({ visible, onClose }: FeedComposeModalProps) {
 
             <Pressable
               onPress={handlePost}
-              disabled={draft.trim().length === 0}
+              disabled={draft.trim().length === 0 || posting}
               accessibilityRole="button"
-              style={{ opacity: draft.trim().length === 0 ? 0.4 : 1 }}
+              style={{ opacity: draft.trim().length === 0 || posting ? 0.4 : 1 }}
             >
               <XStack
                 backgroundColor={eliteForgeColors.emerald}
                 borderRadius={14}
                 paddingHorizontal={11}
                 paddingVertical={6}
+                alignItems="center"
+                gap={5}
               >
+                {posting ? <ActivityIndicator size="small" color="#1a1a1a" /> : null}
                 <Text color="#1a1a1a" fontWeight="800" fontSize={12}>
-                  {translate("feedScreen:composePost")}
+                  {posting
+                    ? translate("feedScreen:composePosting")
+                    : translate("feedScreen:composePost")}
                 </Text>
               </XStack>
             </Pressable>
           </XStack>
+
+          {error ? (
+            <XStack paddingHorizontal={12} paddingTop={6}>
+              <Text color="#E74C3C" fontSize={12}>
+                {translate("feedScreen:composeError")}
+              </Text>
+            </XStack>
+          ) : null}
 
           <YStack flex={1} paddingHorizontal={12} paddingTop={10} paddingBottom={6} gap={8}>
             <XStack alignItems="center" gap={8}>
@@ -227,7 +266,11 @@ export function FeedComposeModal({ visible, onClose }: FeedComposeModalProps) {
 
             <TextField
               value={draft}
-              onChangeText={setDraft}
+              onChangeText={(text) => {
+                setDraft(text)
+                if (error) setError(false)
+              }}
+              editable={!posting}
               placeholder={translate("feedScreen:composePlaceholder")}
               placeholderTextColor="rgba(255,255,255,0.35)"
               multiline

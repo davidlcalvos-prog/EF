@@ -3,6 +3,7 @@
 // will be included in your production bundle (even if you only use one function).
 // This is because react-native does not support tree-shaking.
 import { format } from "date-fns/format"
+import { formatDistanceToNowStrict } from "date-fns/formatDistanceToNowStrict"
 import type { Locale } from "date-fns/locale"
 import { parseISO } from "date-fns/parseISO"
 import i18n from "i18next"
@@ -46,4 +47,9 @@ export const formatDate = (date: string, dateFormat?: string, options?: Options)
     locale: dateFnsLocale,
   }
   return format(parseISO(date), dateFormat ?? "MMM dd, yyyy", dateOptions)
+}
+
+/** Tiempo relativo tipo "2h", "3d" (posts del Feed) — respeta el locale actual de date-fns. */
+export const formatRelativeTime = (date: string) => {
+  return formatDistanceToNowStrict(parseISO(date), { addSuffix: true, locale: dateFnsLocale })
 }

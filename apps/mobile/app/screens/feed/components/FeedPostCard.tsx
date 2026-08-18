@@ -1,29 +1,37 @@
-import { Image, Pressable } from "react-native"
+import { Alert, Image, Pressable } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
+import { useAuth } from "@/context/AuthContext"
 import type { FeedPost } from "@/data/mockFeedPosts"
 import { useInteractiveMotion } from "@/hooks/useInteractiveMotion"
 import type { TxKeyPath } from "@/i18n"
 import { translate } from "@/i18n/translate"
+import { formatRelativeTime } from "@/utils/formatDate"
 
 import { FeedAvatar } from "./FeedAvatar"
 
 export interface FeedPostCardProps {
   post: FeedPost
   onShare?: (post: FeedPost) => void
+  onToggleLike?: (postId: string) => void
+  onDeletePost?: (postId: string) => void
+  onOpenComments?: (post: FeedPost) => void
 }
 
 function ActionButton({
   icon,
   label,
+  active,
   onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap
   label: string
+  active?: boolean
   onPress?: () => void
 }) {
   const motion = useInteractiveMotion("button")
+  const color = active ? "#E74C3C" : "rgba(255,255,255,0.75)"
 
   return (
     <Pressable
@@ -35,8 +43,8 @@ function ActionButton({
       accessibilityLabel={label}
     >
       <XStack flex={1} alignItems="center" justifyContent="center" paddingVertical={10} gap={6}>
-        <Ionicons name={icon} size={18} color="rgba(255,255,255,0.75)" />
-        <Text color="rgba(255,255,255,0.75)" fontSize={13} fontWeight="600" numberOfLines={1}>
+        <Ionicons name={icon} size={18} color={color} />
+        <Text color={color} fontSize={13} fontWeight="600" numberOfLines={1}>
           {label}
         </Text>
       </XStack>
@@ -44,11 +52,36 @@ function ActionButton({
   )
 }
 
-export function FeedPostCard({ post, onShare }: FeedPostCardProps) {
+export function FeedPostCard({
+  post,
+  onShare,
+  onToggleLike,
+  onDeletePost,
+  onOpenComments,
+}: FeedPostCardProps) {
+  const { authUserId } = useAuth()
   const isAd = post.kind === "eliteAd"
-  const content = translate(post.content as TxKeyPath)
-  const timeLabel = translate(post.timeAgoKey as TxKeyPath)
+  const isOwnPost = !isAd && !!post.authorId && post.authorId === authUserId
+  const content = post.contentIsTranslationKey ? translate(post.content as TxKeyPath) : post.content
+  const timeLabel = post.createdAt
+    ? formatRelativeTime(post.createdAt)
+    : translate(post.timeAgoKey as TxKeyPath)
   const motion = useInteractiveMotion("card")
+
+  const handleDeletePress = () => {
+    Alert.alert(
+      translate("feedScreen:deletePostConfirmTitle"),
+      translate("feedScreen:deletePostConfirmMessage"),
+      [
+        { text: translate("feedScreen:composeCancel"), style: "cancel" },
+        {
+          text: translate("feedScreen:deleteConfirm"),
+          style: "destructive",
+          onPress: () => onDeletePost?.(post.id),
+        },
+      ],
+    )
+  }
 
   return (
     <Pressable
@@ -97,6 +130,16 @@ export function FeedPostCard({ post, onShare }: FeedPostCardProps) {
                 {post.authorHandle} · {timeLabel}
               </Text>
             </YStack>
+            {isOwnPost ? (
+              <Pressable
+                onPress={handleDeletePress}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel={translate("feedScreen:deletePost")}
+              >
+                <Ionicons name="trash-outline" size={18} color="rgba(255,255,255,0.45)" />
+              </Pressable>
+            ) : null}
           </XStack>
 
           <Text color="#FFFFFF" fontSize={15} lineHeight={22}>
@@ -174,8 +217,17 @@ export function FeedPostCard({ post, onShare }: FeedPostCardProps) {
               </XStack>
 
               <XStack borderTopWidth={1} borderTopColor="#555555">
-                <ActionButton icon="heart-outline" label={translate("feedScreen:like")} />
-                <ActionButton icon="chatbubble-outline" label={translate("feedScreen:comment")} />
+                <ActionButton
+                  icon={post.likedByMe ? "heart" : "heart-outline"}
+                  label={translate("feedScreen:like")}
+                  active={post.likedByMe}
+                  onPress={() => onToggleLike?.(post.id)}
+                />
+                <ActionButton
+                  icon="chatbubble-outline"
+                  label={translate("feedScreen:comment")}
+                  onPress={() => onOpenComments?.(post)}
+                />
                 <ActionButton
                   icon="share-outline"
                   label={translate("feedScreen:share")}
