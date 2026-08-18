@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react"
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StatusBar } from "react-native"
-import { useFocusEffect } from "@react-navigation/native"
 import { Ionicons } from "@expo/vector-icons"
+import { useFocusEffect } from "@react-navigation/native"
 import { Text, XStack, YStack } from "tamagui"
 
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"

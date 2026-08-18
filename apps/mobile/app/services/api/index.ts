@@ -306,9 +306,7 @@ export class Api {
   }
 
   /** Grupos del usuario autenticado, con su rol en cada uno. */
-  async listMyGroups(): Promise<
-    { kind: "ok"; groups: GroupSummaryApiDto[] } | GeneralApiProblem
-  > {
+  async listMyGroups(): Promise<{ kind: "ok"; groups: GroupSummaryApiDto[] } | GeneralApiProblem> {
     const response = await this.apisauce.get<GroupSummaryApiDto[]>("groups/mine")
 
     if (!response.ok) {

@@ -24,11 +24,11 @@ function pickAvatarColor(seed: string) {
   return AVATAR_PALETTE[hash % AVATAR_PALETTE.length]
 }
 
-const ROLE_COLORS: Record<GroupMemberRoleApi, string> = {
+const ROLE_COLORS = {
   creator: eliteForgeColors.orange,
   admin: eliteForgeColors.emerald,
   member: "rgba(255,255,255,0.55)",
-}
+} as const satisfies Record<GroupMemberRoleApi, string>
 
 export function GroupMemberRow({
   member,

@@ -173,7 +173,14 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
             </XStack>
           </Pressable>
 
-          <Text color="#FFFFFF" fontWeight="800" fontSize={18} numberOfLines={1} flex={1} textAlign="center">
+          <Text
+            color="#FFFFFF"
+            fontWeight="800"
+            fontSize={18}
+            numberOfLines={1}
+            flex={1}
+            textAlign="center"
+          >
             {group?.name ?? translate("groupsScreen:title")}
           </Text>
 
