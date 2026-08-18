@@ -158,6 +158,9 @@ model Reservation {
   endsAt    DateTime
   status    ReservationStatus @default(pending)
   notes     String?
+  /// Vincula la reserva con el partido que la origina (Fase 4). Opcional: se puede reservar sin partido.
+  matchId   String?           @unique @db.Uuid
+  match     Match?            @relation(fields: [matchId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -239,8 +242,8 @@ model Match {
   scheduledAt     DateTime?
   createdBy       String             @db.Uuid
   creator         User               @relation("MatchCreator", fields: [createdBy], references: [id], onDelete: Cascade)
-  /// Se vincula de verdad con Reservation en la Fase 4 — sin @relation todavía a propósito.
-  reservationId   String?            @unique @db.Uuid
+  /// Vínculo real con la reserva que originó este partido (Fase 4). La FK vive en Reservation.matchId.
+  reservation     Reservation?
   participants    MatchParticipant[]
 
   createdAt DateTime @default(now())

@@ -39,12 +39,11 @@ export class VenuesProxyService {
     ownerId: string,
     reservationId: string,
     dto: UpdateReservationStatusDto,
-  ): Promise<void> {
-    return this.send<void>(MESSAGE_PATTERNS.VENUES.UPDATE_RESERVATION_STATUS, {
-      ownerId,
-      reservationId,
-      status: dto.status,
-    });
+  ): Promise<ReservationDto> {
+    return this.send<ReservationDto>(
+      MESSAGE_PATTERNS.VENUES.UPDATE_RESERVATION_STATUS,
+      { ownerId, reservationId, status: dto.status },
+    );
   }
 
   private send<T>(pattern: string, payload: unknown): Promise<T> {

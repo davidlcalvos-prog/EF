@@ -35,7 +35,7 @@ Cliente (web / mobile)
 
 **Importante:** el frontend **nunca** debe llamar directamente a `auth-service`, `users-service` ni `venues-service`. Siempre consume el API Gateway en `/api/*`.
 
-El dominio activo del jugador en backend es **auth + users** (incluye perfil "rico": stats, tests físicos, evaluación psicológica). El dominio de **venues-service** cubre hoy solo el lado dueño de cancha (gestión de sus canchas y de las reservas que recibe); el lado jugador (búsqueda pública de canchas y creación de reservas) todavía no existe — ver [Próximos pasos](#próximos-pasos).
+El dominio activo del jugador en backend es **auth + users** (incluye perfil "rico": stats, tests físicos, evaluación psicológica, Grupos, Partidos) **+ el lado jugador de venues-service** (buscar cancha y reservar, opcionalmente vinculado a un partido).
 
 ---
 
@@ -225,7 +225,7 @@ Partidos (Fase 3 del roadmap — bloqueador de Reservas del jugador y Campeonato
 | `internal` | Cualquier miembro de `originGroupId` (cualquier rol) | Status inicial `scheduled` directo — cupo se llena con `join` |
 | `vs` | Solo `creator`/`admin` de `originGroupId` | Status inicial `pending_opponent` hasta que `creator`/`admin` de `opponentGroupId` acepte o rechace |
 
-Modelos Prisma `Match` y `MatchParticipant` (`matches`, `match_participants`), enums `MatchType` (`internal`/`vs`) y `MatchStatus` (`draft`/`pending_opponent`/`scheduled`/`played`/`cancelled`). `reservationId` es `String? @unique` **sin `@relation` a `Reservation` todavía a propósito** — se vincula de verdad en la Fase 4 (Reservas del jugador) para no complicar la migración antes de que ese lado exista.
+Modelos Prisma `Match` y `MatchParticipant` (`matches`, `match_participants`), enums `MatchType` (`internal`/`vs`) y `MatchStatus` (`draft`/`pending_opponent`/`scheduled`/`played`/`cancelled`). `reservationId` en el `MatchDto` se resuelve desde la relación inversa `Match.reservation` (FK real en `Reservation.matchId`, ver [Reservations (lado jugador) → venues-service](#reservations-lado-jugador--venues-service)).
 
 ### Venues → venues-service
 
@@ -238,7 +238,23 @@ Gestión de canchas y reservas para el **dueño de cancha**. Todos los endpoints
 | GET | `/api/reservations/mine` | **JWT** (Empresario/Administrador) | Lista las reservas recibidas en las canchas del dueño |
 | PATCH | `/api/reservations/:id/status` | **JWT** (Empresario/Administrador) | Cambia el estado de una reserva propia (`pending` / `confirmed` / `cancelled`) |
 
-Modelos Prisma `Venue` y `Reservation` (`venues`, `reservations`), relacionados por `venueId`. `Reservation.userId` referencia al jugador que reservó, pero **hoy no existe un endpoint para que el jugador cree reservas** — ver [Próximos pasos](#próximos-pasos).
+Modelos Prisma `Venue` y `Reservation` (`venues`, `reservations`), relacionados por `venueId`.
+
+### Reservations (lado jugador) → venues-service
+
+Buscar cancha y reservar — cualquier usuario autenticado, sin rol especial. Endpoints separados de los de arriba (`ReservationsProxyController`, sin `RolesGuard`) para no mezclar permisos con el lado dueño de cancha.
+
+| Método | Ruta | Auth | Notas |
+|--------|------|------|--------|
+| GET | `/api/venues` | **JWT** | Lista todas las canchas (`PublicVenueDto`, sin `ownerId` ni `updatedAt`) |
+| POST | `/api/my-reservations` | **JWT** | Crea una reserva. **409** si se solapa con otra `pending`/`confirmed` en el mismo venue. `matchId` opcional — ver reglas abajo |
+| GET | `/api/my-reservations` | **JWT** | Reservas propias del usuario autenticado |
+| GET | `/api/my-reservations/:id` | **JWT** | Detalle de una reserva propia. **403** si no es el dueño |
+| PATCH | `/api/my-reservations/:id/cancel` | **JWT** | Cancela una reserva propia. **403** si no es el dueño, **409** si ya está `cancelled` o si `startsAt` ya pasó |
+
+**Vincular una reserva a un partido** (`matchId` en el body de `POST /api/my-reservations`): solo `creator`/`admin` de `originGroupId` (o de `opponentGroupId` en un `vs`) puede vincular — **403** si no. **409** si el match ya tiene una reserva vinculada. `Reservation.matchId` es único y opcional (`@relation` real con `Match`, Fase 4 — antes era un `Match.reservationId` suelto sin relación, de la Fase 3).
+
+El chequeo de liderazgo de grupo consulta `group_memberships` directo desde `venues-service` (mismo Postgres compartido) en vez de importar `GroupRepository` de `users-service`: son apps de monorepo independientes (`nest-cli.json`), sin alias de path entre `apps/*` — solo entre `libs/*`.
 
 ---
 
@@ -314,17 +330,21 @@ Pendientes (no implementados aún):
 - Evolucionar **Profile** solo cuando existan necesidades reales de producto (campos ya modelados en Prisma).
 - **Reintento automático / cola offline** para el sync de profile-stats: hoy el `PUT` al completar un test es best-effort (si falla, el resultado queda solo en MMKV hasta la próxima vez que el usuario complete otro test o entre a Profile con red).
 - Sincronizar el **avatar/foto de perfil** al backend (sigue siendo local por ahora).
-- **Lado jugador de venues-service**: búsqueda pública de canchas disponibles y creación de reservas por el jugador (hoy `venues-service` solo cubre el lado dueño de cancha: gestión de sus canchas y de las reservas que recibe). No se implementa en esta tarea — queda como tarea futura separada.
-- **Pantallas de Grupos y Partidos en mobile** (Fase 6) — el backend de ambos ya existe (ver [Groups → users-service](#groups--users-service) y [Matches → users-service](#matches--users-service)), pero no hay UI todavía.
+- **Pantallas de Grupos, Partidos y Reservas en mobile** (Fase 6) — el backend de los tres ya existe (ver [Groups](#groups--users-service), [Matches](#matches--users-service) y [Reservations (lado jugador)](#reservations-lado-jugador--venues-service)), pero no hay UI todavía.
 - **Flujo de invitación** para unirse a un grupo (con aceptación/rechazo) — hoy `POST /api/groups/:id/members` agrega directo, sin confirmación del invitado.
 - **Transferencia de liderazgo** de un grupo (que el creador ceda su rol `creator` a otro miembro) — hoy el creador es fijo de por vida del grupo.
-- **Vincular `Match.reservationId` con `Reservation` de verdad** (con `@relation` en Prisma) — hoy es un `String? @unique` suelto, se resuelve en la Fase 4 (Reservas del jugador) junto con el lado jugador de `venues-service`.
-- Reservas del jugador (Fase 4), Feed/Amistades (Fase 5), Campeonatos (Fase 7), notificaciones/invitaciones a partidos, estadísticas post-partido que alimentan el perfil — ver [docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md](./GRUPOS-PARTIDOS-RESERVAS-SPEC.md).
-- **Bug conocido en venues-service**: `PATCH /api/reservations/:id/status` devuelve 500 aunque la actualización en Postgres sí se aplica — mismo patrón de `@MessagePattern` devolviendo `void` que se encontró y arregló en Grupos (`removeMember`/`deleteGroup`). Pendiente de aplicar el mismo fix ahí (se resuelve junto con la Fase 4, cuando se vuelva a tocar ese servicio).
+- Feed/Amistades (Fase 5), Campeonatos (Fase 7), notificaciones al dueño de cancha o al jugador sobre el estado de una reserva, disponibilidad avanzada por horarios configurables del venue (`Venue.availability` existe pero no se valida contra el rango pedido todavía), pagos, estadísticas post-partido que alimentan el perfil — ver [docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md](./GRUPOS-PARTIDOS-RESERVAS-SPEC.md).
 
 ---
 
 ## Registro de cambios
+
+### 2026-08-18 — Backend de Reservas del jugador (Fase 4)
+
+- **Fix**: `VenuesService.updateReservationStatus` devuelve el `ReservationDto` actualizado en vez de `void` — mismo bug de `EmptyError` (500 en el gateway pese a que Postgres se actualizaba bien) encontrado y arreglado en Grupos (Fase 2), esta vez en `venues-service`.
+- `Reservation.matchId` ahora es una FK real a `Match` (antes `Match.reservationId` era un `String?` suelto sin `@relation`, de la Fase 3).
+- Nuevos endpoints en `venues-service`/gateway (lado jugador, sin rol especial): `GET /api/venues`, `POST /api/my-reservations`, `GET /api/my-reservations`, `GET /api/my-reservations/:id`, `PATCH /api/my-reservations/:id/cancel` — ver [Reservations (lado jugador) → venues-service](#reservations-lado-jugador--venues-service).
+- Reglas server-side: anti-solapamiento de horario por venue, vínculo a un match solo por `creator`/`admin` del grupo del match, un match solo puede tener una reserva vinculada, cancelación solo del dueño y solo antes de que empiece.
 
 ### 2026-08-18 — Backend de Partidos (Fase 3)
 
