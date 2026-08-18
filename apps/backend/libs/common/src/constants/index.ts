@@ -30,4 +30,13 @@ export const MESSAGE_PATTERNS = {
     SAVE_PHYSICAL_TEST_RESULT: 'profile_stats.save_physical_test_result',
     SAVE_PSYCH_ASSESSMENT: 'profile_stats.save_psych_assessment',
   },
+  GROUPS: {
+    CREATE: 'groups.create',
+    LIST_MINE: 'groups.list_mine',
+    GET_DETAIL: 'groups.get_detail',
+    ADD_MEMBER: 'groups.add_member',
+    UPDATE_MEMBER_ROLE: 'groups.update_member_role',
+    REMOVE_MEMBER: 'groups.remove_member',
+    DELETE: 'groups.delete',
+  },
 } as const;
