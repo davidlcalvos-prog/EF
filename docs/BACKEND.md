@@ -256,6 +256,25 @@ Buscar cancha y reservar — cualquier usuario autenticado, sin rol especial. En
 
 El chequeo de liderazgo de grupo consulta `group_memberships` directo desde `venues-service` (mismo Postgres compartido) en vez de importar `GroupRepository` de `users-service`: son apps de monorepo independientes (`nest-cli.json`), sin alias de path entre `apps/*` — solo entre `libs/*`.
 
+### Feed → users-service
+
+Posts, likes y comentarios. **Feed global entre todos los usuarios autenticados** (decisión de alcance explícita: no hay módulo de Amistades en el MVP todavía — el mock del mobile ya muestra un feed global sin filtrar; cuando exista `Friendship`, filtrar por amigos es un cambio aislado sobre `listPosts`, no un rediseño). Sin rol especial, `JwtAuthGuard` en todos.
+
+| Método | Ruta | Notas |
+|--------|------|--------|
+| POST | `/api/feed/posts` | Crea un post. `content` 1–2000 chars. **400** si `mediaUrl` viene sin `mediaType` `image`/`video` |
+| GET | `/api/feed/posts` | Feed paginado (`?page=1&pageSize=20`, máx. 50), más nuevo primero. Incluye `likedByMe` del usuario autenticado |
+| GET | `/api/feed/posts/:id` | Detalle de un post. **404** si no existe |
+| DELETE | `/api/feed/posts/:id` | Borra un post propio. **403** si no eres el autor. Cascada borra sus likes y comentarios |
+| POST | `/api/feed/posts/:id/like` | Alterna like (toggle) — devuelve el `PostDto` actualizado con `likesCount`/`likedByMe` |
+| GET | `/api/feed/posts/:id/comments` | Comentarios paginados. **404** si el post no existe |
+| POST | `/api/feed/posts/:id/comments` | Comenta en cualquier post existente. `content` 1–500 chars. **404** si el post no existe |
+| DELETE | `/api/feed/comments/:id` | Borra un comentario. Puede el autor del comentario **o** el autor del post (moderación básica). **403** si no eres ninguno de los dos |
+
+Modelos Prisma `Post`, `PostLike`, `PostComment` (`posts`, `post_likes`, `post_comments`), enum `PostMediaType` (`none`/`image`/`video`). `PostDto`/`CommentDto` están pensados para calzar directo con `FeedPost` del mobile (`authorName`, `authorHandle`, `mediaType`/`mediaUrl`, contadores, `likedByMe`) para que conectar la Fase 6 sea directo. `authorHandle` usa `@` + `Profile.alias`, o `@` + el local-part del email como fallback si el usuario no tiene `Profile` todavía (mismo patrón que `email.split("@")[0]` en `FeedComposeModal.tsx` del mobile).
+
+**No hay upload real de media** (sin S3/storage configurado) — `mediaUrl` solo acepta URLs externas ya alojadas. No se implementa: adjuntar un `Match` al post (chip "Partido" del compose modal), anuncios "Elite Forge" (siguen siendo contenido curado a mano en el frontend), notificaciones, ni editar posts/comentarios ya publicados.
+
 ---
 
 ## Base de datos
@@ -330,14 +349,24 @@ Pendientes (no implementados aún):
 - Evolucionar **Profile** solo cuando existan necesidades reales de producto (campos ya modelados en Prisma).
 - **Reintento automático / cola offline** para el sync de profile-stats: hoy el `PUT` al completar un test es best-effort (si falla, el resultado queda solo en MMKV hasta la próxima vez que el usuario complete otro test o entre a Profile con red).
 - Sincronizar el **avatar/foto de perfil** al backend (sigue siendo local por ahora).
-- **Pantallas de Grupos, Partidos y Reservas en mobile** (Fase 6) — el backend de los tres ya existe (ver [Groups](#groups--users-service), [Matches](#matches--users-service) y [Reservations (lado jugador)](#reservations-lado-jugador--venues-service)), pero no hay UI todavía.
+- **Pantallas de Grupos, Partidos, Reservas y Feed en mobile** (Fase 6) — el backend de los cuatro ya existe (ver [Groups](#groups--users-service), [Matches](#matches--users-service), [Reservations (lado jugador)](#reservations-lado-jugador--venues-service) y [Feed](#feed--users-service)), pero el Feed del mobile sigue con `MOCK_FEED_POSTS` y no hay UI de Grupos/Partidos/Reservas todavía.
 - **Flujo de invitación** para unirse a un grupo (con aceptación/rechazo) — hoy `POST /api/groups/:id/members` agrega directo, sin confirmación del invitado.
 - **Transferencia de liderazgo** de un grupo (que el creador ceda su rol `creator` a otro miembro) — hoy el creador es fijo de por vida del grupo.
-- Feed/Amistades (Fase 5), Campeonatos (Fase 7), notificaciones al dueño de cancha o al jugador sobre el estado de una reserva, disponibilidad avanzada por horarios configurables del venue (`Venue.availability` existe pero no se valida contra el rango pedido todavía), pagos, estadísticas post-partido que alimentan el perfil — ver [docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md](./GRUPOS-PARTIDOS-RESERVAS-SPEC.md).
+- **Amistades (`Friendship`)** — el Feed es global por ahora (decisión de alcance explícita); filtrar por amigos cuando exista `Friendship` es un cambio aislado sobre `listPosts`.
+- **Upload real de media** para el Feed (necesita S3/storage, no configurado) — hoy `mediaUrl` solo acepta URLs externas ya alojadas.
+- Adjuntar un `Match` a un post del Feed, anuncios "Elite Forge" desde backend, notificaciones (likes/comentarios/reservas), Campeonatos (Fase 7), disponibilidad avanzada por horarios configurables del venue (`Venue.availability` existe pero no se valida contra el rango pedido todavía), pagos, estadísticas post-partido que alimentan el perfil — ver [docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md](./GRUPOS-PARTIDOS-RESERVAS-SPEC.md).
 
 ---
 
 ## Registro de cambios
+
+### 2026-08-18 — Backend del Feed (Fase 5)
+
+- Nuevos modelos Prisma: `Post`, `PostLike`, `PostComment` (enum `PostMediaType`).
+- Nuevos endpoints en `users-service`/gateway: `POST/GET /api/feed/posts`, `GET/DELETE /api/feed/posts/:id`, `POST /api/feed/posts/:id/like`, `GET/POST /api/feed/posts/:id/comments`, `DELETE /api/feed/comments/:id` — ver [Feed → users-service](#feed--users-service).
+- Feed **global** entre todos los usuarios autenticados (sin `Friendship` en el MVP todavía — decisión de alcance explícita, no un descuido).
+- `PostDto`/`CommentDto` diseñados para calzar directo con `FeedPost` del mobile (`authorName`, `authorHandle` con fallback a email, `mediaType`/`mediaUrl`, contadores, `likedByMe`), pensando en que conectar la Fase 6 sea directo.
+- Todos los métodos que mutan devuelven el DTO actualizado o `{ success: true }`, nunca `void` (patrón consistente desde el bug de la Fase 2).
 
 ### 2026-08-18 — Backend de Reservas del jugador (Fase 4)
 
