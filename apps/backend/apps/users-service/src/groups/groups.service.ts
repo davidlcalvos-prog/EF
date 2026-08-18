@@ -84,7 +84,7 @@ export class GroupsService {
     return this.groupRepository.findDetail(groupId) as Promise<GroupDetailDto>;
   }
 
-  async removeMember(payload: RemoveMemberPayload): Promise<void> {
+  async removeMember(payload: RemoveMemberPayload): Promise<{ success: true }> {
     const { groupId, requesterId, targetUserId } = payload;
     const requesterRole = await this.requireMembership(groupId, requesterId);
 
@@ -97,7 +97,7 @@ export class GroupsService {
         );
       }
       await this.groupRepository.removeMembership(groupId, targetUserId);
-      return;
+      return { success: true };
     }
 
     const targetMembership = await this.groupRepository.findMembership(
@@ -121,14 +121,16 @@ export class GroupsService {
     }
 
     await this.groupRepository.removeMembership(groupId, targetUserId);
+    return { success: true };
   }
 
-  async deleteGroup(payload: GroupActionPayload): Promise<void> {
+  async deleteGroup(payload: GroupActionPayload): Promise<{ success: true }> {
     const group = await this.requireGroup(payload.groupId);
     if (payload.requesterId !== group.creatorId) {
       throw new ForbiddenException('Only the creator can delete the group');
     }
     await this.groupRepository.deleteGroup(payload.groupId);
+    return { success: true };
   }
 
   private async requireGroup(groupId: string) {

@@ -64,16 +64,16 @@ export class GroupsProxyService {
     groupId: string,
     requesterId: string,
     targetUserId: string,
-  ): Promise<void> {
-    return this.send<void>(MESSAGE_PATTERNS.GROUPS.REMOVE_MEMBER, {
+  ): Promise<{ success: true }> {
+    return this.send<{ success: true }>(MESSAGE_PATTERNS.GROUPS.REMOVE_MEMBER, {
       groupId,
       requesterId,
       targetUserId,
     });
   }
 
-  deleteGroup(groupId: string, requesterId: string): Promise<void> {
-    return this.send<void>(MESSAGE_PATTERNS.GROUPS.DELETE, {
+  deleteGroup(groupId: string, requesterId: string): Promise<{ success: true }> {
+    return this.send<{ success: true }>(MESSAGE_PATTERNS.GROUPS.DELETE, {
       groupId,
       requesterId,
     });
