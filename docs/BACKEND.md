@@ -202,6 +202,31 @@ Modelos Prisma `Group` y `GroupMembership` (`groups`, `group_memberships`), con 
 
 **Pendiente / fuera de alcance de esta fase** (ver [Próximos pasos](#próximos-pasos)): flujo de invitación con aceptación/rechazo para unirse a un grupo (hoy se agrega directo), y transferencia de liderazgo (que el creador ceda su rol a otro miembro).
 
+### Matches → users-service
+
+Partidos (Fase 3 del roadmap — bloqueador de Reservas del jugador y Campeonatos). Reutiliza `Group`/`GroupMembership` de la Fase 2 (`GroupRepository` exportado desde `GroupsModule`), no duplica lógica de membership. **Solo backend en esta fase — sin pantallas en mobile todavía** (Fase 6).
+
+| Método | Ruta | Quién puede | Notas |
+|--------|------|-------------|--------|
+| POST | `/api/matches` | Ver reglas abajo | El creador queda como primer participante automáticamente |
+| GET | `/api/matches/mine` | Cualquier usuario autenticado | Partidos donde es participante, o pertenece a `originGroupId`/`opponentGroupId` |
+| GET | `/api/matches/group/:groupId` | Solo miembros de ese grupo | **403** si no pertenece |
+| GET | `/api/matches/:id` | Solo miembros de `originGroupId` u `opponentGroupId` | **403** si no pertenece a ninguno de los dos |
+| POST | `/api/matches/:id/accept` | `creator`/`admin` de `opponentGroupId` | Solo si `status = pending_opponent`; **409** si no |
+| POST | `/api/matches/:id/reject` | `creator`/`admin` de `opponentGroupId` | Pasa a `cancelled` |
+| POST | `/api/matches/:id/join` | Miembro de un grupo elegible | Solo si `status = scheduled`. **409** si ya está lleno o ya se unió |
+| POST | `/api/matches/:id/leave` | El propio participante | **404** si no estaba unido |
+| PATCH | `/api/matches/:id/status` | `creator`/`admin` de `originGroupId` u `opponentGroupId` | Marca `played` o `cancelled` manualmente |
+
+**Reglas de tipo de partido** (de [docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md](./GRUPOS-PARTIDOS-RESERVAS-SPEC.md)):
+
+| Tipo | Quién lo crea | Confirmación |
+|---|---|---|
+| `internal` | Cualquier miembro de `originGroupId` (cualquier rol) | Status inicial `scheduled` directo — cupo se llena con `join` |
+| `vs` | Solo `creator`/`admin` de `originGroupId` | Status inicial `pending_opponent` hasta que `creator`/`admin` de `opponentGroupId` acepte o rechace |
+
+Modelos Prisma `Match` y `MatchParticipant` (`matches`, `match_participants`), enums `MatchType` (`internal`/`vs`) y `MatchStatus` (`draft`/`pending_opponent`/`scheduled`/`played`/`cancelled`). `reservationId` es `String? @unique` **sin `@relation` a `Reservation` todavía a propósito** — se vincula de verdad en la Fase 4 (Reservas del jugador) para no complicar la migración antes de que ese lado exista.
+
 ### Venues → venues-service
 
 Gestión de canchas y reservas para el **dueño de cancha**. Todos los endpoints requieren JWT y rol **Empresario** o **Administrador**.
@@ -290,15 +315,23 @@ Pendientes (no implementados aún):
 - **Reintento automático / cola offline** para el sync de profile-stats: hoy el `PUT` al completar un test es best-effort (si falla, el resultado queda solo en MMKV hasta la próxima vez que el usuario complete otro test o entre a Profile con red).
 - Sincronizar el **avatar/foto de perfil** al backend (sigue siendo local por ahora).
 - **Lado jugador de venues-service**: búsqueda pública de canchas disponibles y creación de reservas por el jugador (hoy `venues-service` solo cubre el lado dueño de cancha: gestión de sus canchas y de las reservas que recibe). No se implementa en esta tarea — queda como tarea futura separada.
-- **Pantallas de Grupos en mobile** (Fase 6) — el backend de Grupos ya existe (ver [Groups → users-service](#groups--users-service)), pero no hay UI todavía.
+- **Pantallas de Grupos y Partidos en mobile** (Fase 6) — el backend de ambos ya existe (ver [Groups → users-service](#groups--users-service) y [Matches → users-service](#matches--users-service)), pero no hay UI todavía.
 - **Flujo de invitación** para unirse a un grupo (con aceptación/rechazo) — hoy `POST /api/groups/:id/members` agrega directo, sin confirmación del invitado.
 - **Transferencia de liderazgo** de un grupo (que el creador ceda su rol `creator` a otro miembro) — hoy el creador es fijo de por vida del grupo.
-- Partidos (Fase 3), Reservas del jugador (Fase 4), Feed/Amistades (Fase 5), Campeonatos (Fase 7) — ver [docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md](./GRUPOS-PARTIDOS-RESERVAS-SPEC.md).
-- **Bug conocido en venues-service**: `PATCH /api/reservations/:id/status` devuelve 500 aunque la actualización en Postgres sí se aplica — mismo patrón de `@MessagePattern` devolviendo `void` que se encontró y arregló en Grupos (`removeMember`/`deleteGroup`). Pendiente de aplicar el mismo fix ahí.
+- **Vincular `Match.reservationId` con `Reservation` de verdad** (con `@relation` en Prisma) — hoy es un `String? @unique` suelto, se resuelve en la Fase 4 (Reservas del jugador) junto con el lado jugador de `venues-service`.
+- Reservas del jugador (Fase 4), Feed/Amistades (Fase 5), Campeonatos (Fase 7), notificaciones/invitaciones a partidos, estadísticas post-partido que alimentan el perfil — ver [docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md](./GRUPOS-PARTIDOS-RESERVAS-SPEC.md).
+- **Bug conocido en venues-service**: `PATCH /api/reservations/:id/status` devuelve 500 aunque la actualización en Postgres sí se aplica — mismo patrón de `@MessagePattern` devolviendo `void` que se encontró y arregló en Grupos (`removeMember`/`deleteGroup`). Pendiente de aplicar el mismo fix ahí (se resuelve junto con la Fase 4, cuando se vuelva a tocar ese servicio).
 
 ---
 
 ## Registro de cambios
+
+### 2026-08-18 — Backend de Partidos (Fase 3)
+
+- Nuevos modelos Prisma: `Match`, `MatchParticipant` (enums `MatchType`, `MatchStatus`), reutilizando `Group`/`GroupMembership` de la Fase 2 sin duplicar lógica de membership.
+- Nuevos endpoints en `users-service`/gateway: `POST /api/matches`, `GET /api/matches/mine`, `GET /api/matches/group/:groupId`, `GET /api/matches/:id`, `POST /api/matches/:id/{accept,reject,join,leave}`, `PATCH /api/matches/:id/status` — ver [Matches → users-service](#matches--users-service).
+- Reglas de negocio validadas server-side: interno (cualquier miembro crea, cupo controla el `join`) vs VS (solo creator/admin crea y solo creator/admin del rival acepta/rechaza).
+- Todos los métodos que mutan devuelven el `MatchDto` actualizado (nunca `void`), aplicando la lección del bug de `EmptyError` encontrado en la Fase 2.
 
 ### 2026-08-18 — Backend de Grupos (Fase 2)
 
