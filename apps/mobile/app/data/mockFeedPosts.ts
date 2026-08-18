@@ -5,16 +5,25 @@ export type FeedMediaType = "none" | "image" | "video"
 export interface FeedPost {
   id: string
   kind: FeedPostKind
+  /** Id real del autor (posts del backend) — usado para "es mío" (borrar, etc). Ausente en anuncios. */
+  authorId?: string
   authorName: string
   authorHandle: string
   authorAvatarColor: string
+  /** Etiqueta curada ("Sponsored") — solo se usa si no hay `createdAt`. */
   timeAgoKey: string
+  /** ISO — presente en posts reales del backend, usado para tiempo relativo real. */
+  createdAt?: string
   content: string
+  /** true solo en los anuncios mock: `content` es una clave de traducción, no texto literal. */
+  contentIsTranslationKey?: boolean
   mediaType: FeedMediaType
   mediaUrl?: string
   likes: number
   comments: number
   shares: number
+  /** Presente en posts reales del backend. */
+  likedByMe?: boolean
   /** Solo anuncios Elite Forge */
   adBadgeKey?: string
   adCtaKey?: string
@@ -29,6 +38,7 @@ export const MOCK_FEED_POSTS: FeedPost[] = [
     authorAvatarColor: "#00CEC8",
     timeAgoKey: "feedScreen:timeSponsored",
     content: "feedScreen:adPost1",
+    contentIsTranslationKey: true,
     mediaType: "image",
     mediaUrl: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&q=80",
     likes: 0,
@@ -72,6 +82,7 @@ export const MOCK_FEED_POSTS: FeedPost[] = [
     authorAvatarColor: "#00CEC8",
     timeAgoKey: "feedScreen:timeSponsored",
     content: "feedScreen:adPost2",
+    contentIsTranslationKey: true,
     mediaType: "none",
     likes: 0,
     comments: 0,
