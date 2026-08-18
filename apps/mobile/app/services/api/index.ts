@@ -12,9 +12,12 @@ import type { PhysicalTestId } from "@/data/mockPlayerProfile"
 import type { PlayerPositionId } from "@/data/suggestPlayerPosition"
 import type {
   AuthApiResponse,
+  CommentApiDto,
   EpisodeItem,
   ApiConfig,
   ApiFeedResponse,
+  PostApiDto,
+  PostMediaType,
   ProfileStatsApiResponse,
 } from "@/services/api/types"
 
@@ -26,6 +29,9 @@ export type {
   ProfileStatsApiResponse,
   PhysicalTestResultApiDto,
   PsychAssessmentApiDto,
+  PostApiDto,
+  CommentApiDto,
+  PostMediaType,
 } from "./types"
 
 /**
@@ -170,6 +176,120 @@ export class Api {
     favoritePosition: PlayerPositionId | null,
   ): Promise<{ kind: "ok" } | GeneralApiProblem> {
     const response = await this.apisauce.patch("profile", { favoritePosition })
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    return { kind: "ok" }
+  }
+
+  /** Feed global paginado, más reciente primero. */
+  async listFeedPosts(
+    page: number,
+    pageSize: number,
+  ): Promise<{ kind: "ok"; posts: PostApiDto[] } | GeneralApiProblem> {
+    const response = await this.apisauce.get<PostApiDto[]>("feed/posts", { page, pageSize })
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", posts: response.data }
+  }
+
+  /** Publica un post nuevo. mediaUrl requiere mediaType != 'none' (validado en el backend). */
+  async createFeedPost(
+    content: string,
+    mediaType?: PostMediaType,
+    mediaUrl?: string,
+  ): Promise<{ kind: "ok"; post: PostApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<PostApiDto>("feed/posts", {
+      content,
+      mediaType,
+      mediaUrl,
+    })
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", post: response.data }
+  }
+
+  /** Borra un post propio (403 si no es el autor). */
+  async deleteFeedPost(postId: string): Promise<{ kind: "ok" } | GeneralApiProblem> {
+    const response = await this.apisauce.delete(`feed/posts/${postId}`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    return { kind: "ok" }
+  }
+
+  /** Alterna like/unlike de un post. Devuelve el post actualizado (likesCount/likedByMe). */
+  async toggleFeedLike(
+    postId: string,
+  ): Promise<{ kind: "ok"; post: PostApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<PostApiDto>(`feed/posts/${postId}/like`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", post: response.data }
+  }
+
+  /** Comentarios de un post, paginados, más reciente primero. */
+  async listFeedComments(
+    postId: string,
+    page: number,
+    pageSize: number,
+  ): Promise<{ kind: "ok"; comments: CommentApiDto[] } | GeneralApiProblem> {
+    const response = await this.apisauce.get<CommentApiDto[]>(`feed/posts/${postId}/comments`, {
+      page,
+      pageSize,
+    })
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", comments: response.data }
+  }
+
+  /** Comenta en cualquier post (propio o ajeno). */
+  async createFeedComment(
+    postId: string,
+    content: string,
+  ): Promise<{ kind: "ok"; comment: CommentApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<CommentApiDto>(`feed/posts/${postId}/comments`, {
+      content,
+    })
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", comment: response.data }
+  }
+
+  /** Borra un comentario — permitido para el autor del comentario o el autor del post (403 si no). */
+  async deleteFeedComment(commentId: string): Promise<{ kind: "ok" } | GeneralApiProblem> {
+    const response = await this.apisauce.delete(`feed/comments/${commentId}`)
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)

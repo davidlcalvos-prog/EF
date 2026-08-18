@@ -93,3 +93,31 @@ export interface PsychAssessmentApiDto {
   traits: Record<string, number>
   completedAt: string
 }
+
+/** Forma real de los datos del Feed — calcada de libs/contracts/src/feed/index.ts del backend. */
+export type PostMediaType = "none" | "image" | "video"
+
+export interface PostApiDto {
+  id: string
+  authorId: string
+  authorName: string
+  authorHandle: string
+  content: string
+  mediaType: PostMediaType
+  mediaUrl: string | null
+  likesCount: number
+  commentsCount: number
+  likedByMe: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CommentApiDto {
+  id: string
+  postId: string
+  authorId: string
+  authorName: string
+  authorHandle: string
+  content: string
+  createdAt: string
+}
