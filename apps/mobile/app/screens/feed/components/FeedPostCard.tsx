@@ -62,9 +62,7 @@ export function FeedPostCard({
   const { authUserId } = useAuth()
   const isAd = post.kind === "eliteAd"
   const isOwnPost = !isAd && !!post.authorId && post.authorId === authUserId
-  const content = post.contentIsTranslationKey
-    ? translate(post.content as TxKeyPath)
-    : post.content
+  const content = post.contentIsTranslationKey ? translate(post.content as TxKeyPath) : post.content
   const timeLabel = post.createdAt
     ? formatRelativeTime(post.createdAt)
     : translate(post.timeAgoKey as TxKeyPath)

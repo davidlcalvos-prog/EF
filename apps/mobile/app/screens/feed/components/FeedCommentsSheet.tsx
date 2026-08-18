@@ -170,7 +170,10 @@ export function FeedCommentsSheet({
             {translate("feedScreen:commentsTitle")}
           </Text>
 
-          <ScrollView style={{ paddingHorizontal: 16 }} contentContainerStyle={{ paddingBottom: 8 }}>
+          <ScrollView
+            style={{ paddingHorizontal: 16 }}
+            contentContainerStyle={{ paddingBottom: 8 }}
+          >
             {loading ? (
               <YStack paddingVertical={24} alignItems="center">
                 <ActivityIndicator color={eliteForgeColors.emerald} />
@@ -185,8 +188,7 @@ export function FeedCommentsSheet({
               </Text>
             ) : (
               comments.map((comment) => {
-                const canDelete =
-                  comment.authorId === authUserId || post?.authorId === authUserId
+                const canDelete = comment.authorId === authUserId || post?.authorId === authUserId
                 return (
                   <XStack key={comment.id} gap={10} paddingVertical={10} alignItems="flex-start">
                     <FeedAvatar
@@ -232,7 +234,12 @@ export function FeedCommentsSheet({
                 {loadingMore ? (
                   <ActivityIndicator color={eliteForgeColors.emerald} />
                 ) : (
-                  <Text color={eliteForgeColors.emerald} fontSize={13} fontWeight="700" textAlign="center">
+                  <Text
+                    color={eliteForgeColors.emerald}
+                    fontSize={13}
+                    fontWeight="700"
+                    textAlign="center"
+                  >
                     {translate("feedScreen:commentsLoadMore")}
                   </Text>
                 )}

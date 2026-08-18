@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from "react"
-import { ActivityIndicator, Dimensions, Keyboard, Modal, Platform, Pressable, View } from "react-native"
+import {
+  ActivityIndicator,
+  Dimensions,
+  Keyboard,
+  Modal,
+  Platform,
+  Pressable,
+  View,
+} from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
@@ -228,7 +236,9 @@ export function FeedComposeModal({ visible, onClose, onPost }: FeedComposeModalP
               >
                 {posting ? <ActivityIndicator size="small" color="#1a1a1a" /> : null}
                 <Text color="#1a1a1a" fontWeight="800" fontSize={12}>
-                  {posting ? translate("feedScreen:composePosting") : translate("feedScreen:composePost")}
+                  {posting
+                    ? translate("feedScreen:composePosting")
+                    : translate("feedScreen:composePost")}
                 </Text>
               </XStack>
             </Pressable>
