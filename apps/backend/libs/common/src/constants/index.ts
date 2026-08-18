@@ -39,4 +39,15 @@ export const MESSAGE_PATTERNS = {
     REMOVE_MEMBER: 'groups.remove_member',
     DELETE: 'groups.delete',
   },
+  MATCHES: {
+    CREATE: 'matches.create',
+    GET_DETAIL: 'matches.get_detail',
+    LIST_MINE: 'matches.list_mine',
+    LIST_BY_GROUP: 'matches.list_by_group',
+    ACCEPT: 'matches.accept',
+    REJECT: 'matches.reject',
+    JOIN: 'matches.join',
+    LEAVE: 'matches.leave',
+    UPDATE_STATUS: 'matches.update_status',
+  },
 } as const;
