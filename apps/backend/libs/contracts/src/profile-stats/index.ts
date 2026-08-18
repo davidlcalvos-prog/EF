@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsObject, Max, Min } from 'class-validator';
+import { IsArray, IsIn, IsInt, IsObject, IsUUID, Max, Min } from 'class-validator';
 
 /**
  * Debe mantenerse en sync manualmente con
@@ -100,6 +100,7 @@ export class SavePhysicalTestResultDto {
 }
 
 export class SavePhysicalTestResultPayload extends SavePhysicalTestResultDto {
+  @IsUUID()
   userId!: string;
 
   @IsIn(PHYSICAL_TEST_IDS)
@@ -107,7 +108,8 @@ export class SavePhysicalTestResultPayload extends SavePhysicalTestResultDto {
 }
 
 export class SavePsychAssessmentDto {
-  @IsObject()
+  @IsArray()
+  @IsInt({ each: true })
   answers!: number[];
 
   @IsInt()
@@ -130,9 +132,11 @@ export class SavePsychAssessmentDto {
 }
 
 export class SavePsychAssessmentPayload extends SavePsychAssessmentDto {
+  @IsUUID()
   userId!: string;
 }
 
 export class UserIdPayload {
+  @IsUUID()
   userId!: string;
 }
