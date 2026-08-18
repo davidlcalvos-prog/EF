@@ -24,6 +24,12 @@ export const MESSAGE_PATTERNS = {
     UPSERT_MINE: 'venues.upsert_mine',
     LIST_RESERVATIONS_MINE: 'venues.list_reservations_mine',
     UPDATE_RESERVATION_STATUS: 'venues.update_reservation_status',
+    // Lado jugador (Fase 4)
+    LIST_PUBLIC: 'venues.list_public',
+    CREATE_RESERVATION: 'venues.create_reservation',
+    LIST_MY_RESERVATIONS: 'venues.list_my_reservations',
+    GET_MY_RESERVATION: 'venues.get_my_reservation',
+    CANCEL_RESERVATION: 'venues.cancel_reservation',
   },
   PROFILE_STATS: {
     GET_MINE: 'profile_stats.get_mine',
