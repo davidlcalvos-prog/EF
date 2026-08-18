@@ -8,5 +8,6 @@ import { UsersProxyService } from './users-proxy.service';
   imports: [MicroservicesClientsModule, AuthProxyModule],
   controllers: [UsersProxyController],
   providers: [UsersProxyService],
+  exports: [UsersProxyService],
 })
 export class UsersProxyModule {}
