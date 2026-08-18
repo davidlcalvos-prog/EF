@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { join } from 'path';
 import { MongoDatabaseModule, PrismaModule } from '@ef/database';
 import { GroupsModule } from './groups/groups.module';
+import { MatchesModule } from './matches/matches.module';
 import { ProfileStatsModule } from './profile-stats/profile-stats.module';
 import { UsersModule } from './users/users.module';
 
@@ -20,6 +21,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     ProfileStatsModule,
     GroupsModule,
+    MatchesModule,
   ],
 })
 export class AppModule {}
