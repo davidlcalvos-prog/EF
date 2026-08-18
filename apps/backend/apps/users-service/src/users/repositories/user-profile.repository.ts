@@ -52,6 +52,24 @@ export class UserProfileRepository {
     return this.findById(userId);
   }
 
+  async findFavoritePosition(userId: string): Promise<string | null> {
+    const profile = await this.prisma.profile.findUnique({
+      where: { userId },
+      select: { favoritePosition: true },
+    });
+    return profile?.favoritePosition ?? null;
+  }
+
+  async updateFavoritePosition(
+    userId: string,
+    favoritePosition: string | null | undefined,
+  ): Promise<void> {
+    await this.prisma.profile.update({
+      where: { userId },
+      data: { favoritePosition: favoritePosition ?? null },
+    });
+  }
+
   private toRecord(profile: {
     createdAt: Date;
     user: { id: string; email: string; firstname: string; lastname: string };

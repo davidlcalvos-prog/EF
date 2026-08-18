@@ -21,5 +21,6 @@ import {
     UserProfileRepository,
     UserPreferencesRepository,
   ],
+  exports: [UserProfileRepository],
 })
 export class UsersModule {}
