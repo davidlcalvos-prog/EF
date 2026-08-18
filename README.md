@@ -6,6 +6,7 @@ Monorepo técnico de **Elite Forge** — aplicación móvil de fútbol con perfi
 |-----------|-------------|
 | **[docs/ELITE_FORGE.md](./docs/ELITE_FORGE.md)** | Producto, lógica de negocio, logo, módulos funcionales |
 | **[docs/FRONTEND.md](./docs/FRONTEND.md)** | Implementación técnica del mobile, changelog |
+| **[docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md](./docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md)** | Definiciones de producto Fase 0: Grupos, Partidos, Reservas y Ranking |
 | Este README | Stack técnico, inicio rápido, infraestructura y despliegue |
 
 ## Resumen del producto
