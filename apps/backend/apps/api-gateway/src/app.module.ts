@@ -8,6 +8,7 @@ import { AuthProxyModule } from './auth/auth-proxy.module';
 import { UsersProxyModule } from './users/users-proxy.module';
 import { VenuesProxyModule } from './venues/venues-proxy.module';
 import { ProfileStatsProxyModule } from './profile-stats/profile-stats-proxy.module';
+import { GroupsProxyModule } from './groups/groups-proxy.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -31,6 +32,7 @@ import { HealthController } from './health/health.controller';
     UsersProxyModule,
     VenuesProxyModule,
     ProfileStatsProxyModule,
+    GroupsProxyModule,
   ],
   controllers: [HealthController],
   providers: [

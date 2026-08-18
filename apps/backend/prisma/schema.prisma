@@ -36,6 +36,8 @@ model User {
   playerStats         PlayerStats?
   physicalTestResults PhysicalTestResult[]
   psychAssessments    PsychAssessment[]
+  createdGroups       Group[]              @relation("GroupCreator")
+  groupMemberships    GroupMembership[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -161,4 +163,41 @@ model Reservation {
   @@index([venueId])
   @@index([userId])
   @@map("reservations")
+}
+
+/**
+ * Grupos de jugadores (Fase 2 del roadmap). Un usuario puede pertenecer a
+ * varios grupos simultáneamente, sin límite. Ver docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md.
+ */
+model Group {
+  id        String            @id @default(uuid()) @db.Uuid
+  name      String
+  creatorId String            @db.Uuid
+  creator   User              @relation("GroupCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  members   GroupMembership[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("groups")
+}
+
+enum GroupRole {
+  creator
+  admin
+  member
+}
+
+model GroupMembership {
+  id       String    @id @default(uuid()) @db.Uuid
+  groupId  String    @db.Uuid
+  group    Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId   String    @db.Uuid
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     GroupRole @default(member)
+  joinedAt DateTime  @default(now())
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@map("group_memberships")
 }

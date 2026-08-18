@@ -182,6 +182,26 @@ Modelos Prisma `PlayerStats`, `PhysicalTestResult`, `PsychAssessment` (`player_s
 
 El mobile sigue siendo **local-first**: MMKV es la caché de lectura instantánea y funciona offline; el backend es la fuente de verdad. El sync al completar un test es best-effort (no bloquea al usuario si falla por falta de red — sin reintento automático todavía, deuda pendiente).
 
+### Groups → users-service
+
+Grupos de jugadores (Fase 2 del roadmap — bloqueador de Partidos/Reservas del jugador/Campeonatos). Un usuario puede pertenecer a varios grupos simultáneamente, sin límite. Ver [docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md](./GRUPOS-PARTIDOS-RESERVAS-SPEC.md). **Solo backend en esta fase — sin pantallas en mobile todavía** (Fase 6).
+
+| Método | Ruta | Quién puede | Notas |
+|--------|------|-------------|--------|
+| POST | `/api/groups` | Cualquier usuario autenticado | El creador queda con rol `creator` automáticamente |
+| GET | `/api/groups/mine` | El propio usuario | Grupos donde es creador o miembro, con su rol y `memberCount` |
+| GET | `/api/groups/:id` | Solo miembros del grupo | **403** si no pertenece. Detalle con todos los miembros y sus roles |
+| POST | `/api/groups/:id/members` | Creador o admin | Agrega directo por `userId` o `email` (sin invitación en esta fase). **409** si ya es miembro |
+| PATCH | `/api/groups/:id/members/:userId/role` | **Solo el creador** | Asigna/quita rol `admin`. **409** si ya hay 2 admins y se intenta un 3ro. El rol del creador no se puede cambiar |
+| DELETE | `/api/groups/:id/members/:userId` | Ver jerarquía abajo | Creador quita a cualquiera menos a sí mismo. Admin solo quita members regulares (no otro admin ni al creador). Cualquiera puede salirse a sí mismo, **excepto el creador** |
+| DELETE | `/api/groups/:id` | **Solo el creador** | Borra el grupo; cascada elimina memberships |
+
+**Jerarquía de permisos:** creador > admin > member. Máximo **2 administradores por grupo**, validado server-side (no solo en el cliente). Todas las rutas devuelven **403** si el usuario autenticado no pertenece al grupo (excepto `POST /api/groups`, abierto a cualquiera).
+
+Modelos Prisma `Group` y `GroupMembership` (`groups`, `group_memberships`), con `GroupRole` (`creator` | `admin` | `member`) y único `(groupId, userId)`.
+
+**Pendiente / fuera de alcance de esta fase** (ver [Próximos pasos](#próximos-pasos)): flujo de invitación con aceptación/rechazo para unirse a un grupo (hoy se agrega directo), y transferencia de liderazgo (que el creador ceda su rol a otro miembro).
+
 ### Venues → venues-service
 
 Gestión de canchas y reservas para el **dueño de cancha**. Todos los endpoints requieren JWT y rol **Empresario** o **Administrador**.
@@ -270,11 +290,23 @@ Pendientes (no implementados aún):
 - **Reintento automático / cola offline** para el sync de profile-stats: hoy el `PUT` al completar un test es best-effort (si falla, el resultado queda solo en MMKV hasta la próxima vez que el usuario complete otro test o entre a Profile con red).
 - Sincronizar el **avatar/foto de perfil** al backend (sigue siendo local por ahora).
 - **Lado jugador de venues-service**: búsqueda pública de canchas disponibles y creación de reservas por el jugador (hoy `venues-service` solo cubre el lado dueño de cancha: gestión de sus canchas y de las reservas que recibe). No se implementa en esta tarea — queda como tarea futura separada.
-- Funcionalidades deportivas o sociales futuras (Grupos, Partidos, Ranking) cuando tengan sus propios contratos y servicios — ver [docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md](./GRUPOS-PARTIDOS-RESERVAS-SPEC.md).
+- **Pantallas de Grupos en mobile** (Fase 6) — el backend de Grupos ya existe (ver [Groups → users-service](#groups--users-service)), pero no hay UI todavía.
+- **Flujo de invitación** para unirse a un grupo (con aceptación/rechazo) — hoy `POST /api/groups/:id/members` agrega directo, sin confirmación del invitado.
+- **Transferencia de liderazgo** de un grupo (que el creador ceda su rol `creator` a otro miembro) — hoy el creador es fijo de por vida del grupo.
+- Partidos (Fase 3), Reservas del jugador (Fase 4), Feed/Amistades (Fase 5), Campeonatos (Fase 7) — ver [docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md](./GRUPOS-PARTIDOS-RESERVAS-SPEC.md).
+- **Bug conocido en venues-service**: `PATCH /api/reservations/:id/status` devuelve 500 aunque la actualización en Postgres sí se aplica — mismo patrón de `@MessagePattern` devolviendo `void` que se encontró y arregló en Grupos (`removeMember`/`deleteGroup`). Pendiente de aplicar el mismo fix ahí.
 
 ---
 
 ## Registro de cambios
+
+### 2026-08-18 — Backend de Grupos (Fase 2)
+
+- Nuevos modelos Prisma: `Group`, `GroupMembership` (rol `creator`/`admin`/`member`, único por `groupId+userId`).
+- Nuevos endpoints en `users-service`/gateway: `POST /api/groups`, `GET /api/groups/mine`, `GET /api/groups/:id`, `POST /api/groups/:id/members`, `PATCH /api/groups/:id/members/:userId/role`, `DELETE /api/groups/:id/members/:userId`, `DELETE /api/groups/:id` — ver [Groups → users-service](#groups--users-service).
+- Reglas de negocio validadas server-side: máximo 2 admins por grupo (409), jerarquía creador > admin > member, 403 si no es miembro.
+- Bug encontrado y corregido corriendo contra Docker: `@MessagePattern` que resuelve `void` rompe la respuesta RPC (`EmptyError` → 500) aunque la mutación en Postgres se aplique bien. Mismo patrón detectado como pendiente en `venues-service` (no corregido ahí, fuera de alcance de esta fase).
+- Solo backend — sin pantallas en mobile (Fase 6 pendiente).
 
 ### 2026-08-18 — Sincronización de perfil (Tarea H)
 
