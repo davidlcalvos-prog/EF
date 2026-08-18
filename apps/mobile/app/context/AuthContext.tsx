@@ -7,8 +7,10 @@ export type AuthContextType = {
   isAuthenticated: boolean
   authToken?: string
   authEmail?: string
+  authUserId?: string
   setAuthToken: (token?: string) => void
   setAuthEmail: (email: string) => void
+  setAuthUserId: (userId?: string) => void
   logout: () => void
   validationError: string
 }
@@ -20,6 +22,7 @@ export interface AuthProviderProps {}
 export const AuthProvider: FC<PropsWithChildren<AuthProviderProps>> = ({ children }) => {
   const [authToken, setAuthToken] = useMMKVString("AuthProvider.authToken")
   const [authEmail, setAuthEmail] = useMMKVString("AuthProvider.authEmail")
+  const [authUserId, setAuthUserId] = useMMKVString("AuthProvider.authUserId")
 
   // Mantiene el header Authorization del cliente API en sync con el token
   // (login, logout, e hidratación inicial desde MMKV al abrir la app).
@@ -30,7 +33,8 @@ export const AuthProvider: FC<PropsWithChildren<AuthProviderProps>> = ({ childre
   const logout = useCallback(() => {
     setAuthToken(undefined)
     setAuthEmail("")
-  }, [setAuthEmail, setAuthToken])
+    setAuthUserId(undefined)
+  }, [setAuthEmail, setAuthToken, setAuthUserId])
 
   const validationError = useMemo(() => {
     if (!authEmail || authEmail.length === 0) return "can't be blank"
@@ -43,8 +47,10 @@ export const AuthProvider: FC<PropsWithChildren<AuthProviderProps>> = ({ childre
     isAuthenticated: !!authToken,
     authToken,
     authEmail,
+    authUserId,
     setAuthToken,
     setAuthEmail,
+    setAuthUserId,
     logout,
     validationError,
   }

@@ -37,7 +37,7 @@ export const LoginScreen: FC<LoginScreenProps> = () => {
   const [errorMessage, setErrorMessage] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
-  const { setAuthToken, setAuthEmail } = useAuth()
+  const { setAuthToken, setAuthEmail, setAuthUserId } = useAuth()
 
   const {
     insets,
@@ -87,6 +87,7 @@ export const LoginScreen: FC<LoginScreenProps> = () => {
       if (response.kind === "ok") {
         setAuthToken(response.accessToken)
         setAuthEmail(response.user.email)
+        setAuthUserId(response.user.id)
         return
       }
 
@@ -109,7 +110,7 @@ export const LoginScreen: FC<LoginScreenProps> = () => {
     } finally {
       setIsLoading(false)
     }
-  }, [isLoading, password, setAuthEmail, setAuthToken, username])
+  }, [isLoading, password, setAuthEmail, setAuthToken, setAuthUserId, username])
 
   const handleCreateAccount = useCallback(() => {
     openLinkInBrowser(Config.SIGN_UP_URL)
