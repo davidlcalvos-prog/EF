@@ -11,6 +11,7 @@ import { ProfileStatsProxyModule } from './profile-stats/profile-stats-proxy.mod
 import { GroupsProxyModule } from './groups/groups-proxy.module';
 import { MatchesProxyModule } from './matches/matches-proxy.module';
 import { ReservationsProxyModule } from './reservations/reservations-proxy.module';
+import { FeedProxyModule } from './feed/feed-proxy.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -37,6 +38,7 @@ import { HealthController } from './health/health.controller';
     GroupsProxyModule,
     MatchesProxyModule,
     ReservationsProxyModule,
+    FeedProxyModule,
   ],
   controllers: [HealthController],
   providers: [
