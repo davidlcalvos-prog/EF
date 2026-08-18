@@ -40,6 +40,9 @@ model User {
   groupMemberships    GroupMembership[]
   createdMatches      Match[]              @relation("MatchCreator")
   matchParticipations MatchParticipant[]
+  posts               Post[]               @relation("PostAuthor")
+  postLikes           PostLike[]           @relation("PostLikeUser")
+  postComments        PostComment[]        @relation("PostCommentAuthor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -265,4 +268,60 @@ model MatchParticipant {
   @@unique([matchId, userId])
   @@index([userId])
   @@map("match_participants")
+}
+
+/**
+ * Feed (Fase 5). Global entre todos los usuarios autenticados por decisión
+ * de alcance explícita — no hay módulo de Amistades todavía en el MVP.
+ * Ver docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md.
+ */
+enum PostMediaType {
+  none
+  image
+  video
+}
+
+model Post {
+  id        String        @id @default(uuid()) @db.Uuid
+  authorId  String        @db.Uuid
+  author    User          @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  content   String
+  mediaType PostMediaType @default(none)
+  mediaUrl  String?
+  likes     PostLike[]
+  comments  PostComment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("posts")
+}
+
+model PostLike {
+  id        String   @id @default(uuid()) @db.Uuid
+  postId    String   @db.Uuid
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String   @db.Uuid
+  user      User     @relation("PostLikeUser", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+  @@index([userId])
+  @@map("post_likes")
+}
+
+model PostComment {
+  id        String   @id @default(uuid()) @db.Uuid
+  postId    String   @db.Uuid
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String   @db.Uuid
+  author    User     @relation("PostCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+  @@index([authorId])
+  @@map("post_comments")
 }
