@@ -61,11 +61,7 @@ export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
       reload()
       reloadProfile()
 
-      if (
-        authToken &&
-        hydrationAttempted.current !== userKey &&
-        hasNoLocalProfileStats(userKey)
-      ) {
+      if (authToken && hydrationAttempted.current !== userKey && hasNoLocalProfileStats(userKey)) {
         hydrationAttempted.current = userKey
         hydrateProfileFromBackend(userKey, authEmail).then((hydrated) => {
           if (hydrated) {

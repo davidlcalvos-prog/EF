@@ -35,7 +35,9 @@ export function ReservationDetailScreen({
   const [busy, setBusy] = useState(false)
 
   const canCancel =
-    !!reservation && reservation.status !== "cancelled" && new Date(reservation.startsAt) > new Date()
+    !!reservation &&
+    reservation.status !== "cancelled" &&
+    new Date(reservation.startsAt) > new Date()
 
   const handleCancel = useCallback(() => {
     Alert.alert(
@@ -161,11 +163,7 @@ export function ReservationDetailScreen({
 
               {reservation.notes ? (
                 <XStack alignItems="flex-start" gap={8}>
-                  <Ionicons
-                    name="document-text-outline"
-                    size={16}
-                    color="rgba(255,255,255,0.5)"
-                  />
+                  <Ionicons name="document-text-outline" size={16} color="rgba(255,255,255,0.5)" />
                   <Text color="rgba(255,255,255,0.6)" fontSize={13} flex={1}>
                     {reservation.notes}
                   </Text>

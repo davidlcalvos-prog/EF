@@ -323,11 +323,7 @@ export function CreateReservationModal({
                               {venue.name}
                             </Text>
                             {venue.address ? (
-                              <Text
-                                color="rgba(255,255,255,0.5)"
-                                fontSize={12}
-                                numberOfLines={1}
-                              >
+                              <Text color="rgba(255,255,255,0.5)" fontSize={12} numberOfLines={1}>
                                 {venue.address}
                               </Text>
                             ) : null}
