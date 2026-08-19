@@ -21,9 +21,11 @@ import type {
   MatchApiDto,
   MatchSummaryApiDto,
   MatchTypeApi,
+  MyReservationApiDto,
   PostApiDto,
   PostMediaType,
   ProfileStatsApiResponse,
+  PublicVenueApiDto,
 } from "@/services/api/types"
 
 import { GeneralApiProblem, getGeneralApiProblem } from "./apiProblem"
@@ -46,6 +48,9 @@ export type {
   MatchParticipantApiDto,
   MatchApiDto,
   MatchSummaryApiDto,
+  ReservationStatusApi,
+  PublicVenueApiDto,
+  MyReservationApiDto,
 } from "./types"
 
 /**
@@ -571,6 +576,91 @@ export class Api {
     }
     if (!response.data) return { kind: "bad-data" }
     return { kind: "ok", match: response.data }
+  }
+
+  /** Lista pública de canchas — cualquier usuario autenticado, sin roles especiales. */
+  async listVenues(): Promise<{ kind: "ok"; venues: PublicVenueApiDto[] } | GeneralApiProblem> {
+    const response = await this.apisauce.get<PublicVenueApiDto[]>("venues")
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", venues: response.data }
+  }
+
+  /**
+   * Nace siempre en 'pending'. 400 si endsAt <= startsAt, 409 si hay choque de
+   * horario o si el matchId ya tiene reserva, 404 si el matchId no existe,
+   * 403 si no eres creator/admin del grupo origen o rival del partido.
+   */
+  async createReservation(payload: {
+    venueId: string
+    startsAt: string
+    endsAt: string
+    notes?: string
+    matchId?: string
+  }): Promise<{ kind: "ok"; reservation: MyReservationApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<MyReservationApiDto>("my-reservations", payload)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", reservation: response.data }
+  }
+
+  /** Todas las reservas del usuario autenticado, sin importar el estado. */
+  async listMyReservations(): Promise<
+    { kind: "ok"; reservations: MyReservationApiDto[] } | GeneralApiProblem
+  > {
+    const response = await this.apisauce.get<MyReservationApiDto[]>("my-reservations")
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", reservations: response.data }
+  }
+
+  /** 403 si la reserva no es tuya. */
+  async getReservation(
+    reservationId: string,
+  ): Promise<{ kind: "ok"; reservation: MyReservationApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.get<MyReservationApiDto>(
+      `my-reservations/${reservationId}`,
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", reservation: response.data }
+  }
+
+  /** 409 si ya estaba cancelada o si startsAt ya pasó. */
+  async cancelReservation(
+    reservationId: string,
+  ): Promise<{ kind: "ok"; reservation: MyReservationApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.patch<MyReservationApiDto>(
+      `my-reservations/${reservationId}/cancel`,
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", reservation: response.data }
   }
 
   /**
