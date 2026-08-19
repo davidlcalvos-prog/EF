@@ -7,7 +7,7 @@ import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
 import type { AppStackScreenProps } from "@/navigators/navigationTypes"
 import { useGroups } from "@/screens/groups/useGroups"
-import { api, type MatchSummaryApiDto } from "@/services/api"
+import { api, type MatchSummaryApiDto, type MatchTypeApi } from "@/services/api"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
 import { CreateMatchModal } from "./components/CreateMatchModal"
@@ -43,11 +43,13 @@ export function MatchesScreen({ route, navigation }: AppStackScreenProps<"Matche
   const handleCreate = useCallback(
     async (payload: {
       originGroupId: string
+      type: MatchTypeApi
+      opponentGroupId?: string
       format: string
       maxPlayers: number
       scheduledAt?: string
     }) => {
-      const result = await api.createMatch({ ...payload, type: "internal" })
+      const result = await api.createMatch(payload)
       if (result.kind !== "ok") return false
       refresh()
       return true
@@ -60,6 +62,9 @@ export function MatchesScreen({ route, navigation }: AppStackScreenProps<"Matche
       <MatchCard
         match={item}
         groupName={groupNameById.get(item.originGroupId)}
+        opponentGroupName={
+          item.opponentGroupId ? groupNameById.get(item.opponentGroupId) : undefined
+        }
         onPress={() => handleOpenMatch(item.id)}
       />
     ),
