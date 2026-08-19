@@ -368,11 +368,7 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
                       </Text>
                     </XStack>
                   </Pressable>
-                  <Pressable
-                    onPress={handleCancelMatch}
-                    disabled={busy}
-                    accessibilityRole="button"
-                  >
+                  <Pressable onPress={handleCancelMatch} disabled={busy} accessibilityRole="button">
                     <XStack
                       backgroundColor="rgba(231,76,60,0.12)"
                       borderRadius={12}

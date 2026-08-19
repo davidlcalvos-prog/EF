@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react"
 import { ActivityIndicator, Keyboard, Modal, Pressable, ScrollView, View } from "react-native"
+import { Ionicons } from "@expo/vector-icons"
 import { addDays } from "date-fns/addDays"
 import { nextSaturday } from "date-fns/nextSaturday"
 import { setHours } from "date-fns/setHours"
 import { setMinutes } from "date-fns/setMinutes"
 import { startOfDay } from "date-fns/startOfDay"
-import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
 import { TextField } from "@/components/TextField"
