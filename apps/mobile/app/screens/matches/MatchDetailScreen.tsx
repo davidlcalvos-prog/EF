@@ -205,6 +205,11 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
     )
   }, [reject])
 
+  const handleReserveVenue = useCallback(() => {
+    if (!match) return
+    navigation.navigate("Reservations", { matchId: match.id })
+  }, [match, navigation])
+
   return (
     <YStack flex={1} backgroundColor={eliteForgeColors.carbon}>
       <StatusBar barStyle="light-content" backgroundColor={eliteForgeColors.carbon} />
@@ -469,6 +474,25 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
                     {translate("matchesScreen:waitingForOpponent")}
                   </Text>
                 </XStack>
+              ) : null}
+
+              {match.status === "scheduled" && canManageStatus ? (
+                <Pressable onPress={handleReserveVenue} disabled={busy} accessibilityRole="button">
+                  <XStack
+                    backgroundColor={eliteForgeColors.carbonInput}
+                    borderRadius={12}
+                    borderWidth={1}
+                    borderColor={eliteForgeColors.carbonBorder}
+                    paddingVertical={14}
+                    alignItems="center"
+                    justifyContent="center"
+                    opacity={busy ? 0.6 : 1}
+                  >
+                    <Text color="#FFFFFF" fontWeight="800" fontSize={15}>
+                      {translate("matchesScreen:reserveVenue")}
+                    </Text>
+                  </XStack>
+                </Pressable>
               ) : null}
 
               {match.status === "scheduled" && canManageStatus ? (
