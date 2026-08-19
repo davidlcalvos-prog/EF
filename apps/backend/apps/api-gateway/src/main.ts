@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import {
@@ -31,8 +32,12 @@ function resolveCorsOrigins(config: ConfigService): string[] | boolean {
 }
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get(ConfigService);
+
+  // Default de Express es 100kb — muy chico para la foto de grupo en base64
+  // (hasta MAX_GROUP_PHOTO_BASE64_LENGTH ~500KB, ver libs/contracts/src/groups).
+  app.useBodyParser('json', { limit: '1mb' });
 
   app.use(
     helmet({
