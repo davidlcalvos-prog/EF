@@ -63,6 +63,10 @@ export function FeedScreen(_props: AppStackScreenProps<"Feed">) {
         navigation.navigate("Profile")
         return
       }
+      if (id === "groups") {
+        navigation.navigate("Groups")
+        return
+      }
       showFeedComingSoon(id)
     },
     [closeDrawer, navigation],

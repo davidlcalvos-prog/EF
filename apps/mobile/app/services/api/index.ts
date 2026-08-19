@@ -16,6 +16,8 @@ import type {
   EpisodeItem,
   ApiConfig,
   ApiFeedResponse,
+  GroupDetailApiDto,
+  GroupSummaryApiDto,
   PostApiDto,
   PostMediaType,
   ProfileStatsApiResponse,
@@ -32,6 +34,10 @@ export type {
   PostApiDto,
   CommentApiDto,
   PostMediaType,
+  GroupMemberRoleApi,
+  GroupMemberApiDto,
+  GroupSummaryApiDto,
+  GroupDetailApiDto,
 } from "./types"
 
 /**
@@ -290,6 +296,118 @@ export class Api {
   /** Borra un comentario — permitido para el autor del comentario o el autor del post (403 si no). */
   async deleteFeedComment(commentId: string): Promise<{ kind: "ok" } | GeneralApiProblem> {
     const response = await this.apisauce.delete(`feed/comments/${commentId}`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    return { kind: "ok" }
+  }
+
+  /** Grupos del usuario autenticado, con su rol en cada uno. */
+  async listMyGroups(): Promise<{ kind: "ok"; groups: GroupSummaryApiDto[] } | GeneralApiProblem> {
+    const response = await this.apisauce.get<GroupSummaryApiDto[]>("groups/mine")
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", groups: response.data }
+  }
+
+  /** Crea un grupo nuevo — el usuario autenticado queda como creador. */
+  async createGroup(
+    name: string,
+  ): Promise<{ kind: "ok"; group: GroupDetailApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<GroupDetailApiDto>("groups", { name })
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", group: response.data }
+  }
+
+  /** Detalle de un grupo (miembros incluidos). 403 si el usuario no es miembro. */
+  async getGroupDetail(
+    groupId: string,
+  ): Promise<{ kind: "ok"; group: GroupDetailApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.get<GroupDetailApiDto>(`groups/${groupId}`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", group: response.data }
+  }
+
+  /**
+   * Agrega un miembro por userId o email (uno de los dos). Solo creator/admin
+   * pueden hacerlo (403 si no) — validado server-side.
+   */
+  async addGroupMember(
+    groupId: string,
+    identifier: { userId?: string; email?: string },
+  ): Promise<{ kind: "ok"; group: GroupDetailApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<GroupDetailApiDto>(
+      `groups/${groupId}/members`,
+      identifier,
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", group: response.data }
+  }
+
+  /** Solo el creador puede cambiar roles. Máximo 2 admins por grupo (409 si ya hay 2). */
+  async updateGroupMemberRole(
+    groupId: string,
+    targetUserId: string,
+    role: "admin" | "member",
+  ): Promise<{ kind: "ok"; group: GroupDetailApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.patch<GroupDetailApiDto>(
+      `groups/${groupId}/members/${targetUserId}/role`,
+      { role },
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", group: response.data }
+  }
+
+  /** Mismo endpoint sirve para "salir del grupo" (targetUserId = el propio) y remover a otro. */
+  async removeGroupMember(
+    groupId: string,
+    targetUserId: string,
+  ): Promise<{ kind: "ok" } | GeneralApiProblem> {
+    const response = await this.apisauce.delete(`groups/${groupId}/members/${targetUserId}`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    return { kind: "ok" }
+  }
+
+  /** Solo el creador puede eliminar el grupo (403 si no). */
+  async deleteGroup(groupId: string): Promise<{ kind: "ok" } | GeneralApiProblem> {
+    const response = await this.apisauce.delete(`groups/${groupId}`)
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)

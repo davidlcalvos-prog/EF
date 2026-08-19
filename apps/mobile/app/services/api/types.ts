@@ -121,3 +121,32 @@ export interface CommentApiDto {
   content: string
   createdAt: string
 }
+
+/** Forma real de los datos de Grupos — calcada de libs/contracts/src/groups/index.ts del backend. */
+export type GroupMemberRoleApi = "creator" | "admin" | "member"
+
+export interface GroupMemberApiDto {
+  userId: string
+  email: string
+  name: string
+  role: GroupMemberRoleApi
+  joinedAt: string
+}
+
+export interface GroupSummaryApiDto {
+  id: string
+  name: string
+  creatorId: string
+  role: GroupMemberRoleApi
+  memberCount: number
+  createdAt: string
+}
+
+export interface GroupDetailApiDto {
+  id: string
+  name: string
+  creatorId: string
+  members: GroupMemberApiDto[]
+  createdAt: string
+  updatedAt: string
+}
