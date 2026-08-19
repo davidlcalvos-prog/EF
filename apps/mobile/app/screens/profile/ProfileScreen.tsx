@@ -13,7 +13,6 @@ import {
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
 import type { AppStackScreenProps } from "@/navigators/navigationTypes"
-import { showFeedComingSoon } from "@/screens/feed/feedNavigation"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
 import { PhysicalTestCard } from "./components/PhysicalTestCard"
@@ -107,9 +106,20 @@ export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
     if (uri) updateProfile({ avatarUri: uri })
   }, [profile.avatarUri, updateProfile, userKey])
 
-  const handleQuickLink = useCallback((id: ProfileQuickLinkId) => {
-    showFeedComingSoon(id)
-  }, [])
+  const handleQuickLink = useCallback(
+    (id: ProfileQuickLinkId) => {
+      if (id === "groups") {
+        navigation.navigate("Groups")
+        return
+      }
+      if (id === "matches") {
+        navigation.navigate("Matches")
+        return
+      }
+      navigation.navigate("Reservations")
+    },
+    [navigation],
+  )
 
   const openTest = useCallback(
     (testId: PhysicalTestId) => {

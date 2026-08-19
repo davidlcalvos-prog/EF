@@ -155,7 +155,7 @@ export function FeedDrawer({ onClose, onItemPress, onLogout }: FeedDrawerProps) 
                     ? translate("groupsScreen:title")
                     : item.id === "matches"
                       ? translate("matchesScreen:title")
-                      : undefined
+                      : translate("reservationsScreen:title")
               }
               onPress={() => onItemPress(item.id)}
             />

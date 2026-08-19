@@ -11,19 +11,22 @@ export type ProfileQuickLinkId = "groups" | "matches" | "reservations"
 
 const LINK_META: Record<
   ProfileQuickLinkId,
-  { icon: keyof typeof Ionicons.glyphMap; titleKey: string }
+  { icon: keyof typeof Ionicons.glyphMap; titleKey: string; subtitleKey: string }
 > = {
   groups: {
     icon: "people-outline",
     titleKey: "feedDrawer:groups",
+    subtitleKey: "groupsScreen:title",
   },
   matches: {
     icon: "football-outline",
     titleKey: "feedDrawer:matches",
+    subtitleKey: "matchesScreen:title",
   },
   reservations: {
     icon: "calendar-outline",
     titleKey: "feedDrawer:reservations",
+    subtitleKey: "reservationsScreen:title",
   },
 }
 
@@ -70,20 +73,11 @@ export function ProfileQuickLinkCard({ id, onPress }: ProfileQuickLinkCardProps)
               {translate(meta.titleKey as never)}
             </Text>
             <Text color="rgba(255,255,255,0.45)" fontSize={12}>
-              {translate("profileScreen:availableSoon")}
+              {translate(meta.subtitleKey as never)}
             </Text>
           </YStack>
 
-          <XStack
-            paddingHorizontal={8}
-            paddingVertical={4}
-            borderRadius={999}
-            backgroundColor="rgba(255,255,255,0.06)"
-          >
-            <Text color="rgba(255,255,255,0.45)" fontSize={10} fontWeight="700">
-              {translate("profileScreen:availableSoonBadge")}
-            </Text>
-          </XStack>
+          <Ionicons name="chevron-forward" size={18} color={eliteForgeColors.orange} />
         </XStack>
       </Animated.View>
     </Pressable>
