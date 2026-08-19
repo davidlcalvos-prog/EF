@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ActivityIndicator, Keyboard, Modal, Pressable, ScrollView, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { addDays } from "date-fns/addDays"
@@ -11,7 +11,7 @@ import { Text, XStack, YStack } from "tamagui"
 import { TextField } from "@/components/TextField"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
-import type { GroupSummaryApiDto } from "@/services/api"
+import type { GroupSummaryApiDto, MatchTypeApi } from "@/services/api"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
 export interface CreateMatchModalProps {
@@ -21,6 +21,8 @@ export interface CreateMatchModalProps {
   initialGroupId?: string
   onCreate: (payload: {
     originGroupId: string
+    type: MatchTypeApi
+    opponentGroupId?: string
     format: string
     maxPlayers: number
     scheduledAt?: string
@@ -51,14 +53,16 @@ function getBaseDate(option: DateOption): Date {
 function Chip({
   label,
   selected,
+  disabled,
   onPress,
 }: {
   label: string
   selected: boolean
+  disabled?: boolean
   onPress: () => void
 }) {
   return (
-    <Pressable onPress={onPress} accessibilityRole="button">
+    <Pressable onPress={disabled ? undefined : onPress} accessibilityRole="button">
       <XStack
         paddingHorizontal={12}
         paddingVertical={8}
@@ -66,6 +70,7 @@ function Chip({
         backgroundColor={selected ? "rgba(0,206,200,0.15)" : eliteForgeColors.carbonInput}
         borderWidth={1}
         borderColor={selected ? eliteForgeColors.emerald : eliteForgeColors.carbonBorder}
+        opacity={disabled ? 0.4 : 1}
       >
         <Text
           color={selected ? eliteForgeColors.emerald : "#FFFFFF"}
@@ -88,6 +93,8 @@ export function CreateMatchModal({
 }: CreateMatchModalProps) {
   const { insets } = useResponsiveLayout()
   const [originGroupId, setOriginGroupId] = useState(initialGroupId ?? groups[0]?.id ?? "")
+  const [type, setType] = useState<MatchTypeApi>("internal")
+  const [opponentGroupId, setOpponentGroupId] = useState("")
   const [format, setFormat] = useState("")
   const [maxPlayers, setMaxPlayers] = useState("")
   const [dateOption, setDateOption] = useState<DateOption>("none")
@@ -98,6 +105,28 @@ export function CreateMatchModal({
 
   const showGroupSelector = !initialGroupId
 
+  const originGroup = groups.find((g) => g.id === originGroupId)
+  const canCreateVs = originGroup?.role === "creator" || originGroup?.role === "admin"
+  const opponentOptions = groups.filter((g) => g.id !== originGroupId)
+  const hasOpponentOptions = opponentOptions.length > 0
+  const vsDisabled = !canCreateVs || !hasOpponentOptions
+
+  // Si el origen deja de calificar para VS (cambia de grupo, o ya no hay rivales), vuelve a interno.
+  useEffect(() => {
+    if (vsDisabled && type === "vs") {
+      setType("internal")
+      setOpponentGroupId("")
+    }
+  }, [vsDisabled, type])
+
+  // Si el rival elegido deja de estar disponible (ej. cambiaste el origen), lo limpia.
+  useEffect(() => {
+    if (opponentGroupId && !opponentOptions.some((g) => g.id === opponentGroupId)) {
+      setOpponentGroupId("")
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [originGroupId])
+
   const isFormatValid = FORMAT_REGEX.test(format.trim())
   const maxPlayersNum = Number(maxPlayers)
   const isMaxPlayersValid =
@@ -105,7 +134,8 @@ export function CreateMatchModal({
     Number.isInteger(maxPlayersNum) &&
     maxPlayersNum >= 2 &&
     maxPlayersNum <= 30
-  const isValid = !!originGroupId && isFormatValid && isMaxPlayersValid
+  const isVsSelectionValid = type === "internal" || (type === "vs" && !!opponentGroupId)
+  const isValid = !!originGroupId && isFormatValid && isMaxPlayersValid && isVsSelectionValid
 
   const scheduledAtIso = useMemo(() => {
     if (dateOption === "none") return undefined
@@ -125,6 +155,8 @@ export function CreateMatchModal({
 
   const reset = () => {
     setOriginGroupId(initialGroupId ?? groups[0]?.id ?? "")
+    setType("internal")
+    setOpponentGroupId("")
     setFormat("")
     setMaxPlayers("")
     setDateOption("none")
@@ -146,6 +178,8 @@ export function CreateMatchModal({
     setCreating(true)
     const success = await onCreate({
       originGroupId,
+      type,
+      opponentGroupId: type === "vs" ? opponentGroupId : undefined,
       format: format.trim(),
       maxPlayers: maxPlayersNum,
       scheduledAt: scheduledAtIso,
@@ -264,6 +298,50 @@ export function CreateMatchModal({
                       label={group.name}
                       selected={group.id === originGroupId}
                       onPress={() => setOriginGroupId(group.id)}
+                    />
+                  ))}
+                </XStack>
+              </YStack>
+            ) : null}
+
+            <YStack gap={8} marginBottom={16}>
+              <Text color="rgba(255,255,255,0.6)" fontSize={12} fontWeight="700">
+                {translate("matchesScreen:typeLabel")}
+              </Text>
+              <XStack flexWrap="wrap" gap={8}>
+                <Chip
+                  label={translate("matchesScreen:type_internal")}
+                  selected={type === "internal"}
+                  onPress={() => setType("internal")}
+                />
+                <Chip
+                  label={translate("matchesScreen:type_vs")}
+                  selected={type === "vs"}
+                  disabled={vsDisabled}
+                  onPress={() => setType("vs")}
+                />
+              </XStack>
+              {vsDisabled ? (
+                <Text color="rgba(255,255,255,0.45)" fontSize={12}>
+                  {!hasOpponentOptions
+                    ? translate("matchesScreen:vsNeedsMoreGroups")
+                    : translate("matchesScreen:vsNeedsLeaderRole")}
+                </Text>
+              ) : null}
+            </YStack>
+
+            {type === "vs" ? (
+              <YStack gap={8} marginBottom={16}>
+                <Text color="rgba(255,255,255,0.6)" fontSize={12} fontWeight="700">
+                  {translate("matchesScreen:selectOpponent")}
+                </Text>
+                <XStack flexWrap="wrap" gap={8}>
+                  {opponentOptions.map((group) => (
+                    <Chip
+                      key={group.id}
+                      label={group.name}
+                      selected={group.id === opponentGroupId}
+                      onPress={() => setOpponentGroupId(group.id)}
                     />
                   ))}
                 </XStack>
