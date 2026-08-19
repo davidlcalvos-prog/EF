@@ -11,6 +11,7 @@ import { formatDate } from "@/utils/formatDate"
 export interface MatchCardProps {
   match: MatchSummaryApiDto
   groupName?: string
+  opponentGroupName?: string
   onPress: () => void
 }
 
@@ -30,11 +31,15 @@ export function typeLabel(type: MatchTypeApi) {
   return translate(`matchesScreen:type_${type}` as never)
 }
 
-export function MatchCard({ match, groupName, onPress }: MatchCardProps) {
+export function MatchCard({ match, groupName, opponentGroupName, onPress }: MatchCardProps) {
   const motion = useInteractiveMotion("card")
   const dateLabel = match.scheduledAt
     ? formatDate(match.scheduledAt, "d MMM yyyy, HH:mm")
     : translate("matchesScreen:noDate")
+  const groupLabel =
+    match.type === "vs" && groupName && opponentGroupName
+      ? `${groupName} vs ${opponentGroupName}`
+      : groupName
 
   return (
     <Pressable
@@ -96,7 +101,7 @@ export function MatchCard({ match, groupName, onPress }: MatchCardProps) {
           </XStack>
 
           <Text color="rgba(255,255,255,0.5)" fontSize={13} numberOfLines={1}>
-            {groupName ? `${groupName} · ` : ""}
+            {groupLabel ? `${groupLabel} · ` : ""}
             {dateLabel}
           </Text>
 

@@ -525,6 +525,36 @@ export class Api {
     return { kind: "ok", match: response.data }
   }
 
+  /** Solo creator/admin del opponentGroupId, con el partido en pending_opponent (409 si no). */
+  async acceptMatch(
+    matchId: string,
+  ): Promise<{ kind: "ok"; match: MatchApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<MatchApiDto>(`matches/${matchId}/accept`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", match: response.data }
+  }
+
+  /** Mismos requisitos que acceptMatch — deja el partido en cancelled. */
+  async rejectMatch(
+    matchId: string,
+  ): Promise<{ kind: "ok"; match: MatchApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<MatchApiDto>(`matches/${matchId}/reject`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", match: response.data }
+  }
+
   /** Solo el creador/admin de un grupo involucrado puede hacerlo (403 si no). */
   async updateMatchStatus(
     matchId: string,

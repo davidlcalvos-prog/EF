@@ -39,28 +39,54 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
   const { matchId } = route.params
   const { authUserId } = useAuth()
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
-  const { match, loading, error, refresh, join, leave, updateStatus } = useMatchDetail(matchId)
+  const { match, loading, error, refresh, join, leave, updateStatus, accept, reject } =
+    useMatchDetail(matchId)
   const [isOriginLeader, setIsOriginLeader] = useState(false)
+  const [isOpponentLeader, setIsOpponentLeader] = useState(false)
   const [busy, setBusy] = useState(false)
+
+  const isGroupLeader = useCallback(
+    async (groupId: string) => {
+      if (!authUserId) return false
+      const result = await api.getGroupDetail(groupId)
+      if (result.kind !== "ok") return false
+      const ownRole = result.group.members.find((m) => m.userId === authUserId)?.role
+      return ownRole === "creator" || ownRole === "admin"
+    },
+    [authUserId],
+  )
 
   useEffect(() => {
     if (!match?.originGroupId || !authUserId) {
       setIsOriginLeader(false)
+      setIsOpponentLeader(false)
       return
     }
     let cancelled = false
-    api.getGroupDetail(match.originGroupId).then((result) => {
-      if (cancelled || result.kind !== "ok") return
-      const ownRole = result.group.members.find((m) => m.userId === authUserId)?.role
-      setIsOriginLeader(ownRole === "creator" || ownRole === "admin")
+
+    isGroupLeader(match.originGroupId).then((leader) => {
+      if (!cancelled) setIsOriginLeader(leader)
     })
+
+    if (match.opponentGroupId) {
+      isGroupLeader(match.opponentGroupId).then((leader) => {
+        if (!cancelled) setIsOpponentLeader(leader)
+      })
+    } else {
+      setIsOpponentLeader(false)
+    }
+
     return () => {
       cancelled = true
     }
-  }, [match?.originGroupId, authUserId])
+  }, [match?.originGroupId, match?.opponentGroupId, authUserId, isGroupLeader])
 
   const isParticipant = !!match?.participants.some((p) => p.userId === authUserId)
   const hasCapacity = !!match && match.participants.length < match.maxPlayers
+  const canManageStatus = isOriginLeader || isOpponentLeader
+  const isPendingOpponent = match?.status === "pending_opponent"
+  const canRespondToChallenge = match?.type === "vs" && isPendingOpponent && isOpponentLeader
+  const isWaitingForOpponent = isPendingOpponent && !canRespondToChallenge
 
   const handleJoin = useCallback(async () => {
     setBusy(true)
@@ -135,6 +161,49 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
       ],
     )
   }, [updateStatus])
+
+  const handleAccept = useCallback(() => {
+    Alert.alert(
+      translate("matchesScreen:acceptChallengeConfirmTitle"),
+      translate("matchesScreen:acceptChallengeConfirmMessage"),
+      [
+        { text: translate("feedScreen:composeCancel"), style: "cancel" },
+        {
+          text: translate("matchesScreen:acceptChallenge"),
+          onPress: async () => {
+            setBusy(true)
+            const result = await accept()
+            setBusy(false)
+            if (result.kind !== "ok") {
+              Alert.alert(translate("matchesScreen:actionError"), describeProblem(result))
+            }
+          },
+        },
+      ],
+    )
+  }, [accept])
+
+  const handleReject = useCallback(() => {
+    Alert.alert(
+      translate("matchesScreen:rejectChallengeConfirmTitle"),
+      translate("matchesScreen:rejectChallengeConfirmMessage"),
+      [
+        { text: translate("feedScreen:composeCancel"), style: "cancel" },
+        {
+          text: translate("matchesScreen:rejectChallenge"),
+          style: "destructive",
+          onPress: async () => {
+            setBusy(true)
+            const result = await reject()
+            setBusy(false)
+            if (result.kind !== "ok") {
+              Alert.alert(translate("matchesScreen:actionError"), describeProblem(result))
+            }
+          },
+        },
+      ],
+    )
+  }, [reject])
 
   return (
     <YStack flex={1} backgroundColor={eliteForgeColors.carbon}>
@@ -350,25 +419,23 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
                 </Pressable>
               ) : null}
 
-              {match.status === "scheduled" && isOriginLeader ? (
+              {canRespondToChallenge ? (
                 <>
-                  <Pressable onPress={handleMarkPlayed} disabled={busy} accessibilityRole="button">
+                  <Pressable onPress={handleAccept} disabled={busy} accessibilityRole="button">
                     <XStack
-                      backgroundColor={eliteForgeColors.carbonInput}
+                      backgroundColor={eliteForgeColors.emerald}
                       borderRadius={12}
-                      borderWidth={1}
-                      borderColor={eliteForgeColors.carbonBorder}
                       paddingVertical={14}
                       alignItems="center"
                       justifyContent="center"
                       opacity={busy ? 0.6 : 1}
                     >
-                      <Text color="#FFFFFF" fontWeight="800" fontSize={15}>
-                        {translate("matchesScreen:markPlayed")}
+                      <Text color="#1a1a1a" fontWeight="800" fontSize={15}>
+                        {translate("matchesScreen:acceptChallenge")}
                       </Text>
                     </XStack>
                   </Pressable>
-                  <Pressable onPress={handleCancelMatch} disabled={busy} accessibilityRole="button">
+                  <Pressable onPress={handleReject} disabled={busy} accessibilityRole="button">
                     <XStack
                       backgroundColor="rgba(231,76,60,0.12)"
                       borderRadius={12}
@@ -380,11 +447,67 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
                       opacity={busy ? 0.6 : 1}
                     >
                       <Text color="#E74C3C" fontWeight="800" fontSize={15}>
-                        {translate("matchesScreen:cancelMatch")}
+                        {translate("matchesScreen:rejectChallenge")}
                       </Text>
                     </XStack>
                   </Pressable>
                 </>
+              ) : null}
+
+              {isWaitingForOpponent ? (
+                <XStack
+                  backgroundColor={eliteForgeColors.carbonInput}
+                  borderRadius={12}
+                  borderWidth={1}
+                  borderColor={eliteForgeColors.carbonBorder}
+                  paddingVertical={14}
+                  paddingHorizontal={12}
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Text color="rgba(255,255,255,0.6)" fontSize={14} textAlign="center">
+                    {translate("matchesScreen:waitingForOpponent")}
+                  </Text>
+                </XStack>
+              ) : null}
+
+              {match.status === "scheduled" && canManageStatus ? (
+                <Pressable onPress={handleMarkPlayed} disabled={busy} accessibilityRole="button">
+                  <XStack
+                    backgroundColor={eliteForgeColors.carbonInput}
+                    borderRadius={12}
+                    borderWidth={1}
+                    borderColor={eliteForgeColors.carbonBorder}
+                    paddingVertical={14}
+                    alignItems="center"
+                    justifyContent="center"
+                    opacity={busy ? 0.6 : 1}
+                  >
+                    <Text color="#FFFFFF" fontWeight="800" fontSize={15}>
+                      {translate("matchesScreen:markPlayed")}
+                    </Text>
+                  </XStack>
+                </Pressable>
+              ) : null}
+
+              {(match.status === "scheduled" || match.status === "pending_opponent") &&
+              canManageStatus ? (
+                <Pressable onPress={handleCancelMatch} disabled={busy} accessibilityRole="button">
+                  <XStack
+                    backgroundColor="rgba(231,76,60,0.12)"
+                    borderRadius={12}
+                    borderWidth={1}
+                    borderColor="#E74C3C"
+                    paddingVertical={14}
+                    alignItems="center"
+                    justifyContent="center"
+                    opacity={busy ? 0.6 : 1}
+                  >
+                    <Text color="#E74C3C" fontWeight="800" fontSize={15}>
+                      {translate("matchesScreen:cancelMatch")}
+                    </Text>
+                  </XStack>
+                </Pressable>
               ) : null}
             </YStack>
           </ScrollView>
