@@ -20,7 +20,6 @@ import { FeedDrawer, type FeedDrawerItemId } from "./components/FeedDrawer"
 import { FeedNavbar } from "./components/FeedNavbar"
 import { FeedPostCard } from "./components/FeedPostCard"
 import { FeedShareSheet } from "./components/FeedShareSheet"
-import { showFeedComingSoon } from "./feedNavigation"
 import { useFeed } from "./useFeed"
 
 export function FeedScreen(_props: AppStackScreenProps<"Feed">) {
@@ -71,7 +70,7 @@ export function FeedScreen(_props: AppStackScreenProps<"Feed">) {
         navigation.navigate("Matches")
         return
       }
-      showFeedComingSoon(id)
+      navigation.navigate("Reservations")
     },
     [closeDrawer, navigation],
   )

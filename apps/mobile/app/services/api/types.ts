@@ -194,3 +194,27 @@ export interface MatchSummaryApiDto {
   participantCount: number
   createdAt: string
 }
+
+/** Forma real de los datos de Reservas — calcada de libs/contracts/src/venues/index.ts del backend. */
+export type ReservationStatusApi = "pending" | "confirmed" | "cancelled"
+
+export interface PublicVenueApiDto {
+  id: string
+  name: string
+  address: string | null
+  pricePerHourCents: number
+  availability: Record<string, unknown>
+}
+
+export interface MyReservationApiDto {
+  id: string
+  userId: string
+  venueId: string | null
+  venueName: string
+  startsAt: string
+  endsAt: string
+  status: ReservationStatusApi
+  notes: string | null
+  matchId: string | null
+  createdAt: string
+}
