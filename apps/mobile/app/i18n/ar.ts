@@ -175,6 +175,7 @@ const ar: Translations = {
     deleteGroupConfirmTitle: "حذف المجموعة؟",
     deleteGroupConfirmMessage: "سيؤدي هذا إلى حذف المجموعة للجميع. لا يمكن التراجع عن هذا الإجراء.",
     deleteGroup: "حذف المجموعة",
+    viewMatches: "عرض مباريات المجموعة",
   },
   profileScreen: {
     title: "ملف اللاعب",

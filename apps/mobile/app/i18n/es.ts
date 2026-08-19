@@ -178,6 +178,7 @@ const es: Translations = {
     deleteGroupConfirmMessage:
       "Esto eliminará el grupo para todos. Esta acción no se puede deshacer.",
     deleteGroup: "Eliminar grupo",
+    viewMatches: "Ver partidos del grupo",
   },
   profileScreen: {
     title: "Perfil de jugador",

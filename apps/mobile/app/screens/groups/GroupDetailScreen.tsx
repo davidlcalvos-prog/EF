@@ -235,6 +235,28 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
               {translate("groupsScreen:memberCount", { count: group.members.length })}
             </Text>
 
+            <Pressable
+              onPress={() => navigation.navigate("Matches", { groupId })}
+              accessibilityRole="button"
+            >
+              <XStack
+                backgroundColor={eliteForgeColors.carbonElevated}
+                borderRadius={12}
+                borderWidth={1}
+                borderColor={eliteForgeColors.carbonBorder}
+                paddingVertical={12}
+                paddingHorizontal={14}
+                alignItems="center"
+                gap={10}
+              >
+                <Ionicons name="football-outline" size={18} color={eliteForgeColors.emerald} />
+                <Text color="#FFFFFF" fontWeight="700" fontSize={14} flex={1}>
+                  {translate("groupsScreen:viewMatches")}
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.35)" />
+              </XStack>
+            </Pressable>
+
             <ScrollView
               style={{ flex: 1 }}
               contentContainerStyle={{

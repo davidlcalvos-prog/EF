@@ -15,6 +15,8 @@ import { ErrorBoundary } from "@/screens/ErrorScreen/ErrorBoundary"
 import { FeedScreen } from "@/screens/feed/FeedScreen"
 import { GroupDetailScreen } from "@/screens/groups/GroupDetailScreen"
 import { GroupsScreen } from "@/screens/groups/GroupsScreen"
+import { MatchDetailScreen } from "@/screens/matches/MatchDetailScreen"
+import { MatchesScreen } from "@/screens/matches/MatchesScreen"
 import { PhysicalTestSessionScreen } from "@/screens/profile/PhysicalTestSessionScreen"
 import { ProfileEditScreen } from "@/screens/profile/ProfileEditScreen"
 import { ProfileScreen } from "@/screens/profile/ProfileScreen"
@@ -58,6 +60,8 @@ const AppStack = () => {
           <Stack.Screen name="PhysicalTestSession" component={PhysicalTestSessionScreen} />
           <Stack.Screen name="Groups" component={GroupsScreen} />
           <Stack.Screen name="GroupDetail" component={GroupDetailScreen} />
+          <Stack.Screen name="Matches" component={MatchesScreen} />
+          <Stack.Screen name="MatchDetail" component={MatchDetailScreen} />
 
           <Stack.Screen name="Demo" component={DemoNavigator} />
         </>

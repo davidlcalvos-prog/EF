@@ -175,6 +175,7 @@ const ko: Translations = {
     deleteGroupConfirmTitle: "그룹을 삭제할까요?",
     deleteGroupConfirmMessage: "모든 사람에게서 그룹이 삭제됩니다. 이 작업은 되돌릴 수 없습니다.",
     deleteGroup: "그룹 삭제",
+    viewMatches: "그룹 경기 보기",
   },
   profileScreen: {
     title: "선수 프로필",

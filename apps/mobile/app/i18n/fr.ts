@@ -177,6 +177,7 @@ const fr: Translations = {
     deleteGroupConfirmMessage:
       "Cela supprimera le groupe pour tout le monde. Cette action est irréversible.",
     deleteGroup: "Supprimer le groupe",
+    viewMatches: "Voir les matchs du groupe",
   },
   profileScreen: {
     title: "Profil joueur",

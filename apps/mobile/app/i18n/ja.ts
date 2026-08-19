@@ -176,6 +176,7 @@ const ja: Translations = {
     deleteGroupConfirmTitle: "グループを削除しますか？",
     deleteGroupConfirmMessage: "全員のグループが削除されます。この操作は取り消せません。",
     deleteGroup: "グループを削除",
+    viewMatches: "グループの試合を見る",
   },
   profileScreen: {
     title: "選手プロフィール",

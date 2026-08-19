@@ -26,6 +26,8 @@ export type AppStackParamList = {
   PhysicalTestSession: { testId: PhysicalTestId }
   Groups: undefined
   GroupDetail: { groupId: string }
+  Matches: { groupId?: string } | undefined
+  MatchDetail: { matchId: string }
   Login: undefined
   Register: undefined
   Demo: NavigatorScreenParams<DemoTabParamList>

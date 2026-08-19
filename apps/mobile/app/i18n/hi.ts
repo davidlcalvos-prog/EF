@@ -175,6 +175,7 @@ const hi: Translations = {
     deleteGroupConfirmTitle: "समूह हटाएं?",
     deleteGroupConfirmMessage: "इससे समूह सभी के लिए हट जाएगा। यह क्रिया वापस नहीं ली जा सकती।",
     deleteGroup: "समूह हटाएं",
+    viewMatches: "समूह के मैच देखें",
   },
   profileScreen: {
     title: "खिलाड़ी प्रोफ़ाइल",

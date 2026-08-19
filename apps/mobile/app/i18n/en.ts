@@ -175,6 +175,7 @@ const en = {
     deleteGroupConfirmMessage:
       "This will remove the group for everyone. This action can't be undone.",
     deleteGroup: "Delete group",
+    viewMatches: "View group matches",
   },
   profileScreen: {
     title: "Player profile",
