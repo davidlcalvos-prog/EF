@@ -150,3 +150,47 @@ export interface GroupDetailApiDto {
   createdAt: string
   updatedAt: string
 }
+
+/** Forma real de los datos de Partidos — calcada de libs/contracts/src/matches/index.ts del backend. */
+export type MatchTypeApi = "internal" | "vs"
+
+export type MatchStatusApi = "draft" | "pending_opponent" | "scheduled" | "played" | "cancelled"
+
+export interface MatchParticipantApiDto {
+  userId: string
+  email: string
+  name: string
+  confirmedAt: string
+}
+
+export interface MatchApiDto {
+  id: string
+  originGroupId: string
+  originGroupName: string
+  opponentGroupId: string | null
+  opponentGroupName: string | null
+  type: MatchTypeApi
+  format: string
+  maxPlayers: number
+  status: MatchStatusApi
+  scheduledAt: string | null
+  createdBy: string
+  reservationId: string | null
+  participants: MatchParticipantApiDto[]
+  createdAt: string
+  updatedAt: string
+}
+
+/** Item de GET /api/matches/mine y GET /api/matches/group/:groupId — sin nombres de grupo, solo ids. */
+export interface MatchSummaryApiDto {
+  id: string
+  originGroupId: string
+  opponentGroupId: string | null
+  type: MatchTypeApi
+  format: string
+  maxPlayers: number
+  status: MatchStatusApi
+  scheduledAt: string | null
+  participantCount: number
+  createdAt: string
+}
