@@ -18,6 +18,9 @@ import type {
   ApiFeedResponse,
   GroupDetailApiDto,
   GroupSummaryApiDto,
+  MatchApiDto,
+  MatchSummaryApiDto,
+  MatchTypeApi,
   PostApiDto,
   PostMediaType,
   ProfileStatsApiResponse,
@@ -38,6 +41,11 @@ export type {
   GroupMemberApiDto,
   GroupSummaryApiDto,
   GroupDetailApiDto,
+  MatchTypeApi,
+  MatchStatusApi,
+  MatchParticipantApiDto,
+  MatchApiDto,
+  MatchSummaryApiDto,
 } from "./types"
 
 /**
@@ -415,6 +423,124 @@ export class Api {
       return { kind: "unknown", temporary: true }
     }
     return { kind: "ok" }
+  }
+
+  /**
+   * Crea un partido. Esta app solo construye payloads con type:'internal' —
+   * el tipo acepta el contrato completo por fidelidad con el backend, pero
+   * crear partidos 'vs' queda fuera de alcance hasta tener forma de elegir
+   * grupo rival.
+   */
+  async createMatch(payload: {
+    originGroupId: string
+    type: MatchTypeApi
+    opponentGroupId?: string
+    format: string
+    maxPlayers: number
+    scheduledAt?: string
+  }): Promise<{ kind: "ok"; match: MatchApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<MatchApiDto>("matches", payload)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", match: response.data }
+  }
+
+  /** Partidos de todos los grupos del usuario autenticado. */
+  async listMyMatches(): Promise<
+    { kind: "ok"; matches: MatchSummaryApiDto[] } | GeneralApiProblem
+  > {
+    const response = await this.apisauce.get<MatchSummaryApiDto[]>("matches/mine")
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", matches: response.data }
+  }
+
+  /** Partidos de un grupo específico (requiere ser miembro). */
+  async listGroupMatches(
+    groupId: string,
+  ): Promise<{ kind: "ok"; matches: MatchSummaryApiDto[] } | GeneralApiProblem> {
+    const response = await this.apisauce.get<MatchSummaryApiDto[]>(`matches/group/${groupId}`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", matches: response.data }
+  }
+
+  /** Detalle completo (participantes, nombres de grupo). 403 si no eres miembro de ninguno. */
+  async getMatchDetail(
+    matchId: string,
+  ): Promise<{ kind: "ok"; match: MatchApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.get<MatchApiDto>(`matches/${matchId}`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", match: response.data }
+  }
+
+  /** 409 si ya está lleno o si ya te uniste. */
+  async joinMatch(
+    matchId: string,
+  ): Promise<{ kind: "ok"; match: MatchApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<MatchApiDto>(`matches/${matchId}/join`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", match: response.data }
+  }
+
+  /** 404 si no eras participante. */
+  async leaveMatch(
+    matchId: string,
+  ): Promise<{ kind: "ok"; match: MatchApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<MatchApiDto>(`matches/${matchId}/leave`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", match: response.data }
+  }
+
+  /** Solo el creador/admin de un grupo involucrado puede hacerlo (403 si no). */
+  async updateMatchStatus(
+    matchId: string,
+    status: "played" | "cancelled",
+  ): Promise<{ kind: "ok"; match: MatchApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.patch<MatchApiDto>(`matches/${matchId}/status`, {
+      status,
+    })
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", match: response.data }
   }
 
   /**

@@ -153,7 +153,9 @@ export function FeedDrawer({ onClose, onItemPress, onLogout }: FeedDrawerProps) 
                   ? translate("profileScreen:title")
                   : item.id === "groups"
                     ? translate("groupsScreen:title")
-                    : undefined
+                    : item.id === "matches"
+                      ? translate("matchesScreen:title")
+                      : undefined
               }
               onPress={() => onItemPress(item.id)}
             />
