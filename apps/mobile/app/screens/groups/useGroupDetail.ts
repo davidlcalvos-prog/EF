@@ -73,6 +73,19 @@ export function useGroupDetail(groupId: string) {
     return api.deleteGroup(groupId)
   }, [groupId])
 
+  const updateGroup = useCallback(
+    async (payload: {
+      name: string
+      photoBase64?: string
+      removePhoto?: boolean
+    }): Promise<GroupResult> => {
+      const result = await api.updateGroup(groupId, payload)
+      if (result.kind === "ok") setGroup(result.group)
+      return result
+    },
+    [groupId],
+  )
+
   return {
     group,
     loading,
@@ -82,5 +95,6 @@ export function useGroupDetail(groupId: string) {
     updateMemberRole,
     removeMember,
     deleteGroup,
+    updateGroup,
   }
 }

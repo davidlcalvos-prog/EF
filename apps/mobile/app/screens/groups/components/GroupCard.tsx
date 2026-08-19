@@ -7,6 +7,8 @@ import { translate } from "@/i18n/translate"
 import type { GroupMemberRoleApi, GroupSummaryApiDto } from "@/services/api"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
+import { GroupAvatar } from "./GroupAvatar"
+
 export interface GroupCardProps {
   group: GroupSummaryApiDto
   onPress: () => void
@@ -45,16 +47,7 @@ export function GroupCard({ group, onPress }: GroupCardProps) {
         alignItems="center"
         gap={12}
       >
-        <XStack
-          width={44}
-          height={44}
-          borderRadius={22}
-          backgroundColor="rgba(0,206,200,0.12)"
-          alignItems="center"
-          justifyContent="center"
-        >
-          <Ionicons name="people" size={22} color={eliteForgeColors.emerald} />
-        </XStack>
+        <GroupAvatar seed={group.id} name={group.name} photoBase64={group.photoBase64} size={44} />
 
         <YStack flex={1} gap={4}>
           <Text color="#FFFFFF" fontWeight="700" fontSize={16} numberOfLines={1}>
