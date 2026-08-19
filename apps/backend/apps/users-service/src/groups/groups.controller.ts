@@ -6,6 +6,7 @@ import {
   CreateGroupPayload,
   GroupActionPayload,
   RemoveMemberPayload,
+  UpdateGroupPayload,
   UpdateMemberRolePayload,
   UserIdPayload,
 } from '@ef/contracts';
@@ -28,6 +29,11 @@ export class GroupsController {
   @MessagePattern(MESSAGE_PATTERNS.GROUPS.GET_DETAIL)
   getDetail(@Payload() data: GroupActionPayload) {
     return this.groupsService.getDetail(data);
+  }
+
+  @MessagePattern(MESSAGE_PATTERNS.GROUPS.UPDATE)
+  update(@Payload() data: UpdateGroupPayload) {
+    return this.groupsService.update(data);
   }
 
   @MessagePattern(MESSAGE_PATTERNS.GROUPS.ADD_MEMBER)

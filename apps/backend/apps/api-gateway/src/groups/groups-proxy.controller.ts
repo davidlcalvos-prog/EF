@@ -12,6 +12,7 @@ import {
   AddMemberDto,
   AuthTokenPayload,
   CreateGroupDto,
+  UpdateGroupDto,
   UpdateMemberRoleDto,
 } from '@ef/contracts';
 import { CurrentUser } from '../auth/decorators';
@@ -40,6 +41,15 @@ export class GroupsProxyController {
   @Get(':id')
   getDetail(@Param('id') id: string, @CurrentUser() user: AuthTokenPayload) {
     return this.groupsProxy.getDetail(id, user.sub);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateGroupDto,
+    @CurrentUser() user: AuthTokenPayload,
+  ) {
+    return this.groupsProxy.update(id, user.sub, dto);
   }
 
   @Post(':id/members')
