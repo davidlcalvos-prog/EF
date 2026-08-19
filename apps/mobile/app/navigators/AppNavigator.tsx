@@ -21,6 +21,8 @@ import { PhysicalTestSessionScreen } from "@/screens/profile/PhysicalTestSession
 import { ProfileEditScreen } from "@/screens/profile/ProfileEditScreen"
 import { ProfileScreen } from "@/screens/profile/ProfileScreen"
 import { PsychologicalTestScreen } from "@/screens/profile/PsychologicalTestScreen"
+import { ReservationDetailScreen } from "@/screens/reservations/ReservationDetailScreen"
+import { ReservationsScreen } from "@/screens/reservations/ReservationsScreen"
 import { useAppTheme } from "@/theme/context"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
@@ -62,6 +64,8 @@ const AppStack = () => {
           <Stack.Screen name="GroupDetail" component={GroupDetailScreen} />
           <Stack.Screen name="Matches" component={MatchesScreen} />
           <Stack.Screen name="MatchDetail" component={MatchDetailScreen} />
+          <Stack.Screen name="Reservations" component={ReservationsScreen} />
+          <Stack.Screen name="ReservationDetail" component={ReservationDetailScreen} />
 
           <Stack.Screen name="Demo" component={DemoNavigator} />
         </>
