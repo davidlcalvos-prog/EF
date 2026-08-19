@@ -85,8 +85,7 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
   const hasCapacity = !!match && match.participants.length < match.maxPlayers
   const canManageStatus = isOriginLeader || isOpponentLeader
   const isPendingOpponent = match?.status === "pending_opponent"
-  const canRespondToChallenge =
-    match?.type === "vs" && isPendingOpponent && isOpponentLeader
+  const canRespondToChallenge = match?.type === "vs" && isPendingOpponent && isOpponentLeader
   const isWaitingForOpponent = isPendingOpponent && !canRespondToChallenge
 
   const handleJoin = useCallback(async () => {
