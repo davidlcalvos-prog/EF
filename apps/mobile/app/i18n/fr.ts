@@ -226,6 +226,18 @@ const fr: Translations = {
     cancelMatchConfirmTitle: "Annuler le match ?",
     cancelMatchConfirmMessage: "Ce match sera annulé pour tout le monde.",
     cancelMatch: "Annuler le match",
+    typeLabel: "Type de match",
+    selectOpponent: "Groupe adverse",
+    vsNeedsMoreGroups: "Vous devez appartenir à plus d'un groupe pour créer un match VS.",
+    vsNeedsLeaderRole: "Seul le créateur ou un admin de ce groupe peut défier un autre groupe.",
+    waitingForOpponent: "En attente de la réponse du groupe adverse.",
+    acceptChallenge: "Accepter le défi",
+    acceptChallengeConfirmTitle: "Accepter le défi ?",
+    acceptChallengeConfirmMessage:
+      "Ce match sera programmé et les joueurs pourront le rejoindre.",
+    rejectChallenge: "Refuser le défi",
+    rejectChallengeConfirmTitle: "Refuser le défi ?",
+    rejectChallengeConfirmMessage: "Ce match sera annulé.",
   },
   profileScreen: {
     title: "Profil joueur",

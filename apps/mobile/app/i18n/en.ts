@@ -223,6 +223,18 @@ const en = {
     cancelMatchConfirmTitle: "Cancel match?",
     cancelMatchConfirmMessage: "This match will be cancelled for everyone.",
     cancelMatch: "Cancel match",
+    typeLabel: "Match type",
+    selectOpponent: "Opponent group",
+    vsNeedsMoreGroups: "You need to belong to more than one group to create a VS match.",
+    vsNeedsLeaderRole: "Only the creator or an admin of this group can challenge another group.",
+    waitingForOpponent: "Waiting for the opponent group to respond.",
+    acceptChallenge: "Accept challenge",
+    acceptChallengeConfirmTitle: "Accept challenge?",
+    acceptChallengeConfirmMessage:
+      "This match will be scheduled and players will be able to join.",
+    rejectChallenge: "Reject challenge",
+    rejectChallengeConfirmTitle: "Reject challenge?",
+    rejectChallengeConfirmMessage: "This match will be cancelled.",
   },
   profileScreen: {
     title: "Player profile",
