@@ -58,5 +58,17 @@ export function useMatchDetail(matchId: string) {
     [matchId],
   )
 
-  return { match, loading, error, refresh, join, leave, updateStatus }
+  const accept = useCallback(async (): Promise<MatchResult> => {
+    const result = await api.acceptMatch(matchId)
+    if (result.kind === "ok") setMatch(result.match)
+    return result
+  }, [matchId])
+
+  const reject = useCallback(async (): Promise<MatchResult> => {
+    const result = await api.rejectMatch(matchId)
+    if (result.kind === "ok") setMatch(result.match)
+    return result
+  }, [matchId])
+
+  return { match, loading, error, refresh, join, leave, updateStatus, accept, reject }
 }
