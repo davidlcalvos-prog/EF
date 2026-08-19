@@ -242,8 +242,7 @@ const fr: Translations = {
     waitingForOpponent: "En attente de la réponse du groupe adverse.",
     acceptChallenge: "Accepter le défi",
     acceptChallengeConfirmTitle: "Accepter le défi ?",
-    acceptChallengeConfirmMessage:
-      "Ce match sera programmé et les joueurs pourront le rejoindre.",
+    acceptChallengeConfirmMessage: "Ce match sera programmé et les joueurs pourront le rejoindre.",
     rejectChallenge: "Refuser le défi",
     rejectChallengeConfirmTitle: "Refuser le défi ?",
     rejectChallengeConfirmMessage: "Ce match sera annulé.",

@@ -239,8 +239,7 @@ const en = {
     waitingForOpponent: "Waiting for the opponent group to respond.",
     acceptChallenge: "Accept challenge",
     acceptChallengeConfirmTitle: "Accept challenge?",
-    acceptChallengeConfirmMessage:
-      "This match will be scheduled and players will be able to join.",
+    acceptChallengeConfirmMessage: "This match will be scheduled and players will be able to join.",
     rejectChallenge: "Reject challenge",
     rejectChallengeConfirmTitle: "Reject challenge?",
     rejectChallengeConfirmMessage: "This match will be cancelled.",
