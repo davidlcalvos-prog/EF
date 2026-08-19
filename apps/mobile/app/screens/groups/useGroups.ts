@@ -46,6 +46,7 @@ export function useGroups() {
       {
         id: result.group.id,
         name: result.group.name,
+        photoBase64: result.group.photoBase64,
         creatorId: result.group.creatorId,
         role: "creator",
         memberCount: result.group.members.length,

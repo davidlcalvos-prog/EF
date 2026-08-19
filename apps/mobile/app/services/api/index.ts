@@ -362,6 +362,28 @@ export class Api {
   }
 
   /**
+   * Renombra el grupo y/o cambia su foto — solo el creator (403 si no).
+   * 400 si el nombre no cumple longitud o la foto supera el límite de tamaño.
+   */
+  async updateGroup(
+    groupId: string,
+    payload: { name: string; photoBase64?: string; removePhoto?: boolean },
+  ): Promise<{ kind: "ok"; group: GroupDetailApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.patch<GroupDetailApiDto>(
+      `groups/${groupId}`,
+      payload,
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", group: response.data }
+  }
+
+  /**
    * Agrega un miembro por userId o email (uno de los dos). Solo creator/admin
    * pueden hacerlo (403 si no) — validado server-side.
    */

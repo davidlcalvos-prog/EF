@@ -136,6 +136,7 @@ export interface GroupMemberApiDto {
 export interface GroupSummaryApiDto {
   id: string
   name: string
+  photoBase64: string | null
   creatorId: string
   role: GroupMemberRoleApi
   memberCount: number
@@ -145,6 +146,7 @@ export interface GroupSummaryApiDto {
 export interface GroupDetailApiDto {
   id: string
   name: string
+  photoBase64: string | null
   creatorId: string
   members: GroupMemberApiDto[]
   createdAt: string
