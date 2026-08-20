@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -11,7 +12,9 @@ import {
   GroupDetailDto,
   GroupSummaryDto,
   MAX_GROUP_ADMINS,
+  MAX_GROUP_PHOTO_BASE64_LENGTH,
   RemoveMemberPayload,
+  UpdateGroupPayload,
   UpdateMemberRolePayload,
 } from '@ef/contracts';
 import { GroupRepository } from './repositories/group.repository';
@@ -81,6 +84,47 @@ export class GroupsService {
     }
 
     await this.groupRepository.updateMembershipRole(groupId, targetUserId, role);
+    return this.groupRepository.findDetail(groupId) as Promise<GroupDetailDto>;
+  }
+
+  /**
+   * Renombrar el grupo y cambiarle la foto — solo el creator, mismo criterio
+   * que deleteGroup (identidad del grupo, no gestión de miembros).
+   */
+  async update(payload: UpdateGroupPayload): Promise<GroupDetailDto> {
+    const { groupId, requesterId, name, photoBase64, removePhoto } = payload;
+    const group = await this.requireGroup(groupId);
+
+    if (requesterId !== group.creatorId) {
+      throw new ForbiddenException('Only the creator can update the group');
+    }
+
+    const trimmedName = name?.trim() ?? '';
+    if (trimmedName.length < 2 || trimmedName.length > 80) {
+      throw new BadRequestException(
+        'name must be between 2 and 80 characters',
+      );
+    }
+
+    let nextPhotoBase64: string | null | undefined;
+    if (removePhoto) {
+      nextPhotoBase64 = null;
+    } else if (photoBase64 !== undefined) {
+      if (photoBase64.trim().length === 0) {
+        throw new BadRequestException('photoBase64 cannot be empty');
+      }
+      if (photoBase64.length > MAX_GROUP_PHOTO_BASE64_LENGTH) {
+        throw new BadRequestException(
+          `photoBase64 exceeds the maximum size of ${MAX_GROUP_PHOTO_BASE64_LENGTH} characters`,
+        );
+      }
+      nextPhotoBase64 = photoBase64;
+    }
+
+    await this.groupRepository.update(groupId, {
+      name: trimmedName,
+      ...(nextPhotoBase64 !== undefined ? { photoBase64: nextPhotoBase64 } : {}),
+    });
     return this.groupRepository.findDetail(groupId) as Promise<GroupDetailDto>;
   }
 

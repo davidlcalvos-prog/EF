@@ -12,6 +12,8 @@ import type { GeneralApiProblem } from "@/services/api/apiProblem"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
 import { type AddMemberOutcome, GroupAddMemberModal } from "./components/GroupAddMemberModal"
+import { GroupAvatar } from "./components/GroupAvatar"
+import { GroupEditModal } from "./components/GroupEditModal"
 import { GroupMemberRow } from "./components/GroupMemberRow"
 import { useGroupDetail } from "./useGroupDetail"
 
@@ -32,9 +34,19 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
   const { groupId } = route.params
   const { authUserId } = useAuth()
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
-  const { group, loading, error, refresh, addMember, updateMemberRole, removeMember, deleteGroup } =
-    useGroupDetail(groupId)
+  const {
+    group,
+    loading,
+    error,
+    refresh,
+    addMember,
+    updateMemberRole,
+    removeMember,
+    deleteGroup,
+    updateGroup,
+  } = useGroupDetail(groupId)
   const [addMemberOpen, setAddMemberOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const ownRole = group?.members.find((m) => m.userId === authUserId)?.role
@@ -184,27 +196,51 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
             {group?.name ?? translate("groupsScreen:title")}
           </Text>
 
-          {ownRole === "creator" || ownRole === "admin" ? (
-            <Pressable
-              onPress={() => setAddMemberOpen(true)}
-              hitSlop={12}
-              accessibilityRole="button"
-              accessibilityLabel={translate("groupsScreen:addMemberTitle")}
-            >
-              <XStack
-                width={40}
-                height={40}
-                borderRadius={12}
-                backgroundColor={eliteForgeColors.emerald}
-                alignItems="center"
-                justifyContent="center"
+          <XStack gap={8}>
+            {isCreator ? (
+              <Pressable
+                onPress={() => setEditOpen(true)}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel={translate("groupsScreen:editGroupTitle")}
               >
-                <Ionicons name="person-add" size={18} color="#1a1a1a" />
-              </XStack>
-            </Pressable>
-          ) : (
-            <XStack width={40} height={40} />
-          )}
+                <XStack
+                  width={40}
+                  height={40}
+                  borderRadius={12}
+                  backgroundColor={eliteForgeColors.carbonInput}
+                  borderWidth={1}
+                  borderColor={eliteForgeColors.carbonBorder}
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Ionicons name="pencil" size={18} color={eliteForgeColors.emerald} />
+                </XStack>
+              </Pressable>
+            ) : null}
+
+            {ownRole === "creator" || ownRole === "admin" ? (
+              <Pressable
+                onPress={() => setAddMemberOpen(true)}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel={translate("groupsScreen:addMemberTitle")}
+              >
+                <XStack
+                  width={40}
+                  height={40}
+                  borderRadius={12}
+                  backgroundColor={eliteForgeColors.emerald}
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Ionicons name="person-add" size={18} color="#1a1a1a" />
+                </XStack>
+              </Pressable>
+            ) : null}
+
+            {!isCreator && ownRole !== "admin" ? <XStack width={40} height={40} /> : null}
+          </XStack>
         </XStack>
 
         {loading ? (
@@ -231,7 +267,16 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
           </YStack>
         ) : (
           <>
-            <Text color="rgba(255,255,255,0.5)" fontSize={13}>
+            <XStack justifyContent="center">
+              <GroupAvatar
+                seed={group.id}
+                name={group.name}
+                photoBase64={group.photoBase64}
+                size={72}
+              />
+            </XStack>
+
+            <Text color="rgba(255,255,255,0.5)" fontSize={13} textAlign="center">
               {translate("groupsScreen:memberCount", { count: group.members.length })}
             </Text>
 
@@ -328,6 +373,15 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
         onClose={() => setAddMemberOpen(false)}
         onAdd={handleAddMember}
       />
+
+      {group ? (
+        <GroupEditModal
+          visible={editOpen}
+          onClose={() => setEditOpen(false)}
+          group={group}
+          onSave={updateGroup}
+        />
+      ) : null}
     </YStack>
   )
 }

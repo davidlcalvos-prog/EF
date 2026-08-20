@@ -7,6 +7,7 @@ import {
   CreateGroupDto,
   GroupDetailDto,
   GroupSummaryDto,
+  UpdateGroupDto,
   UpdateMemberRoleDto,
 } from '@ef/contracts';
 
@@ -33,6 +34,18 @@ export class GroupsProxyService {
     return this.send<GroupDetailDto>(MESSAGE_PATTERNS.GROUPS.GET_DETAIL, {
       groupId,
       requesterId,
+    });
+  }
+
+  update(
+    groupId: string,
+    requesterId: string,
+    dto: UpdateGroupDto,
+  ): Promise<GroupDetailDto> {
+    return this.send<GroupDetailDto>(MESSAGE_PATTERNS.GROUPS.UPDATE, {
+      groupId,
+      requesterId,
+      ...dto,
     });
   }
 

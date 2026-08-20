@@ -48,6 +48,16 @@ export class GroupRepository {
     });
   }
 
+  async update(
+    groupId: string,
+    data: { name: string; photoBase64?: string | null },
+  ): Promise<void> {
+    await this.prisma.group.update({
+      where: { id: groupId },
+      data,
+    });
+  }
+
   async findUserByEmail(email: string): Promise<{ id: string } | null> {
     return this.prisma.user.findUnique({
       where: { email },
@@ -106,6 +116,7 @@ export class GroupRepository {
     return memberships.map((membership) => ({
       id: membership.group.id,
       name: membership.group.name,
+      photoBase64: membership.group.photoBase64,
       creatorId: membership.group.creatorId,
       role: membership.role as GroupMemberRole,
       memberCount: membership.group._count.members,
@@ -141,6 +152,7 @@ export class GroupRepository {
     return {
       id: group.id,
       name: group.name,
+      photoBase64: group.photoBase64,
       creatorId: group.creatorId,
       members,
       createdAt: group.createdAt.toISOString(),

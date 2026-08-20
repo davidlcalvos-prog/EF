@@ -178,11 +178,12 @@ model Reservation {
  * varios grupos simultáneamente, sin límite. Ver docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md.
  */
 model Group {
-  id        String            @id @default(uuid()) @db.Uuid
-  name      String
-  creatorId String            @db.Uuid
-  creator   User              @relation("GroupCreator", fields: [creatorId], references: [id], onDelete: Cascade)
-  members   GroupMembership[]
+  id          String            @id @default(uuid()) @db.Uuid
+  name        String
+  photoBase64 String?           @db.Text
+  creatorId   String            @db.Uuid
+  creator     User              @relation("GroupCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  members     GroupMembership[]
 
   matchesAsOrigin   Match[] @relation("MatchOriginGroup")
   matchesAsOpponent Match[] @relation("MatchOpponentGroup")
