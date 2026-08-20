@@ -187,6 +187,9 @@ const fr: Translations = {
     savingGroup: "Enregistrement…",
     photoTooHeavy: "Cette photo est trop lourde. Essayez-en une autre.",
     editGroupInvalid: "Vérifiez le nom du groupe ou la photo et réessayez.",
+    memberProfileTitle: "Fiche du joueur",
+    memberProfileError: "Impossible de charger la fiche de ce joueur. Réessayez.",
+    memberNoStats: "Ce joueur n'a encore complété aucun test.",
   },
   matchesScreen: {
     title: "Matchs",

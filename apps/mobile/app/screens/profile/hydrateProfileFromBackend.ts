@@ -1,7 +1,11 @@
 import type { PhysicalTestState, TestRawResult } from "@/data/mockPlayerProfile"
 import { api } from "@/services/api"
 import type { PlayerProfileSnapshot, PsychTestResult } from "@/utils/playerProfileStorage"
-import { createDefaultProfile, loadPlayerProfile, savePlayerProfile } from "@/utils/playerProfileStorage"
+import {
+  createDefaultProfile,
+  loadPlayerProfile,
+  savePlayerProfile,
+} from "@/utils/playerProfileStorage"
 import type { ProfileStatsSnapshot } from "@/utils/profileStatsStorage"
 import { loadProfileStats, saveProfileStats } from "@/utils/profileStatsStorage"
 

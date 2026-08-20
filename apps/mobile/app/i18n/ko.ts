@@ -185,6 +185,9 @@ const ko: Translations = {
     savingGroup: "저장 중…",
     photoTooHeavy: "이 사진은 용량이 너무 큽니다. 다른 사진을 사용해 보세요.",
     editGroupInvalid: "그룹 이름이나 사진을 확인하고 다시 시도해 주세요.",
+    memberProfileTitle: "선수 카드",
+    memberProfileError: "이 선수의 카드를 불러올 수 없습니다. 다시 시도해 주세요.",
+    memberNoStats: "이 선수는 아직 테스트를 완료하지 않았습니다.",
   },
   matchesScreen: {
     title: "경기",

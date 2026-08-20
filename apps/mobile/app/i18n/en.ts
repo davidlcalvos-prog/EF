@@ -185,6 +185,9 @@ const en = {
     savingGroup: "Saving…",
     photoTooHeavy: "This photo is too heavy. Try a different one.",
     editGroupInvalid: "Check the group name or photo and try again.",
+    memberProfileTitle: "Player card",
+    memberProfileError: "Couldn't load this player's card. Try again.",
+    memberNoStats: "This player hasn't completed any test yet.",
   },
   matchesScreen: {
     title: "Matches",

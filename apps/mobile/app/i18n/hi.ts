@@ -185,6 +185,9 @@ const hi: Translations = {
     savingGroup: "सेव हो रहा है…",
     photoTooHeavy: "यह फ़ोटो बहुत भारी है। कोई दूसरी फ़ोटो आज़माएं।",
     editGroupInvalid: "समूह का नाम या फ़ोटो जांचें और फिर से कोशिश करें।",
+    memberProfileTitle: "खिलाड़ी कार्ड",
+    memberProfileError: "इस खिलाड़ी का कार्ड लोड नहीं हो सका। फिर से कोशिश करें।",
+    memberNoStats: "इस खिलाड़ी ने अभी तक कोई टेस्ट पूरा नहीं किया है।",
   },
   matchesScreen: {
     title: "मैच",
