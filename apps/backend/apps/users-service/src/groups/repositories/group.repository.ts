@@ -39,6 +39,18 @@ export class GroupRepository {
     });
   }
 
+  /** true si ambos usuarios comparten al menos un grupo (cualquier rol). */
+  async shareAnyGroup(userIdA: string, userIdB: string): Promise<boolean> {
+    const membership = await this.prisma.groupMembership.findFirst({
+      where: {
+        userId: userIdA,
+        group: { members: { some: { userId: userIdB } } },
+      },
+      select: { id: true },
+    });
+    return !!membership;
+  }
+
   async findGroupById(
     groupId: string,
   ): Promise<{ id: string; name: string; creatorId: string } | null> {
