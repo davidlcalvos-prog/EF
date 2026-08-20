@@ -369,10 +369,7 @@ export class Api {
     groupId: string,
     payload: { name: string; photoBase64?: string; removePhoto?: boolean },
   ): Promise<{ kind: "ok"; group: GroupDetailApiDto } | GeneralApiProblem> {
-    const response = await this.apisauce.patch<GroupDetailApiDto>(
-      `groups/${groupId}`,
-      payload,
-    )
+    const response = await this.apisauce.patch<GroupDetailApiDto>(`groups/${groupId}`, payload)
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)
