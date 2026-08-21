@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import { api, type MatchApiDto } from "@/services/api"
+import { api, type MatchApiDto, type TeamAssignmentWarningApiDto } from "@/services/api"
 import type { GeneralApiProblem } from "@/services/api/apiProblem"
 
 type MatchResult = { kind: "ok"; match: MatchApiDto } | GeneralApiProblem
+type RandomizeTeamsResult =
+  | { kind: "ok"; match: MatchApiDto; warnings: TeamAssignmentWarningApiDto[] }
+  | { kind: "not-full" }
+  | { kind: "wrong-status" }
+  | GeneralApiProblem
 
 /**
  * Detalle de un partido. Las acciones devuelven el resultado crudo del cliente
@@ -70,5 +75,22 @@ export function useMatchDetail(matchId: string) {
     return result
   }, [matchId])
 
-  return { match, loading, error, refresh, join, leave, updateStatus, accept, reject }
+  const randomizeTeams = useCallback(async (): Promise<RandomizeTeamsResult> => {
+    const result = await api.randomizeTeams(matchId)
+    if (result.kind === "ok") setMatch(result.match)
+    return result
+  }, [matchId])
+
+  return {
+    match,
+    loading,
+    error,
+    refresh,
+    join,
+    leave,
+    updateStatus,
+    accept,
+    reject,
+    randomizeTeams,
+  }
 }
