@@ -5,12 +5,18 @@ export type GroupFriendshipStatus = 'pending' | 'accepted';
 /**
  * groupAId/groupBId son siempre el par canonicalizado (orden de string,
  * ver GroupFriendshipsService) — no necesariamente origen/destino de la
- * solicitud, para eso está requestedByGroupId.
+ * solicitud, para eso está requestedByGroupId. Nombre/foto de ambos grupos
+ * van denormalizados (mismo criterio que MatchDto.originGroupName) para que
+ * el cliente no tenga que resolverlos con llamadas extra.
  */
 export interface GroupFriendshipDto {
   id: string;
   groupAId: string;
+  groupAName: string;
+  groupAPhotoBase64: string | null;
   groupBId: string;
+  groupBName: string;
+  groupBPhotoBase64: string | null;
   status: GroupFriendshipStatus;
   requestedByGroupId: string;
   createdAt: string;

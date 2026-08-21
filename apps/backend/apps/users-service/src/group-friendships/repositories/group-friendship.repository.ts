@@ -1,13 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@ef/database';
 import { GroupFriendshipDto, GroupFriendshipStatus } from '@ef/contracts';
-import { GroupFriendship } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
-function toDto(row: GroupFriendship): GroupFriendshipDto {
+const withGroups = Prisma.validator<Prisma.GroupFriendshipDefaultArgs>()({
+  include: { groupA: true, groupB: true },
+});
+type GroupFriendshipWithGroups = Prisma.GroupFriendshipGetPayload<typeof withGroups>;
+
+function toDto(row: GroupFriendshipWithGroups): GroupFriendshipDto {
   return {
     id: row.id,
     groupAId: row.groupAId,
+    groupAName: row.groupA.name,
+    groupAPhotoBase64: row.groupA.photoBase64,
     groupBId: row.groupBId,
+    groupBName: row.groupB.name,
+    groupBPhotoBase64: row.groupB.photoBase64,
     status: row.status as GroupFriendshipStatus,
     requestedByGroupId: row.requestedByGroupId,
     createdAt: row.createdAt.toISOString(),
@@ -26,6 +35,7 @@ export class GroupFriendshipRepository {
   ): Promise<GroupFriendshipDto> {
     const row = await this.prisma.groupFriendship.create({
       data: { groupAId, groupBId, requestedByGroupId },
+      include: { groupA: true, groupB: true },
     });
     return toDto(row);
   }
@@ -33,6 +43,7 @@ export class GroupFriendshipRepository {
   async findById(friendshipId: string): Promise<GroupFriendshipDto | null> {
     const row = await this.prisma.groupFriendship.findUnique({
       where: { id: friendshipId },
+      include: { groupA: true, groupB: true },
     });
     return row ? toDto(row) : null;
   }
@@ -43,6 +54,7 @@ export class GroupFriendshipRepository {
   ): Promise<GroupFriendshipDto | null> {
     const row = await this.prisma.groupFriendship.findUnique({
       where: { groupAId_groupBId: { groupAId, groupBId } },
+      include: { groupA: true, groupB: true },
     });
     return row ? toDto(row) : null;
   }
@@ -51,6 +63,7 @@ export class GroupFriendshipRepository {
     const row = await this.prisma.groupFriendship.update({
       where: { id: friendshipId },
       data: { status: 'accepted' },
+      include: { groupA: true, groupB: true },
     });
     return toDto(row);
   }
@@ -62,6 +75,7 @@ export class GroupFriendshipRepository {
   async listForGroup(groupId: string): Promise<GroupFriendshipDto[]> {
     const rows = await this.prisma.groupFriendship.findMany({
       where: { OR: [{ groupAId: groupId }, { groupBId: groupId }] },
+      include: { groupA: true, groupB: true },
       orderBy: { createdAt: 'desc' },
     });
     return rows.map(toDto);
