@@ -252,6 +252,24 @@ const fr: Translations = {
     rejectChallengeConfirmTitle: "Refuser le défi ?",
     rejectChallengeConfirmMessage: "Ce match sera annulé.",
     reserveVenue: "Réserver un terrain",
+    randomizeTeams: "Tirer les équipes au sort",
+    reRandomizeTeams: "Retirer au sort",
+    reRandomizeConfirmTitle: "Retirer les équipes au sort ?",
+    reRandomizeConfirmMessage: "Cela remplace la répartition actuelle.",
+    randomizeNotFull: "Le match n'est pas encore complet.",
+    randomizeWrongStatus: "Ce match n'est pas dans un état valide pour tirer les équipes au sort.",
+    randomizeWarningsTitle: "Avis du tirage",
+    teamATitle: "Équipe A",
+    teamBTitle: "Équipe B",
+    warningLine: "Équipe {{team}} : {{reason}}",
+    warningPosition_goalkeeper:
+      "pas assez de gardiens disponibles — complété avec le meilleur joueur disponible",
+    warningPosition_defense:
+      "pas assez de défenseurs disponibles — complété avec le meilleur joueur disponible",
+    warningPosition_midfield:
+      "pas assez de milieux disponibles — complété avec le meilleur joueur disponible",
+    warningPosition_forward:
+      "pas assez d'attaquants disponibles — complété avec le meilleur joueur disponible",
   },
   groupFriendsScreen: {
     title: "Groupes amis",
