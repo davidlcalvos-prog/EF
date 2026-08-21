@@ -62,7 +62,7 @@ model Profile {
   weight Float?
 
   /**
-   * Una de las 7 posiciones de `PlayerPositionId` (mobile: suggestPlayerPosition.ts). Elegida por el jugador, distinta de la sugerida.
+   * Una de las 8 posiciones de `PlayerPositionId` (mobile: suggestPlayerPosition.ts). Elegida por el jugador, distinta de la sugerida.
    */
   favoritePosition String?
 

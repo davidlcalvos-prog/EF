@@ -43,6 +43,7 @@ export const TEST_ID_TO_STAT_KEY: Record<PhysicalTestId, StatKey> = {
  * Debe mantenerse en sync con apps/mobile/app/data/suggestPlayerPosition.ts (PlayerPositionId).
  */
 export type PlayerPositionId =
+  | 'goalkeeper'
   | 'striker'
   | 'winger'
   | 'cam'
@@ -52,6 +53,7 @@ export type PlayerPositionId =
   | 'centerback';
 
 export const PLAYER_POSITION_IDS: PlayerPositionId[] = [
+  'goalkeeper',
   'striker',
   'winger',
   'cam',
