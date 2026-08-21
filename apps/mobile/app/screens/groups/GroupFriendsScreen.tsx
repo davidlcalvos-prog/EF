@@ -200,7 +200,7 @@ export function GroupFriendsScreen({ route, navigation }: AppStackScreenProps<"G
             }}
             showsVerticalScrollIndicator={false}
           >
-            {isLeader && incomingRequests.length > 0 ? (
+            {incomingRequests.length > 0 ? (
               <YStack gap={8} marginBottom={20}>
                 <SectionHeader title={translate("groupFriendsScreen:incomingTitle")} />
                 {incomingRequests.map((friendship) => {
@@ -218,56 +218,62 @@ export function GroupFriendsScreen({ route, navigation }: AppStackScreenProps<"G
                       <Text color="#FFFFFF" fontWeight="700" fontSize={14} flex={1} numberOfLines={1}>
                         {other.name}
                       </Text>
-                      <XStack gap={8}>
-                        <Pressable
-                          onPress={() => handleAccept(friendship)}
-                          disabled={busyId === friendship.id}
-                          accessibilityRole="button"
-                        >
-                          <XStack
-                            backgroundColor={eliteForgeColors.emerald}
-                            borderRadius={10}
-                            paddingHorizontal={12}
-                            paddingVertical={8}
-                            opacity={busyId === friendship.id ? 0.6 : 1}
+                      {isLeader ? (
+                        <XStack gap={8}>
+                          <Pressable
+                            onPress={() => handleAccept(friendship)}
+                            disabled={busyId === friendship.id}
+                            accessibilityRole="button"
                           >
-                            <Text color="#1a1a1a" fontWeight="800" fontSize={12}>
-                              {translate("groupFriendsScreen:accept")}
-                            </Text>
-                          </XStack>
-                        </Pressable>
-                        <Pressable
-                          onPress={() =>
-                            handleRemove(
-                              friendship,
-                              "groupFriendsScreen:rejectConfirmTitle",
-                              "groupFriendsScreen:rejectConfirmMessage",
-                            )
-                          }
-                          disabled={busyId === friendship.id}
-                          accessibilityRole="button"
-                        >
-                          <XStack
-                            borderWidth={1}
-                            borderColor="#E74C3C"
-                            borderRadius={10}
-                            paddingHorizontal={12}
-                            paddingVertical={8}
-                            opacity={busyId === friendship.id ? 0.6 : 1}
+                            <XStack
+                              backgroundColor={eliteForgeColors.emerald}
+                              borderRadius={10}
+                              paddingHorizontal={12}
+                              paddingVertical={8}
+                              opacity={busyId === friendship.id ? 0.6 : 1}
+                            >
+                              <Text color="#1a1a1a" fontWeight="800" fontSize={12}>
+                                {translate("groupFriendsScreen:accept")}
+                              </Text>
+                            </XStack>
+                          </Pressable>
+                          <Pressable
+                            onPress={() =>
+                              handleRemove(
+                                friendship,
+                                "groupFriendsScreen:rejectConfirmTitle",
+                                "groupFriendsScreen:rejectConfirmMessage",
+                              )
+                            }
+                            disabled={busyId === friendship.id}
+                            accessibilityRole="button"
                           >
-                            <Text color="#E74C3C" fontWeight="800" fontSize={12}>
-                              {translate("groupFriendsScreen:reject")}
-                            </Text>
-                          </XStack>
-                        </Pressable>
-                      </XStack>
+                            <XStack
+                              borderWidth={1}
+                              borderColor="#E74C3C"
+                              borderRadius={10}
+                              paddingHorizontal={12}
+                              paddingVertical={8}
+                              opacity={busyId === friendship.id ? 0.6 : 1}
+                            >
+                              <Text color="#E74C3C" fontWeight="800" fontSize={12}>
+                                {translate("groupFriendsScreen:reject")}
+                              </Text>
+                            </XStack>
+                          </Pressable>
+                        </XStack>
+                      ) : (
+                        <Text color="rgba(255,255,255,0.45)" fontSize={12}>
+                          {translate("groupFriendsScreen:pendingLabel")}
+                        </Text>
+                      )}
                     </XStack>
                   )
                 })}
               </YStack>
             ) : null}
 
-            {isLeader && outgoingRequests.length > 0 ? (
+            {outgoingRequests.length > 0 ? (
               <YStack gap={8} marginBottom={20}>
                 <SectionHeader title={translate("groupFriendsScreen:outgoingTitle")} />
                 {outgoingRequests.map((friendship) => {
@@ -290,30 +296,32 @@ export function GroupFriendsScreen({ route, navigation }: AppStackScreenProps<"G
                           {translate("groupFriendsScreen:pendingLabel")}
                         </Text>
                       </YStack>
-                      <Pressable
-                        onPress={() =>
-                          handleRemove(
-                            friendship,
-                            "groupFriendsScreen:cancelRequestConfirmTitle",
-                            "groupFriendsScreen:cancelRequestConfirmMessage",
-                          )
-                        }
-                        disabled={busyId === friendship.id}
-                        accessibilityRole="button"
-                      >
-                        <XStack
-                          borderWidth={1}
-                          borderColor="#E74C3C"
-                          borderRadius={10}
-                          paddingHorizontal={12}
-                          paddingVertical={8}
-                          opacity={busyId === friendship.id ? 0.6 : 1}
+                      {isLeader ? (
+                        <Pressable
+                          onPress={() =>
+                            handleRemove(
+                              friendship,
+                              "groupFriendsScreen:cancelRequestConfirmTitle",
+                              "groupFriendsScreen:cancelRequestConfirmMessage",
+                            )
+                          }
+                          disabled={busyId === friendship.id}
+                          accessibilityRole="button"
                         >
-                          <Text color="#E74C3C" fontWeight="800" fontSize={12}>
-                            {translate("groupFriendsScreen:cancelRequest")}
-                          </Text>
-                        </XStack>
-                      </Pressable>
+                          <XStack
+                            borderWidth={1}
+                            borderColor="#E74C3C"
+                            borderRadius={10}
+                            paddingHorizontal={12}
+                            paddingVertical={8}
+                            opacity={busyId === friendship.id ? 0.6 : 1}
+                          >
+                            <Text color="#E74C3C" fontWeight="800" fontSize={12}>
+                              {translate("groupFriendsScreen:cancelRequest")}
+                            </Text>
+                          </XStack>
+                        </Pressable>
+                      ) : null}
                     </XStack>
                   )
                 })}
