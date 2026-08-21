@@ -11,7 +11,8 @@ import { Text, XStack, YStack } from "tamagui"
 import { TextField } from "@/components/TextField"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
-import type { GroupSummaryApiDto, MatchTypeApi } from "@/services/api"
+import { getOtherGroup } from "@/screens/groups/useGroupFriendships"
+import { api, type GroupSummaryApiDto, type MatchTypeApi } from "@/services/api"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
 export interface CreateMatchModalProps {
@@ -102,14 +103,44 @@ export function CreateMatchModal({
   const [minute, setMinute] = useState("00")
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState(false)
+  const [opponentOptions, setOpponentOptions] = useState<
+    { id: string; name: string; photoBase64: string | null }[]
+  >([])
+  const [loadingOpponents, setLoadingOpponents] = useState(false)
 
   const showGroupSelector = !initialGroupId
 
   const originGroup = groups.find((g) => g.id === originGroupId)
   const canCreateVs = originGroup?.role === "creator" || originGroup?.role === "admin"
-  const opponentOptions = groups.filter((g) => g.id !== originGroupId)
   const hasOpponentOptions = opponentOptions.length > 0
-  const vsDisabled = !canCreateVs || !hasOpponentOptions
+  const vsDisabled = !canCreateVs || (!loadingOpponents && !hasOpponentOptions)
+
+  // El rival de un VS solo puede ser un grupo amigo del origen (Fase 6.5.3) —
+  // ya no se usa la lista de "mis grupos" como en la 6.3.1.
+  useEffect(() => {
+    if (!originGroupId) {
+      setOpponentOptions([])
+      return
+    }
+    let cancelled = false
+    setLoadingOpponents(true)
+    api.listGroupFriendships(originGroupId).then((result) => {
+      if (cancelled) return
+      setLoadingOpponents(false)
+      if (result.kind !== "ok") {
+        setOpponentOptions([])
+        return
+      }
+      setOpponentOptions(
+        result.friendships
+          .filter((f) => f.status === "accepted")
+          .map((f) => getOtherGroup(f, originGroupId)),
+      )
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [originGroupId])
 
   // Si el origen deja de calificar para VS (cambia de grupo, o ya no hay rivales), vuelve a interno.
   useEffect(() => {
@@ -323,9 +354,9 @@ export function CreateMatchModal({
               </XStack>
               {vsDisabled ? (
                 <Text color="rgba(255,255,255,0.45)" fontSize={12}>
-                  {!hasOpponentOptions
-                    ? translate("matchesScreen:vsNeedsMoreGroups")
-                    : translate("matchesScreen:vsNeedsLeaderRole")}
+                  {!canCreateVs
+                    ? translate("matchesScreen:vsNeedsLeaderRole")
+                    : translate("matchesScreen:vsNeedsMoreGroups")}
                 </Text>
               ) : null}
             </YStack>

@@ -193,6 +193,9 @@ model Group {
   matchesAsOrigin   Match[] @relation("MatchOriginGroup")
   matchesAsOpponent Match[] @relation("MatchOpponentGroup")
 
+  friendshipsAsA GroupFriendship[] @relation("GroupFriendshipA")
+  friendshipsAsB GroupFriendship[] @relation("GroupFriendshipB")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -217,6 +220,34 @@ model GroupMembership {
   @@unique([groupId, userId])
   @@index([userId])
   @@map("group_memberships")
+}
+
+enum GroupFriendshipStatus {
+  pending
+  accepted
+}
+
+/**
+ * Amistad entre dos grupos (Fase 6.5.3), requisito para retar en VS. El par
+ * (groupAId, groupBId) se canonicaliza SIEMPRE por orden de string antes de
+ * escribir o consultar — nunca confiar en el orden de llegada del cliente —
+ * para que @@unique garantice una sola fila por par sin importar quién la pidió.
+ */
+model GroupFriendship {
+  id                 String                @id @default(uuid()) @db.Uuid
+  groupAId           String                @db.Uuid
+  groupA             Group                 @relation("GroupFriendshipA", fields: [groupAId], references: [id], onDelete: Cascade)
+  groupBId           String                @db.Uuid
+  groupB             Group                 @relation("GroupFriendshipB", fields: [groupBId], references: [id], onDelete: Cascade)
+  status             GroupFriendshipStatus @default(pending)
+  requestedByGroupId String                @db.Uuid
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([groupAId, groupBId])
+  @@index([groupBId])
+  @@map("group_friendships")
 }
 
 /**

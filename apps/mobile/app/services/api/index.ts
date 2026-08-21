@@ -17,6 +17,8 @@ import type {
   ApiConfig,
   ApiFeedResponse,
   GroupDetailApiDto,
+  GroupFriendshipApiDto,
+  GroupSearchResultApiDto,
   GroupSummaryApiDto,
   MatchApiDto,
   MatchSummaryApiDto,
@@ -44,6 +46,11 @@ export type {
   GroupMemberApiDto,
   GroupSummaryApiDto,
   GroupDetailApiDto,
+  GroupFriendshipStatusApi,
+  GroupFriendshipApiDto,
+  GroupSearchResultApiDto,
+} from "./types"
+export type {
   MatchTypeApi,
   MatchStatusApi,
   MatchParticipantApiDto,
@@ -481,11 +488,89 @@ export class Api {
     return { kind: "ok" }
   }
 
+  /** Búsqueda de grupos por nombre (2+ caracteres) — para pedir amistad entre grupos. */
+  async searchGroups(
+    q: string,
+  ): Promise<{ kind: "ok"; groups: GroupSearchResultApiDto[] } | GeneralApiProblem> {
+    const response = await this.apisauce.get<GroupSearchResultApiDto[]>("groups/search", { q })
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", groups: response.data }
+  }
+
+  /** Amistades de un grupo (pendientes y aceptadas, en ambos sentidos). */
+  async listGroupFriendships(
+    groupId: string,
+  ): Promise<{ kind: "ok"; friendships: GroupFriendshipApiDto[] } | GeneralApiProblem> {
+    const response = await this.apisauce.get<GroupFriendshipApiDto[]>(
+      `groups/${groupId}/friendships`,
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", friendships: response.data }
+  }
+
+  /** Solo creator/admin del grupo (403 si no). 409 si ya son amigos o ya hay una solicitud pendiente. */
+  async requestGroupFriendship(
+    groupId: string,
+    targetGroupId: string,
+  ): Promise<{ kind: "ok"; friendship: GroupFriendshipApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<GroupFriendshipApiDto>(
+      `groups/${groupId}/friendships`,
+      { targetGroupId },
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", friendship: response.data }
+  }
+
+  /** Solo creator/admin del grupo retado puede aceptar (403 si no, 409 si ya no está pendiente). */
+  async acceptGroupFriendship(
+    friendshipId: string,
+  ): Promise<{ kind: "ok"; friendship: GroupFriendshipApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<GroupFriendshipApiDto>(
+      `group-friendships/${friendshipId}/accept`,
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", friendship: response.data }
+  }
+
+  /** Cualquiera de los dos grupos puede terminar la amistad (creator/admin, 403 si no). */
+  async removeGroupFriendship(friendshipId: string): Promise<{ kind: "ok" } | GeneralApiProblem> {
+    const response = await this.apisauce.delete(`group-friendships/${friendshipId}`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    return { kind: "ok" }
+  }
+
   /**
-   * Crea un partido. Esta app solo construye payloads con type:'internal' —
-   * el tipo acepta el contrato completo por fidelidad con el backend, pero
-   * crear partidos 'vs' queda fuera de alcance hasta tener forma de elegir
-   * grupo rival.
+   * Crea un partido. Los partidos 'vs' requieren que el grupo origen y el
+   * rival sean amigos (ver useGroupFriendships) — el backend devuelve 403 si no.
    */
   async createMatch(payload: {
     originGroupId: string

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { join } from 'path';
 import { MongoDatabaseModule, PrismaModule } from '@ef/database';
+import { GroupFriendshipsModule } from './group-friendships/group-friendships.module';
 import { GroupsModule } from './groups/groups.module';
 import { MatchesModule } from './matches/matches.module';
 import { FeedModule } from './feed/feed.module';
@@ -22,6 +23,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     ProfileStatsModule,
     GroupsModule,
+    GroupFriendshipsModule,
     MatchesModule,
     FeedModule,
   ],

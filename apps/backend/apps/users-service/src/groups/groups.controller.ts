@@ -6,6 +6,7 @@ import {
   CreateGroupPayload,
   GroupActionPayload,
   RemoveMemberPayload,
+  SearchGroupsDto,
   UpdateGroupPayload,
   UpdateMemberRolePayload,
   UserIdPayload,
@@ -54,5 +55,10 @@ export class GroupsController {
   @MessagePattern(MESSAGE_PATTERNS.GROUPS.DELETE)
   deleteGroup(@Payload() data: GroupActionPayload) {
     return this.groupsService.deleteGroup(data);
+  }
+
+  @MessagePattern(MESSAGE_PATTERNS.GROUPS.SEARCH)
+  search(@Payload() data: SearchGroupsDto) {
+    return this.groupsService.search(data.q);
   }
 }
