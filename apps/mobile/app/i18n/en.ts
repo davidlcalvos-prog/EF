@@ -249,6 +249,24 @@ const en = {
     rejectChallengeConfirmTitle: "Reject challenge?",
     rejectChallengeConfirmMessage: "This match will be cancelled.",
     reserveVenue: "Reserve venue",
+    randomizeTeams: "Randomize teams",
+    reRandomizeTeams: "Re-randomize teams",
+    reRandomizeConfirmTitle: "Re-randomize teams?",
+    reRandomizeConfirmMessage: "This replaces the current team assignment.",
+    randomizeNotFull: "The match isn't full yet.",
+    randomizeWrongStatus: "This match isn't in a valid state to randomize teams.",
+    randomizeWarningsTitle: "Randomizer notice",
+    teamATitle: "Team A",
+    teamBTitle: "Team B",
+    warningLine: "Team {{team}}: {{reason}}",
+    warningPosition_goalkeeper:
+      "not enough goalkeepers available — filled with the best available player",
+    warningPosition_defense:
+      "not enough defenders available — filled with the best available player",
+    warningPosition_midfield:
+      "not enough midfielders available — filled with the best available player",
+    warningPosition_forward:
+      "not enough forwards available — filled with the best available player",
   },
   groupFriendsScreen: {
     title: "Friend groups",

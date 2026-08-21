@@ -11,11 +11,15 @@ import {
   MatchActionPayload,
   MatchDto,
   MatchSummaryDto,
+  RandomizeTeamsPayload,
+  RandomizeTeamsResultDto,
+  RANDOMIZE_TEAMS_ERRORS,
   UpdateMatchStatusPayload,
 } from '@ef/contracts';
 import { GroupFriendshipsService } from '../group-friendships/group-friendships.service';
 import { GroupRepository } from '../groups/repositories/group.repository';
 import { MatchRepository } from './repositories/match.repository';
+import { randomizeTeams as computeTeamAssignments } from './team-randomizer';
 
 type GroupRole = 'creator' | 'admin' | 'member';
 
@@ -179,6 +183,46 @@ export class MatchesService {
 
     await this.matchRepository.updateStatus(match.id, payload.status);
     return this.matchRepository.findDetail(match.id) as Promise<MatchDto>;
+  }
+
+  /**
+   * Solo internal, solo creator/admin del originGroupId, y solo si el partido
+   * está lleno y en 'scheduled'. Re-ejecutable: pisa el reparto anterior.
+   */
+  async randomizeTeams(payload: RandomizeTeamsPayload): Promise<RandomizeTeamsResultDto> {
+    const match = await this.requireMatch(payload.matchId);
+    const requesterRole = await this.requireGroupMembership(
+      match.originGroupId,
+      payload.requesterId,
+    );
+    if (!this.isGroupLeader(requesterRole)) {
+      throw new ForbiddenException(
+        'Only the creator or an admin can randomize teams',
+      );
+    }
+
+    if (match.type !== 'internal') {
+      throw new BadRequestException(
+        'Only internal matches support team randomization',
+      );
+    }
+    if (match.status !== 'scheduled') {
+      throw new ConflictException(RANDOMIZE_TEAMS_ERRORS.INVALID_STATUS);
+    }
+
+    const participantCount = await this.matchRepository.countParticipants(match.id);
+    if (participantCount !== match.maxPlayers) {
+      throw new ConflictException(RANDOMIZE_TEAMS_ERRORS.NOT_FULL);
+    }
+
+    const players = await this.matchRepository.findParticipantsForRandomization(match.id);
+    const { assignments, warnings } = computeTeamAssignments(players);
+    await this.matchRepository.persistTeamAssignments(match.id, assignments);
+
+    return {
+      match: (await this.matchRepository.findDetail(match.id)) as MatchDto,
+      warnings,
+    };
   }
 
   private isGroupLeader(role?: GroupRole): boolean {

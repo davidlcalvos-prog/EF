@@ -195,11 +195,14 @@ export type MatchTypeApi = "internal" | "vs"
 
 export type MatchStatusApi = "draft" | "pending_opponent" | "scheduled" | "played" | "cancelled"
 
+export type MatchTeamApi = "A" | "B"
+
 export interface MatchParticipantApiDto {
   userId: string
   email: string
   name: string
   confirmedAt: string
+  team: MatchTeamApi | null
 }
 
 export interface MatchApiDto {
@@ -216,8 +219,19 @@ export interface MatchApiDto {
   createdBy: string
   reservationId: string | null
   participants: MatchParticipantApiDto[]
+  teamsRandomizedAt: string | null
   createdAt: string
   updatedAt: string
+}
+
+/** Calcado de libs/contracts/src/matches/index.ts PositionCategory — usado solo para traducir el `position` de un warning. */
+export type PositionCategoryApi = "goalkeeper" | "defense" | "midfield" | "forward"
+
+/** `message` es texto de depuración del backend en español — NO se muestra, el mobile traduce a partir de team+position. */
+export interface TeamAssignmentWarningApiDto {
+  team: MatchTeamApi
+  position: PositionCategoryApi
+  message: string
 }
 
 /** Item de GET /api/matches/mine y GET /api/matches/group/:groupId — sin nombres de grupo, solo ids. */

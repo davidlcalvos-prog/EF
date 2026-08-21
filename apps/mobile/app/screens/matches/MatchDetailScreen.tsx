@@ -35,12 +35,78 @@ function describeProblem(problem: GeneralApiProblem): string {
   }
 }
 
+function describeRandomizeProblem(
+  result: { kind: "not-full" } | { kind: "wrong-status" } | GeneralApiProblem,
+): string {
+  switch (result.kind) {
+    case "not-full":
+      return translate("matchesScreen:randomizeNotFull")
+    case "wrong-status":
+      return translate("matchesScreen:randomizeWrongStatus")
+    case "forbidden":
+      return translate("matchesScreen:actionForbidden")
+    default:
+      return translate("matchesScreen:actionError")
+  }
+}
+
+function warningLine(warning: { team: "A" | "B"; position: "goalkeeper" | "defense" | "midfield" | "forward" }) {
+  return translate("matchesScreen:warningLine", {
+    team: warning.team,
+    reason: translate(`matchesScreen:warningPosition_${warning.position}` as never),
+  })
+}
+
+/** Fila reusada para la lista plana y para cada sección de equipo — nunca muestra stats de nadie. */
+function ParticipantRow({ participant }: { participant: MatchParticipantApiDto }) {
+  return (
+    <XStack
+      alignItems="center"
+      gap={12}
+      paddingVertical={10}
+      borderBottomWidth={1}
+      borderBottomColor="rgba(85,85,85,0.5)"
+    >
+      <XStack
+        width={36}
+        height={36}
+        borderRadius={18}
+        backgroundColor={pickAvatarColor(participant.userId) as `#${string}`}
+        alignItems="center"
+        justifyContent="center"
+      >
+        <Text color="#FFFFFF" fontWeight="800" fontSize={14}>
+          {participant.name.trim().charAt(0).toUpperCase() || "?"}
+        </Text>
+      </XStack>
+      <YStack flex={1}>
+        <Text color="#FFFFFF" fontWeight="700" fontSize={14} numberOfLines={1}>
+          {participant.name}
+        </Text>
+        <Text color="rgba(255,255,255,0.5)" fontSize={12} numberOfLines={1}>
+          {participant.email}
+        </Text>
+      </YStack>
+    </XStack>
+  )
+}
+
 export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"MatchDetail">) {
   const { matchId } = route.params
   const { authUserId } = useAuth()
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
-  const { match, loading, error, refresh, join, leave, updateStatus, accept, reject } =
-    useMatchDetail(matchId)
+  const {
+    match,
+    loading,
+    error,
+    refresh,
+    join,
+    leave,
+    updateStatus,
+    accept,
+    reject,
+    randomizeTeams,
+  } = useMatchDetail(matchId)
   const [isOriginLeader, setIsOriginLeader] = useState(false)
   const [isOpponentLeader, setIsOpponentLeader] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -87,6 +153,11 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
   const isPendingOpponent = match?.status === "pending_opponent"
   const canRespondToChallenge = match?.type === "vs" && isPendingOpponent && isOpponentLeader
   const isWaitingForOpponent = isPendingOpponent && !canRespondToChallenge
+
+  const isFull = !!match && match.participants.length === match.maxPlayers
+  const canRandomizeTeams =
+    isOriginLeader && match?.type === "internal" && match?.status === "scheduled" && isFull
+  const hasTeams = !!match?.teamsRandomizedAt
 
   const handleJoin = useCallback(async () => {
     setBusy(true)
@@ -204,6 +275,41 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
       ],
     )
   }, [reject])
+
+  const runRandomizeTeams = useCallback(async () => {
+    setBusy(true)
+    const result = await randomizeTeams()
+    setBusy(false)
+    if (result.kind !== "ok") {
+      Alert.alert(translate("matchesScreen:actionError"), describeRandomizeProblem(result))
+      return
+    }
+    if (result.warnings.length > 0) {
+      Alert.alert(
+        translate("matchesScreen:randomizeWarningsTitle"),
+        result.warnings.map(warningLine).join("\n"),
+      )
+    }
+  }, [randomizeTeams])
+
+  const handleRandomizeTeams = useCallback(() => {
+    if (!hasTeams) {
+      runRandomizeTeams()
+      return
+    }
+    Alert.alert(
+      translate("matchesScreen:reRandomizeConfirmTitle"),
+      translate("matchesScreen:reRandomizeConfirmMessage"),
+      [
+        { text: translate("feedScreen:composeCancel"), style: "cancel" },
+        {
+          text: translate("matchesScreen:reRandomizeTeams"),
+          style: "destructive",
+          onPress: runRandomizeTeams,
+        },
+      ],
+    )
+  }, [hasTeams, runRandomizeTeams])
 
   const handleReserveVenue = useCallback(() => {
     if (!match) return
@@ -353,37 +459,32 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
               <Text color="rgba(255,255,255,0.4)" fontSize={13} marginBottom={16}>
                 {translate("matchesScreen:noParticipants")}
               </Text>
+            ) : hasTeams ? (
+              <YStack gap={16} marginBottom={8}>
+                <YStack>
+                  <Text color={eliteForgeColors.emerald} fontWeight="800" fontSize={13} marginBottom={4}>
+                    {translate("matchesScreen:teamATitle")}
+                  </Text>
+                  {match.participants
+                    .filter((p) => p.team === "A")
+                    .map((participant) => (
+                      <ParticipantRow key={participant.userId} participant={participant} />
+                    ))}
+                </YStack>
+                <YStack>
+                  <Text color={eliteForgeColors.orange} fontWeight="800" fontSize={13} marginBottom={4}>
+                    {translate("matchesScreen:teamBTitle")}
+                  </Text>
+                  {match.participants
+                    .filter((p) => p.team === "B")
+                    .map((participant) => (
+                      <ParticipantRow key={participant.userId} participant={participant} />
+                    ))}
+                </YStack>
+              </YStack>
             ) : (
               match.participants.map((participant: MatchParticipantApiDto) => (
-                <XStack
-                  key={participant.userId}
-                  alignItems="center"
-                  gap={12}
-                  paddingVertical={10}
-                  borderBottomWidth={1}
-                  borderBottomColor="rgba(85,85,85,0.5)"
-                >
-                  <XStack
-                    width={36}
-                    height={36}
-                    borderRadius={18}
-                    backgroundColor={pickAvatarColor(participant.userId) as `#${string}`}
-                    alignItems="center"
-                    justifyContent="center"
-                  >
-                    <Text color="#FFFFFF" fontWeight="800" fontSize={14}>
-                      {participant.name.trim().charAt(0).toUpperCase() || "?"}
-                    </Text>
-                  </XStack>
-                  <YStack flex={1}>
-                    <Text color="#FFFFFF" fontWeight="700" fontSize={14} numberOfLines={1}>
-                      {participant.name}
-                    </Text>
-                    <Text color="rgba(255,255,255,0.5)" fontSize={12} numberOfLines={1}>
-                      {participant.email}
-                    </Text>
-                  </YStack>
-                </XStack>
+                <ParticipantRow key={participant.userId} participant={participant} />
               ))
             )}
 
@@ -474,6 +575,29 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
                     {translate("matchesScreen:waitingForOpponent")}
                   </Text>
                 </XStack>
+              ) : null}
+
+              {canRandomizeTeams ? (
+                <Pressable onPress={handleRandomizeTeams} disabled={busy} accessibilityRole="button">
+                  <XStack
+                    backgroundColor={eliteForgeColors.carbonInput}
+                    borderRadius={12}
+                    borderWidth={1}
+                    borderColor={eliteForgeColors.emerald}
+                    paddingVertical={14}
+                    alignItems="center"
+                    justifyContent="center"
+                    gap={8}
+                    opacity={busy ? 0.6 : 1}
+                  >
+                    <Ionicons name="shuffle-outline" size={18} color={eliteForgeColors.emerald} />
+                    <Text color={eliteForgeColors.emerald} fontWeight="800" fontSize={15}>
+                      {hasTeams
+                        ? translate("matchesScreen:reRandomizeTeams")
+                        : translate("matchesScreen:randomizeTeams")}
+                    </Text>
+                  </XStack>
+                </Pressable>
               ) : null}
 
               {match.status === "scheduled" && canManageStatus ? (

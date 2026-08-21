@@ -252,6 +252,24 @@ const es: Translations = {
     rejectChallengeConfirmTitle: "¿Rechazar reto?",
     rejectChallengeConfirmMessage: "Este partido quedará cancelado.",
     reserveVenue: "Reservar cancha",
+    randomizeTeams: "Sortear equipos",
+    reRandomizeTeams: "Volver a sortear",
+    reRandomizeConfirmTitle: "¿Volver a sortear equipos?",
+    reRandomizeConfirmMessage: "Esto reemplaza el reparto anterior.",
+    randomizeNotFull: "El partido todavía no tiene el cupo completo.",
+    randomizeWrongStatus: "Este partido no está en un estado válido para sortear equipos.",
+    randomizeWarningsTitle: "Aviso del sorteo",
+    teamATitle: "Equipo A",
+    teamBTitle: "Equipo B",
+    warningLine: "Equipo {{team}}: {{reason}}",
+    warningPosition_goalkeeper:
+      "no había suficientes arqueros disponibles — se completó con el mejor disponible",
+    warningPosition_defense:
+      "no había suficientes defensas disponibles — se completó con el mejor disponible",
+    warningPosition_midfield:
+      "no había suficientes mediocampistas disponibles — se completó con el mejor disponible",
+    warningPosition_forward:
+      "no había suficientes delanteros disponibles — se completó con el mejor disponible",
   },
   groupFriendsScreen: {
     title: "Grupos amigos",

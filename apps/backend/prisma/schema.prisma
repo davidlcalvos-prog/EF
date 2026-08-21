@@ -285,6 +285,8 @@ model Match {
   /// Vínculo real con la reserva que originó este partido (Fase 4). La FK vive en Reservation.matchId.
   reservation     Reservation?
   participants    MatchParticipant[]
+  /// null hasta que el líder sortea equipos (Fase 6.5.4, solo partidos internal); se pisa en cada re-sorteo.
+  teamsRandomizedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -294,13 +296,20 @@ model Match {
   @@map("matches")
 }
 
+enum MatchTeam {
+  A
+  B
+}
+
 model MatchParticipant {
-  id          String   @id @default(uuid()) @db.Uuid
-  matchId     String   @db.Uuid
-  match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  userId      String   @db.Uuid
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  confirmedAt DateTime @default(now())
+  id          String     @id @default(uuid()) @db.Uuid
+  matchId     String     @db.Uuid
+  match       Match      @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  userId      String     @db.Uuid
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  confirmedAt DateTime   @default(now())
+  /// null hasta el sorteo de equipos (Fase 6.5.4); se llena/pisa al randomizar.
+  team        MatchTeam?
 
   @@unique([matchId, userId])
   @@index([userId])

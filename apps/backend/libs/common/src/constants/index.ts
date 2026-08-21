@@ -64,6 +64,7 @@ export const MESSAGE_PATTERNS = {
     JOIN: 'matches.join',
     LEAVE: 'matches.leave',
     UPDATE_STATUS: 'matches.update_status',
+    RANDOMIZE_TEAMS: 'matches.randomize_teams',
   },
   FEED: {
     CREATE_POST: 'feed.create_post',

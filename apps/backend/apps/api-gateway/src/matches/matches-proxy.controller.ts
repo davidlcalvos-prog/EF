@@ -64,4 +64,9 @@ export class MatchesProxyController {
   ) {
     return this.matchesProxy.updateStatus(id, user.sub, dto);
   }
+
+  @Post(':id/randomize-teams')
+  randomizeTeams(@Param('id') id: string, @CurrentUser() user: AuthTokenPayload) {
+    return this.matchesProxy.randomizeTeams(id, user.sub);
+  }
 }

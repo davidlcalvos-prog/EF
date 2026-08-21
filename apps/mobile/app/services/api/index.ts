@@ -24,6 +24,7 @@ import type {
   MatchSummaryApiDto,
   MatchTypeApi,
   MyReservationApiDto,
+  TeamAssignmentWarningApiDto,
   PostApiDto,
   PostMediaType,
   ProfileStatsApiResponse,
@@ -53,9 +54,12 @@ export type {
 export type {
   MatchTypeApi,
   MatchStatusApi,
+  MatchTeamApi,
   MatchParticipantApiDto,
   MatchApiDto,
   MatchSummaryApiDto,
+  PositionCategoryApi,
+  TeamAssignmentWarningApiDto,
   ReservationStatusApi,
   PublicVenueApiDto,
   MyReservationApiDto,
@@ -712,6 +716,38 @@ export class Api {
     }
     if (!response.data) return { kind: "bad-data" }
     return { kind: "ok", match: response.data }
+  }
+
+  /**
+   * Sortea equipos balanceados para un partido internal lleno (403/400/409 —
+   * ver matches.service.ts randomizeTeams). El backend solo puede viajar el
+   * `message` de la excepción a través del límite de microservicio (no un
+   * campo `reason` extra — ver RANDOMIZE_TEAMS_ERRORS en libs/contracts), así
+   * que estos dos strings deben calzar exactamente con los del backend.
+   */
+  async randomizeTeams(matchId: string): Promise<
+    | { kind: "ok"; match: MatchApiDto; warnings: TeamAssignmentWarningApiDto[] }
+    | { kind: "not-full" }
+    | { kind: "wrong-status" }
+    | GeneralApiProblem
+  > {
+    const response = await this.apisauce.post<{
+      match: MatchApiDto
+      warnings: TeamAssignmentWarningApiDto[]
+    }>(`matches/${matchId}/randomize-teams`)
+
+    if (!response.ok) {
+      if (response.status === 409) {
+        const message = (response.data as { message?: string } | undefined)?.message
+        if (message === "Match is not full yet") return { kind: "not-full" }
+        return { kind: "wrong-status" }
+      }
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", match: response.data.match, warnings: response.data.warnings }
   }
 
   /** Lista pública de canchas — cualquier usuario autenticado, sin roles especiales. */
