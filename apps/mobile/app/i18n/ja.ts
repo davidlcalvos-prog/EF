@@ -451,6 +451,7 @@ const ja: Translations = {
     devResetTestsAction: "リセット",
     devResetTestsDone: "リセット完了",
     devResetTestsDoneMessage: "すべてのテストを再実行できます。",
+    position_goalkeeper: "ゴールキーパー",
     position_striker: "ストライカー",
     position_winger: "ウィング",
     position_cam: "アタッキングMF",
