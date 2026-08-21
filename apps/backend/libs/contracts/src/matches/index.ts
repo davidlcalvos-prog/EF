@@ -20,11 +20,15 @@ export type MatchStatus =
   | 'played'
   | 'cancelled';
 
+export type MatchTeam = 'A' | 'B';
+
 export interface MatchParticipantDto {
   userId: string;
   email: string;
   name: string;
   confirmedAt: string;
+  /** null hasta que el líder sortea equipos (Fase 6.5.4, solo partidos internal). */
+  team: MatchTeam | null;
 }
 
 export interface MatchDto {
@@ -41,6 +45,8 @@ export interface MatchDto {
   createdBy: string;
   reservationId: string | null;
   participants: MatchParticipantDto[];
+  /** null si nunca se sortearon equipos; se pisa en cada re-sorteo. */
+  teamsRandomizedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -121,3 +127,40 @@ export class UpdateMatchStatusPayload extends UpdateMatchStatusDto {
   @IsUUID()
   requesterId!: string;
 }
+
+export interface RandomizeTeamsPayload {
+  matchId: string;
+  requesterId: string;
+}
+
+export type PositionCategory = 'goalkeeper' | 'defense' | 'midfield' | 'forward';
+
+/**
+ * `message` es texto interno de depuración (en español) — el mobile NO lo
+ * muestra tal cual, traduce a partir de `team` + `position` (ver "Antes de
+ * terminar" de la Fase 6.5.4: no se muestra texto crudo del backend en los
+ * otros 6 idiomas).
+ */
+export interface TeamAssignmentWarningDto {
+  team: MatchTeam;
+  position: PositionCategory;
+  message: string;
+}
+
+export interface RandomizeTeamsResultDto {
+  match: MatchDto;
+  warnings: TeamAssignmentWarningDto[];
+}
+
+/**
+ * Mensajes de error estables para que el gateway distinga sub-razones de un
+ * mismo 409 — toHttpException solo preserva `message` a través del límite de
+ * microservicio (ver libs/common/src/rpc/microservice-error.util.ts), así que
+ * no se puede viajar un campo extra tipo `reason`. El cliente mobile duplica
+ * estos strings literalmente (mismo criterio que el resto de DTOs, que se
+ * calcan a mano en services/api/types.ts).
+ */
+export const RANDOMIZE_TEAMS_ERRORS = {
+  NOT_FULL: 'Match is not full yet',
+  INVALID_STATUS: 'Match must be scheduled to randomize teams',
+} as const;
