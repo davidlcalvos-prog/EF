@@ -26,6 +26,7 @@ export type AppStackParamList = {
   PhysicalTestSession: { testId: PhysicalTestId }
   Groups: undefined
   GroupDetail: { groupId: string }
+  GroupFriends: { groupId: string }
   Matches: { groupId?: string } | undefined
   MatchDetail: { matchId: string }
   Reservations: { matchId?: string } | undefined
