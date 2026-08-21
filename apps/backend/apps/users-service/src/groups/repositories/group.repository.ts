@@ -4,6 +4,7 @@ import {
   GroupDetailDto,
   GroupMemberDto,
   GroupMemberRole,
+  GroupSearchResultDto,
   GroupSummaryDto,
 } from '@ef/contracts';
 import { GroupRole } from '@prisma/client';
@@ -133,6 +134,22 @@ export class GroupRepository {
       role: membership.role as GroupMemberRole,
       memberCount: membership.group._count.members,
       createdAt: membership.group.createdAt.toISOString(),
+    }));
+  }
+
+  async searchByName(query: string): Promise<GroupSearchResultDto[]> {
+    const groups = await this.prisma.group.findMany({
+      where: { name: { contains: query, mode: 'insensitive' } },
+      include: { _count: { select: { members: true } } },
+      orderBy: { name: 'asc' },
+      take: 20,
+    });
+
+    return groups.map((group) => ({
+      id: group.id,
+      name: group.name,
+      photoBase64: group.photoBase64,
+      memberCount: group._count.members,
     }));
   }
 

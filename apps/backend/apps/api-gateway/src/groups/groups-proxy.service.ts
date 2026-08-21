@@ -6,6 +6,7 @@ import {
   AddMemberDto,
   CreateGroupDto,
   GroupDetailDto,
+  GroupSearchResultDto,
   GroupSummaryDto,
   UpdateGroupDto,
   UpdateMemberRoleDto,
@@ -90,6 +91,10 @@ export class GroupsProxyService {
       groupId,
       requesterId,
     });
+  }
+
+  search(q: string): Promise<GroupSearchResultDto[]> {
+    return this.send<GroupSearchResultDto[]>(MESSAGE_PATTERNS.GROUPS.SEARCH, { q });
   }
 
   private send<T>(pattern: string, payload: unknown): Promise<T> {

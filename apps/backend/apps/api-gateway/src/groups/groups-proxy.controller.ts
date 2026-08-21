@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -6,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -36,6 +38,18 @@ export class GroupsProxyController {
   @Get('mine')
   listMine(@CurrentUser() user: AuthTokenPayload) {
     return this.groupsProxy.listMine(user.sub);
+  }
+
+  /**
+   * Búsqueda por nombre para pedir amistad entre grupos. Antes de 'GET :id'
+   * porque si no, Nest intentaría matchear "search" como :id.
+   */
+  @Get('search')
+  search(@Query('q') q?: string) {
+    if (!q || q.trim().length < 2) {
+      throw new BadRequestException('q must be at least 2 characters');
+    }
+    return this.groupsProxy.search(q.trim());
   }
 
   @Get(':id')

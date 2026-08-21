@@ -10,6 +10,7 @@ import {
   CreateGroupPayload,
   GroupActionPayload,
   GroupDetailDto,
+  GroupSearchResultDto,
   GroupSummaryDto,
   MAX_GROUP_ADMINS,
   MAX_GROUP_PHOTO_BASE64_LENGTH,
@@ -166,6 +167,11 @@ export class GroupsService {
 
     await this.groupRepository.removeMembership(groupId, targetUserId);
     return { success: true };
+  }
+
+  /** Búsqueda por nombre para amistad entre grupos — nunca expone la lista de miembros. */
+  search(query: string): Promise<GroupSearchResultDto[]> {
+    return this.groupRepository.searchByName(query.trim());
   }
 
   async deleteGroup(payload: GroupActionPayload): Promise<{ success: true }> {
