@@ -32,17 +32,17 @@ export interface RandomizerResult {
 }
 
 /**
- * Las 7 posiciones reales del producto (mobile: data/suggestPlayerPosition.ts
- * PlayerPositionId) — no hay ninguna posición "arquero" en el catálogo, así
- * que ningún jugador puede caer en la categoría 'goalkeeper' vía favoritePosition
- * ni vía sugerida. Es una decisión de mapeo no obvia y un hueco real del
- * producto: ver el resumen de la Fase 6.5.4 para el detalle.
+ * Las 8 posiciones reales del producto (mobile: data/suggestPlayerPosition.ts
+ * PlayerPositionId). "goalkeeper" se agregó en la Fase 6.5.4.1 — antes no
+ * existía y ningún jugador podía caer nunca en la categoría 'goalkeeper' del
+ * randomizador (6.5.4), ni por favorita ni por sugerida.
  *
  * winger se mapea a 'forward': su perfil de stats (speed/dribbling/attack
  * altos, defense bajo) se parece más a un delantero que a un mediocampista
  * defensivo como cdm/cm — criterio futbolístico, no un mapeo obvio.
  */
 const POSITION_CATEGORY_MAP: Record<string, PositionCategory> = {
+  goalkeeper: 'goalkeeper',
   fullback: 'defense',
   centerback: 'defense',
   cm: 'midfield',
@@ -60,6 +60,7 @@ const POSITION_CATEGORY_MAP: Record<string, PositionCategory> = {
  * "posición sugerida" que ve el jugador en su perfil.
  */
 const POSITION_WEIGHTS: Record<string, Record<StatKey, number>> = {
+  goalkeeper: { defense: 0.4, endurance: 0.15, passes: 0.15, speed: 0.1, dribbling: 0.05, attack: 0.05 },
   striker: { attack: 0.38, speed: 0.22, dribbling: 0.14, endurance: 0.1, passes: 0.06, defense: 0.1 },
   winger: { speed: 0.32, dribbling: 0.26, attack: 0.18, endurance: 0.12, passes: 0.07, defense: 0.05 },
   cam: { passes: 0.28, attack: 0.24, dribbling: 0.22, endurance: 0.12, speed: 0.09, defense: 0.05 },
@@ -83,7 +84,7 @@ function overallScore(stats: RandomizerStats): number {
   return STAT_KEYS.reduce((sum, key) => sum + stats[key], 0) / STAT_KEYS.length;
 }
 
-/** Posición sugerida por stats (respaldo) — devuelve siempre una de las 7, nunca "goalkeeper". */
+/** Posición sugerida por stats (respaldo) — puede devolver "goalkeeper" desde la Fase 6.5.4.1. */
 function suggestedPositionId(stats: RandomizerStats): string {
   let bestId: string | null = null;
   let bestScore = -1;
@@ -129,6 +130,12 @@ function snakeOrder(count: number): MatchTeam[] {
 }
 
 function warningMessage(team: MatchTeam, position: PositionCategory): string {
+  if (position === 'goalkeeper') {
+    // Desde la 6.5.4.1 "goalkeeper" sí es una posición real y sí se contempla
+    // (favorita o sugerida) — si esto dispara es porque nadie en el partido
+    // tuvo afinidad real a arquero, no por un hueco del catálogo.
+    return `Equipo ${team}: no había ningún candidato a arquero (ni por posición favorita ni por sugerida), se completó con el mejor defensa disponible.`;
+  }
   return `Equipo ${team}: no había suficientes candidatos para ${position} (ni por posición favorita ni por sugerida), se completó balanceando por puntaje general.`;
 }
 
