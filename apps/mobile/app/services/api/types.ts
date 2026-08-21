@@ -165,6 +165,31 @@ export interface GroupDetailApiDto {
   updatedAt: string
 }
 
+/** Forma real de los datos de Amistad entre grupos — calcada de libs/contracts/src/group-friendships/index.ts del backend. */
+export type GroupFriendshipStatusApi = "pending" | "accepted"
+
+export interface GroupFriendshipApiDto {
+  id: string
+  groupAId: string
+  groupAName: string
+  groupAPhotoBase64: string | null
+  groupBId: string
+  groupBName: string
+  groupBPhotoBase64: string | null
+  status: GroupFriendshipStatusApi
+  requestedByGroupId: string
+  createdAt: string
+  updatedAt: string
+}
+
+/** Item de GET /groups/search — nunca incluye la lista de miembros. */
+export interface GroupSearchResultApiDto {
+  id: string
+  name: string
+  photoBase64: string | null
+  memberCount: number
+}
+
 /** Forma real de los datos de Partidos — calcada de libs/contracts/src/matches/index.ts del backend. */
 export type MatchTypeApi = "internal" | "vs"
 
