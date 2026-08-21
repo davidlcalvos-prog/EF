@@ -9,6 +9,7 @@ export interface UserProfileRecord {
   id: string;
   email: string;
   name: string;
+  avatarBase64: string | null;
   createdAt: Date;
 }
 
@@ -70,7 +71,18 @@ export class UserProfileRepository {
     });
   }
 
+  async updateAvatar(
+    userId: string,
+    avatarBase64: string | null,
+  ): Promise<void> {
+    await this.prisma.profile.update({
+      where: { userId },
+      data: { avatarBase64 },
+    });
+  }
+
   private toRecord(profile: {
+    avatarBase64: string | null;
     createdAt: Date;
     user: { id: string; email: string; firstname: string; lastname: string };
   }): UserProfileRecord {
@@ -82,6 +94,7 @@ export class UserProfileRepository {
         profile.user.firstname,
         profile.user.lastname,
       ),
+      avatarBase64: profile.avatarBase64,
       createdAt: profile.createdAt,
     };
   }

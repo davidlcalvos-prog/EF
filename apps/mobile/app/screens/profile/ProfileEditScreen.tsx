@@ -49,8 +49,8 @@ export function ProfileEditScreen({ navigation }: AppStackScreenProps<"ProfileEd
   }, [])
 
   const handlePickImage = useCallback(async () => {
-    const uri = await pickProfileImageFromGallery(userKey, form.avatarUri)
-    if (uri) patchForm({ avatarUri: uri })
+    const picked = await pickProfileImageFromGallery(userKey, form.avatarUri)
+    if (picked) patchForm({ avatarUri: picked.uri })
   }, [form.avatarUri, patchForm, userKey])
 
   const handleSave = useCallback(() => {

@@ -15,6 +15,8 @@ export interface GroupMemberRowProps {
   canRemove: boolean
   onToggleRole?: () => void
   onRemove?: () => void
+  /** Abre la ficha del miembro al tocar el área de avatar+nombre. */
+  onPress?: () => void
 }
 
 const AVATAR_PALETTE = ["#00CEC8", "#FF8C00", "#7B68EE", "#2ECC71", "#E74C3C"]
@@ -37,6 +39,7 @@ export function GroupMemberRow({
   canRemove,
   onToggleRole,
   onRemove,
+  onPress,
 }: GroupMemberRowProps) {
   const initial = member.name.trim().charAt(0).toUpperCase() || "?"
 
@@ -49,34 +52,42 @@ export function GroupMemberRow({
       borderBottomWidth={1}
       borderBottomColor="rgba(85,85,85,0.5)"
     >
-      <XStack
-        width={40}
-        height={40}
-        borderRadius={20}
-        backgroundColor={pickAvatarColor(member.userId) as `#${string}`}
-        alignItems="center"
-        justifyContent="center"
+      {/* Solo el área de avatar+nombre abre la ficha — no interfiere con los botones de rol/remover. */}
+      <Pressable
+        onPress={onPress}
+        disabled={!onPress}
+        accessibilityRole={onPress ? "button" : undefined}
+        style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 12 }}
       >
-        <Text color="#FFFFFF" fontWeight="800" fontSize={15}>
-          {initial}
-        </Text>
-      </XStack>
-
-      <YStack flex={1} gap={2}>
-        <XStack alignItems="center" gap={6}>
-          <Text color="#FFFFFF" fontWeight="700" fontSize={14} numberOfLines={1}>
-            {member.name}
+        <XStack
+          width={40}
+          height={40}
+          borderRadius={20}
+          backgroundColor={pickAvatarColor(member.userId) as `#${string}`}
+          alignItems="center"
+          justifyContent="center"
+        >
+          <Text color="#FFFFFF" fontWeight="800" fontSize={15}>
+            {initial}
           </Text>
-          {isSelf ? (
-            <Text color="rgba(255,255,255,0.4)" fontSize={12}>
-              {translate("groupsScreen:youSuffix")}
-            </Text>
-          ) : null}
         </XStack>
-        <Text color="rgba(255,255,255,0.5)" fontSize={12} numberOfLines={1}>
-          {member.email}
-        </Text>
-      </YStack>
+
+        <YStack flex={1} gap={2}>
+          <XStack alignItems="center" gap={6}>
+            <Text color="#FFFFFF" fontWeight="700" fontSize={14} numberOfLines={1}>
+              {member.name}
+            </Text>
+            {isSelf ? (
+              <Text color="rgba(255,255,255,0.4)" fontSize={12}>
+                {translate("groupsScreen:youSuffix")}
+              </Text>
+            ) : null}
+          </XStack>
+          <Text color="rgba(255,255,255,0.5)" fontSize={12} numberOfLines={1}>
+            {member.email}
+          </Text>
+        </YStack>
+      </Pressable>
 
       <XStack
         backgroundColor="rgba(255,255,255,0.08)"

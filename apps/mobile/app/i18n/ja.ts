@@ -186,6 +186,9 @@ const ja: Translations = {
     savingGroup: "保存中…",
     photoTooHeavy: "この写真は重すぎます。別の写真を試してください。",
     editGroupInvalid: "グループ名または写真を確認してもう一度お試しください。",
+    memberProfileTitle: "選手カード",
+    memberProfileError: "この選手のカードを読み込めませんでした。もう一度お試しください。",
+    memberNoStats: "この選手はまだテストを完了していません。",
   },
   matchesScreen: {
     title: "試合",

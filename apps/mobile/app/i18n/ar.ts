@@ -185,6 +185,9 @@ const ar: Translations = {
     savingGroup: "جارٍ الحفظ…",
     photoTooHeavy: "هذه الصورة كبيرة جدًا. جرّب صورة أخرى.",
     editGroupInvalid: "تحقق من اسم المجموعة أو الصورة وحاول مرة أخرى.",
+    memberProfileTitle: "بطاقة اللاعب",
+    memberProfileError: "تعذر تحميل بطاقة هذا اللاعب. حاول مرة أخرى.",
+    memberNoStats: "لم يكمل هذا اللاعب أي اختبار بعد.",
   },
   matchesScreen: {
     title: "المباريات",

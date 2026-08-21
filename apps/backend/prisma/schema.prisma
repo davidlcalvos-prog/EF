@@ -66,6 +66,11 @@ model Profile {
    */
   favoritePosition String?
 
+  /**
+   * Avatar del jugador en base64 (mismo esquema que Group.photoBase64 — sin storage real todavía).
+   */
+  avatarBase64 String? @db.Text
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

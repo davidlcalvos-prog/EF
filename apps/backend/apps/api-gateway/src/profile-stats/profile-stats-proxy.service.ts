@@ -8,6 +8,7 @@ import {
   PlayerStatsDto,
   ProfileStatsResponseDto,
   PsychAssessmentDto,
+  PublicMemberProfileDto,
   SavePhysicalTestResultDto,
   SavePsychAssessmentDto,
 } from '@ef/contracts';
@@ -22,6 +23,16 @@ export class ProfileStatsProxyService {
     return this.send<ProfileStatsResponseDto>(
       MESSAGE_PATTERNS.PROFILE_STATS.GET_MINE,
       { userId },
+    );
+  }
+
+  getPublicByUserId(
+    userId: string,
+    requesterId: string,
+  ): Promise<PublicMemberProfileDto> {
+    return this.send<PublicMemberProfileDto>(
+      MESSAGE_PATTERNS.PROFILE_STATS.GET_PUBLIC_BY_USER_ID,
+      { userId, requesterId },
     );
   }
 

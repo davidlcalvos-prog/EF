@@ -76,6 +76,18 @@ export interface ProfileStatsApiResponse {
   favoritePosition: PlayerPositionId | null
 }
 
+/**
+ * Ficha de OTRO usuario (compañero de grupo) — solo nombre, avatar, posición
+ * y el radar de stats. Nada de psicológico ni tests crudos, a propósito.
+ */
+export interface PublicMemberProfileApiDto {
+  userId: string
+  name: string
+  avatarBase64: string | null
+  favoritePosition: PlayerPositionId | null
+  stats: (PlayerStats & { updatedAt: string }) | null
+}
+
 export interface PhysicalTestResultApiDto {
   id: string
   testId: PhysicalTestId

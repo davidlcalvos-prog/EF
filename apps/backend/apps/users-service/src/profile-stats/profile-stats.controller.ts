@@ -2,6 +2,7 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { MESSAGE_PATTERNS } from '@ef/common';
 import {
+  GetPublicMemberProfilePayload,
   SavePhysicalTestResultPayload,
   SavePsychAssessmentPayload,
   UserIdPayload,
@@ -15,6 +16,11 @@ export class ProfileStatsController {
   @MessagePattern(MESSAGE_PATTERNS.PROFILE_STATS.GET_MINE)
   getMine(@Payload() data: UserIdPayload) {
     return this.profileStatsService.getMine(data.userId);
+  }
+
+  @MessagePattern(MESSAGE_PATTERNS.PROFILE_STATS.GET_PUBLIC_BY_USER_ID)
+  getPublicByUserId(@Payload() data: GetPublicMemberProfilePayload) {
+    return this.profileStatsService.getPublicByUserId(data);
   }
 
   @MessagePattern(MESSAGE_PATTERNS.PROFILE_STATS.SAVE_PHYSICAL_TEST_RESULT)

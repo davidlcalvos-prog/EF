@@ -1,5 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
 import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  MAX_AVATAR_BASE64_LENGTH,
   UpdatePreferencesDto,
   UpdateProfileDto,
   UserPreferences,
@@ -24,6 +29,7 @@ export class UsersService {
       id: profile.id,
       email: profile.email,
       name: profile.name,
+      avatarBase64: profile.avatarBase64,
       createdAt: profile.createdAt,
     };
   }
@@ -43,6 +49,19 @@ export class UsersService {
         id,
         dto.favoritePosition,
       );
+    }
+    if (dto.removeAvatar) {
+      await this.profileRepository.updateAvatar(id, null);
+    } else if (dto.avatarBase64 !== undefined) {
+      if (dto.avatarBase64.trim().length === 0) {
+        throw new BadRequestException('avatarBase64 cannot be empty');
+      }
+      if (dto.avatarBase64.length > MAX_AVATAR_BASE64_LENGTH) {
+        throw new BadRequestException(
+          `avatarBase64 exceeds the maximum size of ${MAX_AVATAR_BASE64_LENGTH} characters`,
+        );
+      }
+      await this.profileRepository.updateAvatar(id, dto.avatarBase64);
     }
     return this.findById(id);
   }

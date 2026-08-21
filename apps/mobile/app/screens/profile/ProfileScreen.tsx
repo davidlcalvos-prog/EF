@@ -13,6 +13,7 @@ import {
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
 import type { AppStackScreenProps } from "@/navigators/navigationTypes"
+import { api } from "@/services/api"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
 import { PhysicalTestCard } from "./components/PhysicalTestCard"
@@ -25,7 +26,26 @@ import { StatsRadarChart } from "./components/StatsRadarChart"
 import { hasNoLocalProfileStats, hydrateProfileFromBackend } from "./hydrateProfileFromBackend"
 import { usePlayerProfile } from "./usePlayerProfile"
 import { useProfileStats } from "./useProfileStats"
-import { pickProfileImageFromGallery } from "./utils/pickProfileImage"
+import { MAX_AVATAR_BASE64_LENGTH, pickProfileImageFromGallery } from "./utils/pickProfileImage"
+
+/**
+ * Best-effort: sube el avatar al backend sin bloquear la UI. Si falla (sin
+ * red, 400 por tamaño) el avatar local queda igual — se reintenta la próxima
+ * vez que el usuario cambie la foto.
+ */
+function syncAvatarToBackend(base64: string | null): void {
+  if (!base64 || base64.length > MAX_AVATAR_BASE64_LENGTH) return
+  api
+    .updateProfileAvatar(base64)
+    .then((result) => {
+      if (result.kind !== "ok" && __DEV__) {
+        console.warn("[profile] sync de avatar falló:", result.kind)
+      }
+    })
+    .catch((error) => {
+      if (__DEV__) console.warn("[profile] sync de avatar lanzó excepción:", error)
+    })
+}
 
 function getUserDisplayName(email?: string) {
   if (!email) return translate("feedScreen:guestUser")
@@ -98,8 +118,10 @@ export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
   }, [navigation])
 
   const handlePickAvatar = useCallback(async () => {
-    const uri = await pickProfileImageFromGallery(userKey, profile.avatarUri)
-    if (uri) updateProfile({ avatarUri: uri })
+    const picked = await pickProfileImageFromGallery(userKey, profile.avatarUri)
+    if (!picked) return
+    updateProfile({ avatarUri: picked.uri })
+    syncAvatarToBackend(picked.base64)
   }, [profile.avatarUri, updateProfile, userKey])
 
   const handleQuickLink = useCallback(

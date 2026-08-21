@@ -25,6 +25,7 @@ import type {
   PostApiDto,
   PostMediaType,
   ProfileStatsApiResponse,
+  PublicMemberProfileApiDto,
   PublicVenueApiDto,
 } from "@/services/api/types"
 
@@ -51,6 +52,7 @@ export type {
   ReservationStatusApi,
   PublicVenueApiDto,
   MyReservationApiDto,
+  PublicMemberProfileApiDto,
 } from "./types"
 
 /**
@@ -202,6 +204,36 @@ export class Api {
       return { kind: "unknown", temporary: true }
     }
     return { kind: "ok" }
+  }
+
+  /** Sube el avatar de perfil en base64 (400 si supera el límite de tamaño). */
+  async updateProfileAvatar(avatarBase64: string): Promise<{ kind: "ok" } | GeneralApiProblem> {
+    const response = await this.apisauce.patch("profile", { avatarBase64 })
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    return { kind: "ok" }
+  }
+
+  /**
+   * Ficha pública de un compañero de grupo. 403 si no comparten ningún
+   * grupo (validado server-side), 404 si el usuario no existe.
+   */
+  async getPublicMemberProfile(
+    userId: string,
+  ): Promise<{ kind: "ok"; profile: PublicMemberProfileApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.get<PublicMemberProfileApiDto>(`profile/stats/${userId}`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", profile: response.data }
   }
 
   /** Feed global paginado, más reciente primero. */

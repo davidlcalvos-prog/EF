@@ -4,6 +4,9 @@ import * as ImagePicker from "expo-image-picker"
 
 import { translate } from "@/i18n/translate"
 
+/** Debe coincidir con MAX_AVATAR_BASE64_LENGTH del backend (libs/contracts/src/users). */
+export const MAX_AVATAR_BASE64_LENGTH = 500_000
+
 function sanitizeUserKey(userKey: string): string {
   return userKey.replace(/[^a-zA-Z0-9._-]/g, "_")
 }
@@ -55,10 +58,17 @@ function persistAvatarImage(sourceUri: string, userKey: string): string {
   return destination.uri
 }
 
+export interface PickedProfileImage {
+  /** Copia local persistida — la UI la usa al instante, sin depender de la red. */
+  uri: string
+  /** Para sincronizar al backend (best effort); null si el picker no lo devolvió. */
+  base64: string | null
+}
+
 export async function pickProfileImageFromGallery(
   userKey: string,
   previousUri?: string | null,
-): Promise<string | null> {
+): Promise<PickedProfileImage | null> {
   try {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
@@ -74,6 +84,7 @@ export async function pickProfileImageFromGallery(
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.85,
+      base64: true,
     })
 
     if (result.canceled || !result.assets[0]?.uri) return null
@@ -84,7 +95,7 @@ export async function pickProfileImageFromGallery(
       await deleteStoredAvatar(previousUri)
     }
 
-    return persistedUri
+    return { uri: persistedUri, base64: result.assets[0].base64 ?? null }
   } catch {
     Alert.alert(
       translate("profileScreen:avatarNativeMissingTitle"),

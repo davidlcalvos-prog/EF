@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { GroupsModule } from '../groups/groups.module';
 import { UsersModule } from '../users/users.module';
 import { ProfileStatsController } from './profile-stats.controller';
 import { ProfileStatsService } from './profile-stats.service';
@@ -7,7 +8,7 @@ import { PlayerStatsRepository } from './repositories/player-stats.repository';
 import { PsychAssessmentRepository } from './repositories/psych-assessment.repository';
 
 @Module({
-  imports: [UsersModule],
+  imports: [UsersModule, GroupsModule],
   controllers: [ProfileStatsController],
   providers: [
     ProfileStatsService,

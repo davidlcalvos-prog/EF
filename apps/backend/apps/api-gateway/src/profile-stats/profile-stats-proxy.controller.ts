@@ -44,6 +44,18 @@ export class ProfileStatsProxyController {
     return this.profileStatsProxy.getMine(user.sub);
   }
 
+  /**
+   * Ficha pública de un compañero de grupo — 403 server-side si no comparten
+   * ningún grupo (validado en users-service, no aquí).
+   */
+  @Get('stats/:userId')
+  getPublicByUserId(
+    @Param('userId') userId: string,
+    @CurrentUser() user: AuthTokenPayload,
+  ) {
+    return this.profileStatsProxy.getPublicByUserId(userId, user.sub);
+  }
+
   @Put('physical-tests/:testId')
   savePhysicalTestResult(
     @Param('testId') testId: string,

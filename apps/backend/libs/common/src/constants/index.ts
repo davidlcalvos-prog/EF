@@ -33,6 +33,7 @@ export const MESSAGE_PATTERNS = {
   },
   PROFILE_STATS: {
     GET_MINE: 'profile_stats.get_mine',
+    GET_PUBLIC_BY_USER_ID: 'profile_stats.get_public_by_user_id',
     SAVE_PHYSICAL_TEST_RESULT: 'profile_stats.save_physical_test_result',
     SAVE_PSYCH_ASSESSMENT: 'profile_stats.save_psych_assessment',
   },

@@ -89,6 +89,26 @@ export interface ProfileStatsResponseDto {
   favoritePosition: PlayerPositionId | null;
 }
 
+/**
+ * Ficha de OTRO usuario — solo lo que puede verse entre compañeros de grupo.
+ * Nada de psicológico ni tests crudos, a propósito.
+ */
+export interface PublicMemberProfileDto {
+  userId: string;
+  name: string;
+  avatarBase64: string | null;
+  favoritePosition: PlayerPositionId | null;
+  stats: PlayerStatsDto | null;
+}
+
+export class GetPublicMemberProfilePayload {
+  @IsUUID()
+  userId!: string;
+
+  @IsUUID()
+  requesterId!: string;
+}
+
 export class SavePhysicalTestResultDto {
   @IsObject()
   rawData!: Record<string, unknown>;

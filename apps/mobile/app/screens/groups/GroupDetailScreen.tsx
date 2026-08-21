@@ -15,6 +15,7 @@ import { type AddMemberOutcome, GroupAddMemberModal } from "./components/GroupAd
 import { GroupAvatar } from "./components/GroupAvatar"
 import { GroupEditModal } from "./components/GroupEditModal"
 import { GroupMemberRow } from "./components/GroupMemberRow"
+import { MemberProfileModal } from "./components/MemberProfileModal"
 import { useGroupDetail } from "./useGroupDetail"
 
 function describeProblem(problem: GeneralApiProblem): string {
@@ -47,6 +48,7 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
   } = useGroupDetail(groupId)
   const [addMemberOpen, setAddMemberOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   const ownRole = group?.members.find((m) => m.userId === authUserId)?.role
@@ -329,6 +331,8 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
                     canRemove={canRemove}
                     onToggleRole={() => handleToggleRole(member)}
                     onRemove={() => handleRemoveMember(member)}
+                    // La ficha propia no hace falta: para eso ya está la pantalla de Perfil.
+                    onPress={isSelf ? undefined : () => setSelectedMemberId(member.userId)}
                   />
                 )
               })}
@@ -380,6 +384,14 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
           onClose={() => setEditOpen(false)}
           group={group}
           onSave={updateGroup}
+        />
+      ) : null}
+
+      {selectedMemberId ? (
+        <MemberProfileModal
+          visible
+          onClose={() => setSelectedMemberId(null)}
+          userId={selectedMemberId}
         />
       ) : null}
     </YStack>

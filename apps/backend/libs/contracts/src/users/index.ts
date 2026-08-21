@@ -1,5 +1,6 @@
 import { Transform } from 'class-transformer';
 import {
+  IsBoolean,
   IsIn,
   IsObject,
   IsOptional,
@@ -14,10 +15,14 @@ function trimString({ value }: { value: unknown }): unknown {
   return typeof value === 'string' ? value.trim() : value;
 }
 
+/** Mismo valor que MAX_GROUP_PHOTO_BASE64_LENGTH (groups) — ~375KB de imagen real. */
+export const MAX_AVATAR_BASE64_LENGTH = 500_000;
+
 export interface UserProfile {
   id: string;
   email: string;
   name: string;
+  avatarBase64: string | null;
   createdAt: Date;
 }
 
@@ -35,6 +40,15 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsIn(PLAYER_POSITION_IDS)
   favoritePosition?: PlayerPositionId | null;
+
+  @IsOptional()
+  @IsString()
+  avatarBase64?: string;
+
+  /** Si viene true, se ignora avatarBase64 y el perfil queda con avatarBase64: null. */
+  @IsOptional()
+  @IsBoolean()
+  removeAvatar?: boolean;
 }
 
 export class UpdatePreferencesDto {
