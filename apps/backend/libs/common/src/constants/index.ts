@@ -46,6 +46,13 @@ export const MESSAGE_PATTERNS = {
     UPDATE_MEMBER_ROLE: 'groups.update_member_role',
     REMOVE_MEMBER: 'groups.remove_member',
     DELETE: 'groups.delete',
+    SEARCH: 'groups.search',
+  },
+  GROUP_FRIENDSHIPS: {
+    REQUEST: 'group_friendships.request',
+    LIST_FOR_GROUP: 'group_friendships.list_for_group',
+    ACCEPT: 'group_friendships.accept',
+    REMOVE: 'group_friendships.remove',
   },
   MATCHES: {
     CREATE: 'matches.create',
