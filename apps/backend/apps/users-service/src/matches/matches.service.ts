@@ -13,6 +13,7 @@ import {
   MatchSummaryDto,
   UpdateMatchStatusPayload,
 } from '@ef/contracts';
+import { GroupFriendshipsService } from '../group-friendships/group-friendships.service';
 import { GroupRepository } from '../groups/repositories/group.repository';
 import { MatchRepository } from './repositories/match.repository';
 
@@ -23,6 +24,7 @@ export class MatchesService {
   constructor(
     private readonly matchRepository: MatchRepository,
     private readonly groupRepository: GroupRepository,
+    private readonly groupFriendshipsService: GroupFriendshipsService,
   ) {}
 
   async create(payload: CreateMatchPayload): Promise<MatchDto> {
@@ -54,6 +56,14 @@ export class MatchesService {
       throw new BadRequestException('opponentGroupId must be different from originGroupId');
     }
     await this.requireGroupExists(opponentGroupId!);
+
+    const areFriends = await this.groupFriendshipsService.areFriends(
+      originGroupId,
+      opponentGroupId!,
+    );
+    if (!areFriends) {
+      throw new ForbiddenException('Groups must be friends to create a VS match');
+    }
 
     return this.matchRepository.create({
       originGroupId,
