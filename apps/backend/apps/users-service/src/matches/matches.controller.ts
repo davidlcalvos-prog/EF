@@ -5,6 +5,7 @@ import {
   CreateMatchPayload,
   ListByGroupPayload,
   MatchActionPayload,
+  RandomizeTeamsPayload,
   UpdateMatchStatusPayload,
   UserIdPayload,
 } from '@ef/contracts';
@@ -57,5 +58,10 @@ export class MatchesController {
   @MessagePattern(MESSAGE_PATTERNS.MATCHES.UPDATE_STATUS)
   updateStatus(@Payload() data: UpdateMatchStatusPayload) {
     return this.matchesService.updateStatus(data);
+  }
+
+  @MessagePattern(MESSAGE_PATTERNS.MATCHES.RANDOMIZE_TEAMS)
+  randomizeTeams(@Payload() data: RandomizeTeamsPayload) {
+    return this.matchesService.randomizeTeams(data);
   }
 }

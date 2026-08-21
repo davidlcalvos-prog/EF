@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@ef/database';
-import { MatchDto, MatchParticipantDto, MatchStatus, MatchSummaryDto, MatchType } from '@ef/contracts';
-import { MatchStatus as PrismaMatchStatus, MatchType as PrismaMatchType } from '@prisma/client';
+import { MatchDto, MatchParticipantDto, MatchStatus, MatchSummaryDto, MatchTeam, MatchType } from '@ef/contracts';
+import { MatchStatus as PrismaMatchStatus, MatchTeam as PrismaMatchTeam, MatchType as PrismaMatchType } from '@prisma/client';
+import type { RandomizerPlayer } from '../team-randomizer';
 
 @Injectable()
 export class MatchRepository {
@@ -135,6 +136,7 @@ export class MatchRepository {
         .filter(Boolean)
         .join(' '),
       confirmedAt: p.confirmedAt.toISOString(),
+      team: (p.team as MatchTeam | null) ?? null,
     }));
 
     return {
@@ -151,9 +153,67 @@ export class MatchRepository {
       createdBy: match.createdBy,
       reservationId: match.reservation?.id ?? null,
       participants,
+      teamsRandomizedAt: match.teamsRandomizedAt?.toISOString() ?? null,
       createdAt: match.createdAt.toISOString(),
       updatedAt: match.updatedAt.toISOString(),
     };
+  }
+
+  /** Un solo query batched (sin N+1) con favoritePosition + las 6 stats de cada participante. */
+  async findParticipantsForRandomization(matchId: string): Promise<RandomizerPlayer[]> {
+    const rows = await this.prisma.matchParticipant.findMany({
+      where: { matchId },
+      select: {
+        userId: true,
+        user: {
+          select: {
+            profile: { select: { favoritePosition: true } },
+            playerStats: {
+              select: {
+                attack: true,
+                defense: true,
+                endurance: true,
+                speed: true,
+                passes: true,
+                dribbling: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return rows.map((row) => ({
+      userId: row.userId,
+      favoritePosition: row.user.profile?.favoritePosition ?? null,
+      stats: {
+        attack: row.user.playerStats?.attack ?? 0,
+        defense: row.user.playerStats?.defense ?? 0,
+        endurance: row.user.playerStats?.endurance ?? 0,
+        speed: row.user.playerStats?.speed ?? 0,
+        passes: row.user.playerStats?.passes ?? 0,
+        dribbling: row.user.playerStats?.dribbling ?? 0,
+      },
+    }));
+  }
+
+  /** Todo o nada: pisa el reparto anterior (si lo había) y actualiza el timestamp del sorteo. */
+  async persistTeamAssignments(
+    matchId: string,
+    assignments: Map<string, MatchTeam>,
+  ): Promise<void> {
+    await this.prisma.$transaction([
+      ...Array.from(assignments.entries()).map(([userId, team]) =>
+        this.prisma.matchParticipant.update({
+          where: { matchId_userId: { matchId, userId } },
+          data: { team: team as PrismaMatchTeam },
+        }),
+      ),
+      this.prisma.match.update({
+        where: { id: matchId },
+        data: { teamsRandomizedAt: new Date() },
+      }),
+    ]);
   }
 
   private toSummaryDto(row: {

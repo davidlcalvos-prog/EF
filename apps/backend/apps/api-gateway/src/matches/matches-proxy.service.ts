@@ -6,6 +6,7 @@ import {
   CreateMatchDto,
   MatchDto,
   MatchSummaryDto,
+  RandomizeTeamsResultDto,
   UpdateMatchStatusDto,
 } from '@ef/contracts';
 
@@ -79,6 +80,13 @@ export class MatchesProxyService {
       matchId,
       requesterId,
       ...dto,
+    });
+  }
+
+  randomizeTeams(matchId: string, requesterId: string): Promise<RandomizeTeamsResultDto> {
+    return this.send<RandomizeTeamsResultDto>(MESSAGE_PATTERNS.MATCHES.RANDOMIZE_TEAMS, {
+      matchId,
+      requesterId,
     });
   }
 
