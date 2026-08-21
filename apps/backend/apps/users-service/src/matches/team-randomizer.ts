@@ -187,9 +187,17 @@ export function randomizeTeams(players: RandomizerPlayer[]): RandomizerResult {
     .sort((a, b) => b.score - a.score);
 
   for (const player of remaining) {
-    const avgA = teamTotals.A.count > 0 ? teamTotals.A.sum / teamTotals.A.count : 0;
-    const avgB = teamTotals.B.count > 0 ? teamTotals.B.sum / teamTotals.B.count : 0;
-    const team: MatchTeam = avgA <= avgB ? 'A' : 'B';
+    // El tamaño manda primero (nunca deben quedar a más de 1 de diferencia,
+    // y esa diferencia de 1 solo debería darse con total impar — regla 5).
+    // El promedio de score solo decide en caso de empate de tamaño.
+    let team: MatchTeam;
+    if (teamTotals.A.count !== teamTotals.B.count) {
+      team = teamTotals.A.count < teamTotals.B.count ? 'A' : 'B';
+    } else {
+      const avgA = teamTotals.A.count > 0 ? teamTotals.A.sum / teamTotals.A.count : 0;
+      const avgB = teamTotals.B.count > 0 ? teamTotals.B.sum / teamTotals.B.count : 0;
+      team = avgA <= avgB ? 'A' : 'B';
+    }
     assignments.set(player.userId, team);
     teamTotals[team].sum += player.score;
     teamTotals[team].count += 1;
