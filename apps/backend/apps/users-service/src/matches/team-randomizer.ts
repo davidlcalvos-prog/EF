@@ -115,20 +115,6 @@ function resolveCategory(favoritePosition: string | null, stats: RandomizerStats
   return POSITION_CATEGORY_MAP[suggestedPositionId(stats)];
 }
 
-/** Orden de "draft por serpiente" para 2 equipos: A,B,B,A,A,B,B,A,... */
-function snakeOrder(count: number): MatchTeam[] {
-  const order: MatchTeam[] = [];
-  let round = 0;
-  while (order.length < count) {
-    const pair: MatchTeam[] = round % 2 === 0 ? ['A', 'B'] : ['B', 'A'];
-    for (const team of pair) {
-      if (order.length < count) order.push(team);
-    }
-    round++;
-  }
-  return order;
-}
-
 function warningMessage(team: MatchTeam, position: PositionCategory): string {
   if (position === 'goalkeeper') {
     // Desde la 6.5.4.1 "goalkeeper" sí es una posición real y sí se contempla
@@ -148,6 +134,36 @@ export function randomizeTeams(players: RandomizerPlayer[]): RandomizerResult {
 
   const assignments = new Map<string, MatchTeam>();
   const warnings: TeamAssignmentWarningDto[] = [];
+  const teamTotals: Record<MatchTeam, { sum: number; count: number }> = {
+    A: { sum: 0, count: 0 },
+    B: { sum: 0, count: 0 },
+  };
+
+  /**
+   * El tamaño de equipo manda siempre primero (nunca deben quedar a más de 1
+   * de diferencia, y esa diferencia de 1 solo debería darse con total impar
+   * — regla 5). El promedio de score solo desempata cuando los tamaños ya
+   * están iguales. Se usa para CADA asignación (mínimos por categoría y
+   * sobrantes) — antes el reparto de mínimos usaba un "draft por serpiente"
+   * A,B,B,A fijo, ciego al tamaño global, que le daba siempre el candidato
+   * impar de una categoría corta (ej. un solo arquero real) al mismo equipo,
+   * acumulando un desbalance de 2+ jugadores cuando varias categorías
+   * quedaban cortas en la misma partida.
+   */
+  function pickTeam(): MatchTeam {
+    if (teamTotals.A.count !== teamTotals.B.count) {
+      return teamTotals.A.count < teamTotals.B.count ? 'A' : 'B';
+    }
+    const avgA = teamTotals.A.count > 0 ? teamTotals.A.sum / teamTotals.A.count : 0;
+    const avgB = teamTotals.B.count > 0 ? teamTotals.B.sum / teamTotals.B.count : 0;
+    return avgA <= avgB ? 'A' : 'B';
+  }
+
+  function assign(player: (typeof scored)[number], team: MatchTeam): void {
+    assignments.set(player.userId, team);
+    teamTotals[team].sum += player.score;
+    teamTotals[team].count += 1;
+  }
 
   for (const category of CATEGORY_ORDER) {
     const requiredPerTeam = MIN_PER_TEAM[category];
@@ -157,16 +173,15 @@ export function randomizeTeams(players: RandomizerPlayer[]): RandomizerResult {
       .filter((p) => !assignments.has(p.userId) && p.category === category)
       .sort((a, b) =>
         category === 'goalkeeper' ? b.stats.defense - a.stats.defense : b.score - a.score,
-      );
+      )
+      .slice(0, requiredTotal);
 
-    const order = snakeOrder(Math.min(requiredTotal, candidates.length));
     const countPerTeam: Record<MatchTeam, number> = { A: 0, B: 0 };
-
-    order.forEach((team, index) => {
-      const player = candidates[index];
-      assignments.set(player.userId, team);
+    for (const player of candidates) {
+      const team = pickTeam();
+      assign(player, team);
       countPerTeam[team] += 1;
-    });
+    }
 
     (['A', 'B'] as MatchTeam[]).forEach((team) => {
       if (countPerTeam[team] < requiredPerTeam) {
@@ -175,39 +190,15 @@ export function randomizeTeams(players: RandomizerPlayer[]): RandomizerResult {
     });
   }
 
-  // Resto de cupos: balanceo puro por promedio de stats, el jugador que sobra
-  // (total impar) queda cubierto naturalmente por este mismo criterio (regla 5).
-  const teamTotals: Record<MatchTeam, { sum: number; count: number }> = {
-    A: { sum: 0, count: 0 },
-    B: { sum: 0, count: 0 },
-  };
-  for (const player of scored) {
-    const team = assignments.get(player.userId);
-    if (team) {
-      teamTotals[team].sum += player.score;
-      teamTotals[team].count += 1;
-    }
-  }
-
+  // Resto de cupos: mismo criterio de balanceo (tamaño primero, score
+  // desempata) — el jugador que sobra en total impar queda cubierto
+  // naturalmente por esto (regla 5).
   const remaining = scored
     .filter((p) => !assignments.has(p.userId))
     .sort((a, b) => b.score - a.score);
 
   for (const player of remaining) {
-    // El tamaño manda primero (nunca deben quedar a más de 1 de diferencia,
-    // y esa diferencia de 1 solo debería darse con total impar — regla 5).
-    // El promedio de score solo decide en caso de empate de tamaño.
-    let team: MatchTeam;
-    if (teamTotals.A.count !== teamTotals.B.count) {
-      team = teamTotals.A.count < teamTotals.B.count ? 'A' : 'B';
-    } else {
-      const avgA = teamTotals.A.count > 0 ? teamTotals.A.sum / teamTotals.A.count : 0;
-      const avgB = teamTotals.B.count > 0 ? teamTotals.B.sum / teamTotals.B.count : 0;
-      team = avgA <= avgB ? 'A' : 'B';
-    }
-    assignments.set(player.userId, team);
-    teamTotals[team].sum += player.score;
-    teamTotals[team].count += 1;
+    assign(player, pickTeam());
   }
 
   return { assignments, warnings };
