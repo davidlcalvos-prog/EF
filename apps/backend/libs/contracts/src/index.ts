@@ -4,5 +4,6 @@ export * from './group-friendships';
 export * from './groups';
 export * from './matches';
 export * from './profile-stats';
+export * from './push-tokens';
 export * from './users';
 export * from './venues';
