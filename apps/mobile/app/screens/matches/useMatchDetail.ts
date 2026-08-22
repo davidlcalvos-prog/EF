@@ -42,11 +42,14 @@ export function useMatchDetail(matchId: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId])
 
-  const join = useCallback(async (): Promise<MatchResult> => {
-    const result = await api.joinMatch(matchId)
-    if (result.kind === "ok") setMatch(result.match)
-    return result
-  }, [matchId])
+  const join = useCallback(
+    async (joinAsGroupId?: string): Promise<MatchResult> => {
+      const result = await api.joinMatch(matchId, joinAsGroupId)
+      if (result.kind === "ok") setMatch(result.match)
+      return result
+    },
+    [matchId],
+  )
 
   const leave = useCallback(async (): Promise<MatchResult> => {
     const result = await api.leaveMatch(matchId)

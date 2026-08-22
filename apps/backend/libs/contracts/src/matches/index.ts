@@ -22,6 +22,9 @@ export type MatchStatus =
 
 export type MatchTeam = 'A' | 'B';
 
+/** Lado de un partido `vs` — distinto de MatchTeam (sorteo interno de la 6.5.4). */
+export type MatchSide = 'origin' | 'opponent';
+
 export interface MatchParticipantDto {
   userId: string;
   email: string;
@@ -29,6 +32,8 @@ export interface MatchParticipantDto {
   confirmedAt: string;
   /** null hasta que el líder sortea equipos (Fase 6.5.4, solo partidos internal). */
   team: MatchTeam | null;
+  /** solo en partidos vs; null en internal. */
+  side: MatchSide | null;
 }
 
 export interface MatchDto {
@@ -44,9 +49,20 @@ export interface MatchDto {
   scheduledAt: string | null;
   createdBy: string;
   reservationId: string | null;
+  /**
+   * Para partidos vs sin confirmar (rosterConfirmedAt null), solo incluye los
+   * participantes del lado del requester — el conteo del lado rival ya viaja
+   * en originSideCount/opponentSideCount, no hace falta mandar sus datos.
+   */
   participants: MatchParticipantDto[];
-  /** null si nunca se sortearon equipos; se pisa en cada re-sorteo. */
+  /** null si nunca se sortearon equipos; se pisa en cada re-sorteo. Solo partidos internal. */
   teamsRandomizedAt: string | null;
+  /** null hasta que ambos lados llegan a sideCapacity; solo partidos vs, nunca vuelve a null. */
+  rosterConfirmedAt: string | null;
+  originSideCount: number;
+  opponentSideCount: number;
+  /** = maxPlayers / 2, para no obligar al cliente a hacer la cuenta. Solo relevante en vs. */
+  sideCapacity: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -98,8 +114,27 @@ export class CreateMatchPayload extends CreateMatchDto {
   requesterId!: string;
 }
 
-/** GET detalle, accept, reject, join, leave — todos solo necesitan matchId + quién pregunta. */
+/** GET detalle, accept, reject, leave — todos solo necesitan matchId + quién pregunta. */
 export class MatchActionPayload {
+  @IsUUID()
+  matchId!: string;
+
+  @IsUUID()
+  requesterId!: string;
+}
+
+/**
+ * join en un vs: si el requester es miembro de los dos grupos del partido,
+ * tiene que indicar desde cuál se une. Opcional en internal / cuando solo
+ * pertenece a un grupo — el lado se infiere solo.
+ */
+export class JoinMatchDto {
+  @IsOptional()
+  @IsUUID()
+  joinAsGroupId?: string;
+}
+
+export class JoinMatchPayload extends JoinMatchDto {
   @IsUUID()
   matchId!: string;
 

@@ -270,6 +270,14 @@ const fr: Translations = {
       "pas assez de milieux disponibles — complété avec le meilleur joueur disponible",
     warningPosition_forward:
       "pas assez d'attaquants disponibles — complété avec le meilleur joueur disponible",
+    sideCount: "{{count}}/{{capacity}}",
+    sideHiddenUntilConfirmed: "Masqué jusqu'à ce que les deux côtés soient au complet",
+    selectJoinSideTitle: "Depuis quel groupe rejoignez-vous ?",
+    selectJoinSideMessage: "Vous êtes membre des deux groupes de ce match.",
+    incompleteRosterBannerTitle: "Effectif incomplet",
+    incompleteRosterUrgentTitle: "Le coup d'envoi approche et l'effectif n'est pas complet",
+    incompleteRosterSide: "{{group}} a encore besoin de {{missing}} joueur(s).",
+    maxPlayersOddError: "Pour un match VS, le nombre maximum de joueurs doit être pair.",
   },
   groupFriendsScreen: {
     title: "Groupes amis",

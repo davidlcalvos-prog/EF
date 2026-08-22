@@ -7,9 +7,11 @@ import {
 } from '@nestjs/common';
 import {
   CreateMatchPayload,
+  JoinMatchPayload,
   ListByGroupPayload,
   MatchActionPayload,
   MatchDto,
+  MatchSide,
   MatchSummaryDto,
   RandomizeTeamsPayload,
   RandomizeTeamsResultDto,
@@ -38,7 +40,7 @@ export class MatchesService {
     const requesterRole = await this.requireGroupMembership(originGroupId, requesterId);
 
     if (type === 'internal') {
-      const match = await this.matchRepository.create({
+      return this.matchRepository.create({
         originGroupId,
         type: 'internal',
         format: payload.format,
@@ -47,7 +49,6 @@ export class MatchesService {
         scheduledAt: payload.scheduledAt ? new Date(payload.scheduledAt) : undefined,
         createdBy: requesterId,
       });
-      return match;
     }
 
     // type === 'vs'
@@ -59,6 +60,11 @@ export class MatchesService {
     if (opponentGroupId === originGroupId) {
       throw new BadRequestException('opponentGroupId must be different from originGroupId');
     }
+    if (payload.maxPlayers % 2 !== 0) {
+      throw new BadRequestException(
+        'maxPlayers must be even for a VS match — capacity is split evenly between both sides',
+      );
+    }
     await this.requireGroupExists(opponentGroupId!);
 
     const areFriends = await this.groupFriendshipsService.areFriends(
@@ -69,7 +75,7 @@ export class MatchesService {
       throw new ForbiddenException('Groups must be friends to create a VS match');
     }
 
-    return this.matchRepository.create({
+    const match = await this.matchRepository.create({
       originGroupId,
       opponentGroupId,
       type: 'vs',
@@ -79,12 +85,14 @@ export class MatchesService {
       scheduledAt: payload.scheduledAt ? new Date(payload.scheduledAt) : undefined,
       createdBy: requesterId,
     });
+    return this.applyVisibility(match, requesterId);
   }
 
   async getDetail(payload: MatchActionPayload): Promise<MatchDto> {
     const match = await this.requireMatch(payload.matchId);
     await this.requireMemberOfEitherGroup(match, payload.requesterId);
-    return this.matchRepository.findDetail(match.id) as Promise<MatchDto>;
+    const detail = (await this.matchRepository.findDetail(match.id)) as MatchDto;
+    return this.applyVisibility(detail, payload.requesterId);
   }
 
   async listMine(userId: string): Promise<MatchSummaryDto[]> {
@@ -107,7 +115,8 @@ export class MatchesService {
     await this.requireOpponentLeadership(match, payload.requesterId);
 
     await this.matchRepository.updateStatus(match.id, 'scheduled');
-    return this.matchRepository.findDetail(match.id) as Promise<MatchDto>;
+    const detail = (await this.matchRepository.findDetail(match.id)) as MatchDto;
+    return this.applyVisibility(detail, payload.requesterId);
   }
 
   async reject(payload: MatchActionPayload): Promise<MatchDto> {
@@ -116,10 +125,11 @@ export class MatchesService {
     await this.requireOpponentLeadership(match, payload.requesterId);
 
     await this.matchRepository.updateStatus(match.id, 'cancelled');
-    return this.matchRepository.findDetail(match.id) as Promise<MatchDto>;
+    const detail = (await this.matchRepository.findDetail(match.id)) as MatchDto;
+    return this.applyVisibility(detail, payload.requesterId);
   }
 
-  async join(payload: MatchActionPayload): Promise<MatchDto> {
+  async join(payload: JoinMatchPayload): Promise<MatchDto> {
     const match = await this.requireMatch(payload.matchId);
 
     if (match.status !== 'scheduled') {
@@ -135,13 +145,24 @@ export class MatchesService {
       throw new ConflictException('You already joined this match');
     }
 
-    const count = await this.matchRepository.countParticipants(match.id);
-    if (count >= match.maxPlayers) {
-      throw new ConflictException('Match already reached its player limit');
+    if (match.type === 'vs') {
+      const side = await this.resolveJoinSide(match, payload.requesterId, payload.joinAsGroupId);
+      const sideCapacity = match.maxPlayers / 2;
+      const sideCount = await this.matchRepository.countParticipantsBySide(match.id, side);
+      if (sideCount >= sideCapacity) {
+        throw new ConflictException('This side of the match is already full');
+      }
+      await this.matchRepository.addVsParticipant(match.id, payload.requesterId, side, sideCapacity);
+    } else {
+      const count = await this.matchRepository.countParticipants(match.id);
+      if (count >= match.maxPlayers) {
+        throw new ConflictException('Match already reached its player limit');
+      }
+      await this.matchRepository.addParticipant(match.id, payload.requesterId);
     }
 
-    await this.matchRepository.addParticipant(match.id, payload.requesterId);
-    return this.matchRepository.findDetail(match.id) as Promise<MatchDto>;
+    const detail = (await this.matchRepository.findDetail(match.id)) as MatchDto;
+    return this.applyVisibility(detail, payload.requesterId);
   }
 
   async leave(payload: MatchActionPayload): Promise<MatchDto> {
@@ -156,7 +177,8 @@ export class MatchesService {
     }
 
     await this.matchRepository.removeParticipant(match.id, payload.requesterId);
-    return this.matchRepository.findDetail(match.id) as Promise<MatchDto>;
+    const detail = (await this.matchRepository.findDetail(match.id)) as MatchDto;
+    return this.applyVisibility(detail, payload.requesterId);
   }
 
   async updateStatus(payload: UpdateMatchStatusPayload): Promise<MatchDto> {
@@ -182,7 +204,71 @@ export class MatchesService {
     }
 
     await this.matchRepository.updateStatus(match.id, payload.status);
-    return this.matchRepository.findDetail(match.id) as Promise<MatchDto>;
+    const detail = (await this.matchRepository.findDetail(match.id)) as MatchDto;
+    return this.applyVisibility(detail, payload.requesterId);
+  }
+
+  /**
+   * Si el requester es miembro de un solo grupo de los dos, el lado se infiere.
+   * Si es de los dos, joinAsGroupId es obligatorio y debe ser uno de los dos.
+   */
+  private async resolveJoinSide(
+    match: { originGroupId: string; opponentGroupId: string | null },
+    requesterId: string,
+    joinAsGroupId?: string,
+  ): Promise<MatchSide> {
+    const originMembership = await this.groupRepository.findMembership(
+      match.originGroupId,
+      requesterId,
+    );
+    const opponentMembership = match.opponentGroupId
+      ? await this.groupRepository.findMembership(match.opponentGroupId, requesterId)
+      : null;
+
+    const isOrigin = !!originMembership;
+    const isOpponent = !!opponentMembership;
+
+    if (isOrigin && isOpponent) {
+      if (!joinAsGroupId) {
+        throw new BadRequestException(
+          'You are a member of both groups — specify joinAsGroupId',
+        );
+      }
+      if (joinAsGroupId === match.originGroupId) return 'origin';
+      if (joinAsGroupId === match.opponentGroupId) return 'opponent';
+      throw new BadRequestException('joinAsGroupId must be one of the two groups in this match');
+    }
+    if (isOrigin) return 'origin';
+    if (isOpponent) return 'opponent';
+
+    // requireMemberOfEitherGroup ya se llamó antes en join(); esto no debería alcanzarse.
+    throw new ForbiddenException('You are not a member of either group involved in this match');
+  }
+
+  /**
+   * Partidos vs sin roster confirmado: un lado solo ve su propia planilla
+   * completa, del rival solo el conteo (ya viaja en originSideCount/
+   * opponentSideCount) — un cambio real de qué datos viajan por la red, no
+   * solo de qué pinta el mobile.
+   */
+  private async applyVisibility(match: MatchDto, requesterId: string): Promise<MatchDto> {
+    if (match.type !== 'vs' || match.rosterConfirmedAt) return match;
+
+    const originMembership = await this.groupRepository.findMembership(
+      match.originGroupId,
+      requesterId,
+    );
+    const requesterSide: MatchSide | null = originMembership
+      ? 'origin'
+      : match.opponentGroupId &&
+          (await this.groupRepository.findMembership(match.opponentGroupId, requesterId))
+        ? 'opponent'
+        : null;
+
+    return {
+      ...match,
+      participants: match.participants.filter((p) => p.side === requesterSide),
+    };
   }
 
   /**

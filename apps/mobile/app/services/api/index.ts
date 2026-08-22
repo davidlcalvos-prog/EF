@@ -55,6 +55,7 @@ export type {
   MatchTypeApi,
   MatchStatusApi,
   MatchTeamApi,
+  MatchSideApi,
   MatchParticipantApiDto,
   MatchApiDto,
   MatchSummaryApiDto,
@@ -640,11 +641,19 @@ export class Api {
     return { kind: "ok", match: response.data }
   }
 
-  /** 409 si ya está lleno o si ya te uniste. */
+  /**
+   * 409 si ya está lleno (o el lado correspondiente, en vs) o si ya te uniste.
+   * `joinAsGroupId` es obligatorio solo si sos miembro de los dos grupos del
+   * partido (400 si falta en ese caso) — el backend infiere el lado si no.
+   */
   async joinMatch(
     matchId: string,
+    joinAsGroupId?: string,
   ): Promise<{ kind: "ok"; match: MatchApiDto } | GeneralApiProblem> {
-    const response = await this.apisauce.post<MatchApiDto>(`matches/${matchId}/join`)
+    const response = await this.apisauce.post<MatchApiDto>(
+      `matches/${matchId}/join`,
+      joinAsGroupId ? { joinAsGroupId } : {},
+    )
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)

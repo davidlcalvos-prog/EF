@@ -165,8 +165,16 @@ export function CreateMatchModal({
     Number.isInteger(maxPlayersNum) &&
     maxPlayersNum >= 2 &&
     maxPlayersNum <= 30
+  // En vs la capacidad se reparte en dos lados iguales (maxPlayers/2) — un
+  // impar dejaría un lado con medio cupo, el backend lo rechaza igual.
+  const isMaxPlayersEvenForVs = type !== "vs" || maxPlayersNum % 2 === 0
   const isVsSelectionValid = type === "internal" || (type === "vs" && !!opponentGroupId)
-  const isValid = !!originGroupId && isFormatValid && isMaxPlayersValid && isVsSelectionValid
+  const isValid =
+    !!originGroupId &&
+    isFormatValid &&
+    isMaxPlayersValid &&
+    isMaxPlayersEvenForVs &&
+    isVsSelectionValid
 
   const scheduledAtIso = useMemo(() => {
     if (dateOption === "none") return undefined
@@ -439,6 +447,10 @@ export function CreateMatchModal({
               {maxPlayers.trim().length > 0 && !isMaxPlayersValid ? (
                 <Text color="#E74C3C" fontSize={12}>
                   {translate("matchesScreen:maxPlayersError")}
+                </Text>
+              ) : maxPlayers.trim().length > 0 && !isMaxPlayersEvenForVs ? (
+                <Text color="#E74C3C" fontSize={12}>
+                  {translate("matchesScreen:maxPlayersOddError")}
                 </Text>
               ) : null}
             </YStack>

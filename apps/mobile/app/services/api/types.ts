@@ -197,12 +197,17 @@ export type MatchStatusApi = "draft" | "pending_opponent" | "scheduled" | "playe
 
 export type MatchTeamApi = "A" | "B"
 
+/** Lado de un partido vs — distinto de MatchTeamApi (sorteo interno de la 6.5.4). */
+export type MatchSideApi = "origin" | "opponent"
+
 export interface MatchParticipantApiDto {
   userId: string
   email: string
   name: string
   confirmedAt: string
   team: MatchTeamApi | null
+  /** solo en partidos vs; null en internal. */
+  side: MatchSideApi | null
 }
 
 export interface MatchApiDto {
@@ -218,8 +223,15 @@ export interface MatchApiDto {
   scheduledAt: string | null
   createdBy: string
   reservationId: string | null
+  /** En vs sin confirmar, el backend ya filtra: solo trae el lado propio del requester. */
   participants: MatchParticipantApiDto[]
   teamsRandomizedAt: string | null
+  /** null hasta que ambos lados se llenan; solo vs, nunca vuelve a null. */
+  rosterConfirmedAt: string | null
+  originSideCount: number
+  opponentSideCount: number
+  /** = maxPlayers / 2, solo relevante en vs. */
+  sideCapacity: number
   createdAt: string
   updatedAt: string
 }

@@ -57,6 +57,55 @@ function warningLine(warning: { team: "A" | "B"; position: "goalkeeper" | "defen
   })
 }
 
+/**
+ * Sección de un lado de un partido vs. Si el backend no mandó participantes
+ * de este lado (porque no está confirmado y es el lado rival), `participants`
+ * llega vacío aunque `count` sea > 0 — mostramos el conteo solo, sin lista.
+ */
+function VsSideSection({
+  title,
+  count,
+  capacity,
+  participants,
+  confirmed,
+  accentColor,
+}: {
+  title: string
+  count: number
+  capacity: number
+  participants: MatchParticipantApiDto[]
+  confirmed: boolean
+  accentColor: `#${string}`
+}) {
+  const hidden = !confirmed && participants.length === 0 && count > 0
+
+  return (
+    <YStack>
+      <XStack alignItems="center" justifyContent="space-between" marginBottom={4}>
+        <Text color={accentColor} fontWeight="800" fontSize={13} numberOfLines={1} flex={1}>
+          {title}
+        </Text>
+        <Text color="rgba(255,255,255,0.5)" fontSize={12}>
+          {translate("matchesScreen:sideCount", { count, capacity })}
+        </Text>
+      </XStack>
+      {hidden ? (
+        <Text color="rgba(255,255,255,0.35)" fontSize={12} fontStyle="italic">
+          {translate("matchesScreen:sideHiddenUntilConfirmed")}
+        </Text>
+      ) : participants.length === 0 ? (
+        <Text color="rgba(255,255,255,0.35)" fontSize={12}>
+          {translate("matchesScreen:noParticipants")}
+        </Text>
+      ) : (
+        participants.map((participant) => (
+          <ParticipantRow key={participant.userId} participant={participant} />
+        ))
+      )}
+    </YStack>
+  )
+}
+
 /** Fila reusada para la lista plana y para cada sección de equipo — nunca muestra stats de nadie. */
 function ParticipantRow({ participant }: { participant: MatchParticipantApiDto }) {
   return (
@@ -109,15 +158,18 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
   } = useMatchDetail(matchId)
   const [isOriginLeader, setIsOriginLeader] = useState(false)
   const [isOpponentLeader, setIsOpponentLeader] = useState(false)
+  const [isOriginMember, setIsOriginMember] = useState(false)
+  const [isOpponentMember, setIsOpponentMember] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  const isGroupLeader = useCallback(
+  const checkGroupMembership = useCallback(
     async (groupId: string) => {
-      if (!authUserId) return false
+      if (!authUserId) return { isMember: false, isLeader: false }
       const result = await api.getGroupDetail(groupId)
-      if (result.kind !== "ok") return false
+      if (result.kind !== "ok") return { isMember: false, isLeader: false }
       const ownRole = result.group.members.find((m) => m.userId === authUserId)?.role
-      return ownRole === "creator" || ownRole === "admin"
+      if (!ownRole) return { isMember: false, isLeader: false }
+      return { isMember: true, isLeader: ownRole === "creator" || ownRole === "admin" }
     },
     [authUserId],
   )
@@ -126,29 +178,41 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
     if (!match?.originGroupId || !authUserId) {
       setIsOriginLeader(false)
       setIsOpponentLeader(false)
+      setIsOriginMember(false)
+      setIsOpponentMember(false)
       return
     }
     let cancelled = false
 
-    isGroupLeader(match.originGroupId).then((leader) => {
-      if (!cancelled) setIsOriginLeader(leader)
+    checkGroupMembership(match.originGroupId).then(({ isMember, isLeader }) => {
+      if (cancelled) return
+      setIsOriginMember(isMember)
+      setIsOriginLeader(isLeader)
     })
 
     if (match.opponentGroupId) {
-      isGroupLeader(match.opponentGroupId).then((leader) => {
-        if (!cancelled) setIsOpponentLeader(leader)
+      checkGroupMembership(match.opponentGroupId).then(({ isMember, isLeader }) => {
+        if (cancelled) return
+        setIsOpponentMember(isMember)
+        setIsOpponentLeader(isLeader)
       })
     } else {
+      setIsOpponentMember(false)
       setIsOpponentLeader(false)
     }
 
     return () => {
       cancelled = true
     }
-  }, [match?.originGroupId, match?.opponentGroupId, authUserId, isGroupLeader])
+  }, [match?.originGroupId, match?.opponentGroupId, authUserId, checkGroupMembership])
 
   const isParticipant = !!match?.participants.some((p) => p.userId === authUserId)
-  const hasCapacity = !!match && match.participants.length < match.maxPlayers
+  const isVs = match?.type === "vs"
+  const originHasRoom = isVs && (match?.originSideCount ?? 0) < (match?.sideCapacity ?? 0)
+  const opponentHasRoom = isVs && (match?.opponentSideCount ?? 0) < (match?.sideCapacity ?? 0)
+  const hasCapacity = isVs
+    ? (isOriginMember && originHasRoom) || (isOpponentMember && opponentHasRoom)
+    : !!match && match.participants.length < match.maxPlayers
   const canManageStatus = isOriginLeader || isOpponentLeader
   const isPendingOpponent = match?.status === "pending_opponent"
   const canRespondToChallenge = match?.type === "vs" && isPendingOpponent && isOpponentLeader
@@ -158,15 +222,58 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
   const canRandomizeTeams =
     isOriginLeader && match?.type === "internal" && match?.status === "scheduled" && isFull
   const hasTeams = !!match?.teamsRandomizedAt
+  const isRosterConfirmed = !!match?.rosterConfirmedAt
 
-  const handleJoin = useCallback(async () => {
-    setBusy(true)
-    const result = await join()
-    setBusy(false)
-    if (result.kind !== "ok") {
-      Alert.alert(translate("matchesScreen:actionError"), describeProblem(result))
+  // Aviso de cupo incompleto cerca de la hora (Fase 6.5.5, sin push — se
+  // calcula al vuelo comparando con la hora del dispositivo). Se activa al
+  // entrar en la ventana de 6h antes del kickoff y se mantiene aunque el
+  // horario ya haya pasado (sin cota inferior): el punto es justamente
+  // avisar mientras el partido sigue sin confirmarse cerca de — o después
+  // de — la hora en que debía jugarse.
+  const msUntilKickoff =
+    isVs && match?.scheduledAt ? new Date(match.scheduledAt).getTime() - Date.now() : null
+  const originIncomplete = isVs && (match?.originSideCount ?? 0) < (match?.sideCapacity ?? 0)
+  const opponentIncomplete = isVs && (match?.opponentSideCount ?? 0) < (match?.sideCapacity ?? 0)
+  const isRosterIncomplete = isVs && !isRosterConfirmed && (originIncomplete || opponentIncomplete)
+  const showIncompleteBanner =
+    isRosterIncomplete && msUntilKickoff !== null && msUntilKickoff <= 6 * 60 * 60 * 1000
+  const showUrgentIncompleteBanner =
+    isRosterIncomplete && msUntilKickoff !== null && msUntilKickoff <= 30 * 60 * 1000
+  const canCancelIncompleteSide =
+    (originIncomplete && isOriginLeader) || (opponentIncomplete && isOpponentLeader)
+
+  const runJoin = useCallback(
+    async (joinAsGroupId?: string) => {
+      setBusy(true)
+      const result = await join(joinAsGroupId)
+      setBusy(false)
+      if (result.kind !== "ok") {
+        Alert.alert(translate("matchesScreen:actionError"), describeProblem(result))
+      }
+    },
+    [join],
+  )
+
+  const handleJoin = useCallback(() => {
+    if (!match) return
+    // Miembro de los dos grupos del partido: hay que elegir desde cuál se une.
+    if (isVs && isOriginMember && isOpponentMember) {
+      Alert.alert(
+        translate("matchesScreen:selectJoinSideTitle"),
+        translate("matchesScreen:selectJoinSideMessage"),
+        [
+          { text: translate("feedScreen:composeCancel"), style: "cancel" },
+          { text: match.originGroupName, onPress: () => runJoin(match.originGroupId) },
+          {
+            text: match.opponentGroupName ?? "",
+            onPress: () => runJoin(match.opponentGroupId ?? undefined),
+          },
+        ],
+      )
+      return
     }
-  }, [join])
+    runJoin()
+  }, [match, isVs, isOriginMember, isOpponentMember, runJoin])
 
   const handleLeave = useCallback(() => {
     Alert.alert(
@@ -426,7 +533,12 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
                 <Ionicons name="people-outline" size={16} color="rgba(255,255,255,0.5)" />
                 <Text color="rgba(255,255,255,0.6)" fontSize={13}>
                   {translate("matchesScreen:participantCount", {
-                    count: match.participants.length,
+                    // En vs sin confirmar, participants solo trae el lado propio
+                    // (el backend oculta el rival) — originSideCount/opponentSideCount
+                    // siempre reflejan el total real, se muestren o no los nombres.
+                    count: isVs
+                      ? match.originSideCount + match.opponentSideCount
+                      : match.participants.length,
                     max: match.maxPlayers,
                   })}
                 </Text>
@@ -451,11 +563,100 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
               </XStack>
             </YStack>
 
-            <Text color="rgba(255,255,255,0.5)" fontSize={13} marginBottom={8}>
-              {translate("matchesScreen:participantsTitle")}
-            </Text>
+            {showIncompleteBanner ? (
+              <YStack
+                backgroundColor={
+                  showUrgentIncompleteBanner ? "rgba(231,76,60,0.12)" : "rgba(255,140,0,0.1)"
+                }
+                borderRadius={12}
+                borderWidth={1}
+                borderColor={showUrgentIncompleteBanner ? "#E74C3C" : eliteForgeColors.orange}
+                padding={14}
+                gap={8}
+                marginBottom={16}
+              >
+                <XStack alignItems="center" gap={8}>
+                  <Ionicons
+                    name="alert-circle-outline"
+                    size={18}
+                    color={showUrgentIncompleteBanner ? "#E74C3C" : eliteForgeColors.orange}
+                  />
+                  <Text
+                    color={showUrgentIncompleteBanner ? "#E74C3C" : eliteForgeColors.orange}
+                    fontWeight="800"
+                    fontSize={13}
+                    flex={1}
+                  >
+                    {translate(
+                      showUrgentIncompleteBanner
+                        ? "matchesScreen:incompleteRosterUrgentTitle"
+                        : "matchesScreen:incompleteRosterBannerTitle",
+                    )}
+                  </Text>
+                </XStack>
+                <Text color="rgba(255,255,255,0.7)" fontSize={13} lineHeight={18}>
+                  {[
+                    originIncomplete
+                      ? translate("matchesScreen:incompleteRosterSide", {
+                          group: match.originGroupName,
+                          missing: match.sideCapacity - match.originSideCount,
+                        })
+                      : null,
+                    opponentIncomplete
+                      ? translate("matchesScreen:incompleteRosterSide", {
+                          group: match.opponentGroupName ?? "",
+                          missing: match.sideCapacity - match.opponentSideCount,
+                        })
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                </Text>
+                {showUrgentIncompleteBanner && canCancelIncompleteSide ? (
+                  <Pressable onPress={handleCancelMatch} disabled={busy} accessibilityRole="button">
+                    <XStack
+                      backgroundColor="rgba(231,76,60,0.18)"
+                      borderRadius={10}
+                      paddingVertical={10}
+                      alignItems="center"
+                      justifyContent="center"
+                      opacity={busy ? 0.6 : 1}
+                    >
+                      <Text color="#E74C3C" fontWeight="800" fontSize={13}>
+                        {translate("matchesScreen:cancelMatch")}
+                      </Text>
+                    </XStack>
+                  </Pressable>
+                ) : null}
+              </YStack>
+            ) : null}
 
-            {match.participants.length === 0 ? (
+            {!isVs ? (
+              <Text color="rgba(255,255,255,0.5)" fontSize={13} marginBottom={8}>
+                {translate("matchesScreen:participantsTitle")}
+              </Text>
+            ) : null}
+
+            {isVs ? (
+              <YStack gap={16} marginBottom={8}>
+                <VsSideSection
+                  title={match.originGroupName}
+                  count={match.originSideCount}
+                  capacity={match.sideCapacity}
+                  participants={match.participants.filter((p) => p.side === "origin")}
+                  confirmed={isRosterConfirmed}
+                  accentColor={eliteForgeColors.emerald}
+                />
+                <VsSideSection
+                  title={match.opponentGroupName ?? ""}
+                  count={match.opponentSideCount}
+                  capacity={match.sideCapacity}
+                  participants={match.participants.filter((p) => p.side === "opponent")}
+                  confirmed={isRosterConfirmed}
+                  accentColor={eliteForgeColors.orange}
+                />
+              </YStack>
+            ) : match.participants.length === 0 ? (
               <Text color="rgba(255,255,255,0.4)" fontSize={13} marginBottom={16}>
                 {translate("matchesScreen:noParticipants")}
               </Text>

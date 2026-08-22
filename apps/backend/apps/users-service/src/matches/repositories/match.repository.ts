@@ -1,7 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@ef/database';
-import { MatchDto, MatchParticipantDto, MatchStatus, MatchSummaryDto, MatchTeam, MatchType } from '@ef/contracts';
-import { MatchStatus as PrismaMatchStatus, MatchTeam as PrismaMatchTeam, MatchType as PrismaMatchType } from '@prisma/client';
+import {
+  MatchDto,
+  MatchParticipantDto,
+  MatchSide,
+  MatchStatus,
+  MatchSummaryDto,
+  MatchTeam,
+  MatchType,
+} from '@ef/contracts';
+import {
+  MatchSide as PrismaMatchSide,
+  MatchStatus as PrismaMatchStatus,
+  MatchTeam as PrismaMatchTeam,
+  MatchType as PrismaMatchType,
+} from '@prisma/client';
 import type { RandomizerPlayer } from '../team-randomizer';
 
 @Injectable()
@@ -22,7 +35,9 @@ export class MatchRepository {
       data: {
         ...data,
         participants: {
-          create: { userId: data.createdBy },
+          // El creador de un vs arranca del lado origin — es líder de ese
+          // grupo por construcción (validado en el service antes de llegar acá).
+          create: { userId: data.createdBy, side: data.type === 'vs' ? 'origin' : undefined },
         },
       },
     });
@@ -137,7 +152,11 @@ export class MatchRepository {
         .join(' '),
       confirmedAt: p.confirmedAt.toISOString(),
       team: (p.team as MatchTeam | null) ?? null,
+      side: (p.side as MatchSide | null) ?? null,
     }));
+
+    const originSideCount = participants.filter((p) => p.side === 'origin').length;
+    const opponentSideCount = participants.filter((p) => p.side === 'opponent').length;
 
     return {
       id: match.id,
@@ -154,9 +173,50 @@ export class MatchRepository {
       reservationId: match.reservation?.id ?? null,
       participants,
       teamsRandomizedAt: match.teamsRandomizedAt?.toISOString() ?? null,
+      rosterConfirmedAt: match.rosterConfirmedAt?.toISOString() ?? null,
+      originSideCount,
+      opponentSideCount,
+      sideCapacity: match.maxPlayers / 2,
       createdAt: match.createdAt.toISOString(),
       updatedAt: match.updatedAt.toISOString(),
     };
+  }
+
+  async countParticipantsBySide(matchId: string, side: MatchSide): Promise<number> {
+    return this.prisma.matchParticipant.count({
+      where: { matchId, side: side as PrismaMatchSide },
+    });
+  }
+
+  /**
+   * Todo en una transacción: agrega al participante del lado indicado y, si
+   * con esta incorporación ambos lados llegan a sideCapacity por primera vez,
+   * confirma el roster. El guard `rosterConfirmedAt: null` en el update hace
+   * que la confirmación sea idempotente (nunca se pisa una ya existente).
+   */
+  async addVsParticipant(
+    matchId: string,
+    userId: string,
+    side: MatchSide,
+    sideCapacity: number,
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.matchParticipant.create({
+        data: { matchId, userId, side: side as PrismaMatchSide },
+      });
+
+      const [originCount, opponentCount] = await Promise.all([
+        tx.matchParticipant.count({ where: { matchId, side: 'origin' } }),
+        tx.matchParticipant.count({ where: { matchId, side: 'opponent' } }),
+      ]);
+
+      if (originCount >= sideCapacity && opponentCount >= sideCapacity) {
+        await tx.match.updateMany({
+          where: { id: matchId, rosterConfirmedAt: null },
+          data: { rosterConfirmedAt: new Date() },
+        });
+      }
+    });
   }
 
   /** Un solo query batched (sin N+1) con favoritePosition + las 6 stats de cada participante. */
