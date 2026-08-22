@@ -270,6 +270,14 @@ const es: Translations = {
       "no había suficientes mediocampistas disponibles — se completó con el mejor disponible",
     warningPosition_forward:
       "no había suficientes delanteros disponibles — se completó con el mejor disponible",
+    sideCount: "{{count}}/{{capacity}}",
+    sideHiddenUntilConfirmed: "Oculto hasta que ambos lados estén completos",
+    selectJoinSideTitle: "¿Desde qué grupo te unís?",
+    selectJoinSideMessage: "Sos miembro de los dos grupos de este partido.",
+    incompleteRosterBannerTitle: "Cupo incompleto",
+    incompleteRosterUrgentTitle: "Falta poco para el partido y el cupo no está completo",
+    incompleteRosterSide: "A {{group}} todavía le faltan {{missing}} jugador(es).",
+    maxPlayersOddError: "Para un partido VS, el máximo de jugadores debe ser un número par.",
   },
   groupFriendsScreen: {
     title: "Grupos amigos",

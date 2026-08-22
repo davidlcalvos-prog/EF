@@ -267,6 +267,14 @@ const en = {
       "not enough midfielders available — filled with the best available player",
     warningPosition_forward:
       "not enough forwards available — filled with the best available player",
+    sideCount: "{{count}}/{{capacity}}",
+    sideHiddenUntilConfirmed: "Hidden until both sides are full",
+    selectJoinSideTitle: "Which group are you joining as?",
+    selectJoinSideMessage: "You're a member of both groups in this match.",
+    incompleteRosterBannerTitle: "Roster incomplete",
+    incompleteRosterUrgentTitle: "Kickoff is close and the roster isn't full",
+    incompleteRosterSide: "{{group}} still needs {{missing}} more player(s).",
+    maxPlayersOddError: "For a VS match, max players must be an even number.",
   },
   groupFriendsScreen: {
     title: "Friend groups",
