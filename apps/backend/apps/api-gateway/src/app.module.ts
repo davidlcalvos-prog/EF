@@ -13,6 +13,7 @@ import { GroupsProxyModule } from './groups/groups-proxy.module';
 import { MatchesProxyModule } from './matches/matches-proxy.module';
 import { ReservationsProxyModule } from './reservations/reservations-proxy.module';
 import { FeedProxyModule } from './feed/feed-proxy.module';
+import { PushTokensProxyModule } from './push-tokens/push-tokens-proxy.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -41,6 +42,7 @@ import { HealthController } from './health/health.controller';
     MatchesProxyModule,
     ReservationsProxyModule,
     FeedProxyModule,
+    PushTokensProxyModule,
   ],
   controllers: [HealthController],
   providers: [
