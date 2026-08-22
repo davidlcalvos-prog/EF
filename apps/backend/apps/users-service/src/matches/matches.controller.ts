@@ -3,6 +3,7 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { MESSAGE_PATTERNS } from '@ef/common';
 import {
   CreateMatchPayload,
+  JoinMatchPayload,
   ListByGroupPayload,
   MatchActionPayload,
   RandomizeTeamsPayload,
@@ -46,7 +47,7 @@ export class MatchesController {
   }
 
   @MessagePattern(MESSAGE_PATTERNS.MATCHES.JOIN)
-  join(@Payload() data: MatchActionPayload) {
+  join(@Payload() data: JoinMatchPayload) {
     return this.matchesService.join(data);
   }
 
