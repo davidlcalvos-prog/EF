@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
-import { AuthTokenPayload, CreateMatchDto, UpdateMatchStatusDto } from '@ef/contracts';
+import { AuthTokenPayload, CreateMatchDto, JoinMatchDto, UpdateMatchStatusDto } from '@ef/contracts';
 import { CurrentUser } from '../auth/decorators';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { MatchesProxyService } from './matches-proxy.service';
@@ -47,8 +47,12 @@ export class MatchesProxyController {
   }
 
   @Post(':id/join')
-  join(@Param('id') id: string, @CurrentUser() user: AuthTokenPayload) {
-    return this.matchesProxy.join(id, user.sub);
+  join(
+    @Param('id') id: string,
+    @Body() dto: JoinMatchDto,
+    @CurrentUser() user: AuthTokenPayload,
+  ) {
+    return this.matchesProxy.join(id, user.sub, dto);
   }
 
   @Post(':id/leave')

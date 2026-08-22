@@ -4,6 +4,7 @@ import { catchError, firstValueFrom, throwError } from 'rxjs';
 import { MESSAGE_PATTERNS, SERVICE_NAMES, toHttpException } from '@ef/common';
 import {
   CreateMatchDto,
+  JoinMatchDto,
   MatchDto,
   MatchSummaryDto,
   RandomizeTeamsResultDto,
@@ -57,10 +58,11 @@ export class MatchesProxyService {
     });
   }
 
-  join(matchId: string, requesterId: string): Promise<MatchDto> {
+  join(matchId: string, requesterId: string, dto: JoinMatchDto): Promise<MatchDto> {
     return this.send<MatchDto>(MESSAGE_PATTERNS.MATCHES.JOIN, {
       matchId,
       requesterId,
+      ...dto,
     });
   }
 
