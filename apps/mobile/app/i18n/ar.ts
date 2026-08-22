@@ -447,6 +447,7 @@ const ar: Translations = {
     devResetTestsAction: "Reset",
     devResetTestsDone: "Tests reset",
     devResetTestsDoneMessage: "You can retake all tests.",
+    position_goalkeeper: "حارس مرمى",
     position_striker: "Striker",
     position_winger: "Winger",
     position_cam: "Attacking mid",

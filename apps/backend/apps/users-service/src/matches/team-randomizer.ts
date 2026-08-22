@@ -32,17 +32,17 @@ export interface RandomizerResult {
 }
 
 /**
- * Las 7 posiciones reales del producto (mobile: data/suggestPlayerPosition.ts
- * PlayerPositionId) — no hay ninguna posición "arquero" en el catálogo, así
- * que ningún jugador puede caer en la categoría 'goalkeeper' vía favoritePosition
- * ni vía sugerida. Es una decisión de mapeo no obvia y un hueco real del
- * producto: ver el resumen de la Fase 6.5.4 para el detalle.
+ * Las 8 posiciones reales del producto (mobile: data/suggestPlayerPosition.ts
+ * PlayerPositionId). "goalkeeper" se agregó en la Fase 6.5.4.1 — antes no
+ * existía y ningún jugador podía caer nunca en la categoría 'goalkeeper' del
+ * randomizador (6.5.4), ni por favorita ni por sugerida.
  *
  * winger se mapea a 'forward': su perfil de stats (speed/dribbling/attack
  * altos, defense bajo) se parece más a un delantero que a un mediocampista
  * defensivo como cdm/cm — criterio futbolístico, no un mapeo obvio.
  */
 const POSITION_CATEGORY_MAP: Record<string, PositionCategory> = {
+  goalkeeper: 'goalkeeper',
   fullback: 'defense',
   centerback: 'defense',
   cm: 'midfield',
@@ -60,6 +60,7 @@ const POSITION_CATEGORY_MAP: Record<string, PositionCategory> = {
  * "posición sugerida" que ve el jugador en su perfil.
  */
 const POSITION_WEIGHTS: Record<string, Record<StatKey, number>> = {
+  goalkeeper: { defense: 0.4, endurance: 0.15, passes: 0.15, speed: 0.1, dribbling: 0.05, attack: 0.05 },
   striker: { attack: 0.38, speed: 0.22, dribbling: 0.14, endurance: 0.1, passes: 0.06, defense: 0.1 },
   winger: { speed: 0.32, dribbling: 0.26, attack: 0.18, endurance: 0.12, passes: 0.07, defense: 0.05 },
   cam: { passes: 0.28, attack: 0.24, dribbling: 0.22, endurance: 0.12, speed: 0.09, defense: 0.05 },
@@ -83,7 +84,7 @@ function overallScore(stats: RandomizerStats): number {
   return STAT_KEYS.reduce((sum, key) => sum + stats[key], 0) / STAT_KEYS.length;
 }
 
-/** Posición sugerida por stats (respaldo) — devuelve siempre una de las 7, nunca "goalkeeper". */
+/** Posición sugerida por stats (respaldo) — puede devolver "goalkeeper" desde la Fase 6.5.4.1. */
 function suggestedPositionId(stats: RandomizerStats): string {
   let bestId: string | null = null;
   let bestScore = -1;
@@ -114,21 +115,13 @@ function resolveCategory(favoritePosition: string | null, stats: RandomizerStats
   return POSITION_CATEGORY_MAP[suggestedPositionId(stats)];
 }
 
-/** Orden de "draft por serpiente" para 2 equipos: A,B,B,A,A,B,B,A,... */
-function snakeOrder(count: number): MatchTeam[] {
-  const order: MatchTeam[] = [];
-  let round = 0;
-  while (order.length < count) {
-    const pair: MatchTeam[] = round % 2 === 0 ? ['A', 'B'] : ['B', 'A'];
-    for (const team of pair) {
-      if (order.length < count) order.push(team);
-    }
-    round++;
-  }
-  return order;
-}
-
 function warningMessage(team: MatchTeam, position: PositionCategory): string {
+  if (position === 'goalkeeper') {
+    // Desde la 6.5.4.1 "goalkeeper" sí es una posición real y sí se contempla
+    // (favorita o sugerida) — si esto dispara es porque nadie en el partido
+    // tuvo afinidad real a arquero, no por un hueco del catálogo.
+    return `Equipo ${team}: no había ningún candidato a arquero (ni por posición favorita ni por sugerida), se completó con el mejor defensa disponible.`;
+  }
   return `Equipo ${team}: no había suficientes candidatos para ${position} (ni por posición favorita ni por sugerida), se completó balanceando por puntaje general.`;
 }
 
@@ -141,6 +134,36 @@ export function randomizeTeams(players: RandomizerPlayer[]): RandomizerResult {
 
   const assignments = new Map<string, MatchTeam>();
   const warnings: TeamAssignmentWarningDto[] = [];
+  const teamTotals: Record<MatchTeam, { sum: number; count: number }> = {
+    A: { sum: 0, count: 0 },
+    B: { sum: 0, count: 0 },
+  };
+
+  /**
+   * El tamaño de equipo manda siempre primero (nunca deben quedar a más de 1
+   * de diferencia, y esa diferencia de 1 solo debería darse con total impar
+   * — regla 5). El promedio de score solo desempata cuando los tamaños ya
+   * están iguales. Se usa para CADA asignación (mínimos por categoría y
+   * sobrantes) — antes el reparto de mínimos usaba un "draft por serpiente"
+   * A,B,B,A fijo, ciego al tamaño global, que le daba siempre el candidato
+   * impar de una categoría corta (ej. un solo arquero real) al mismo equipo,
+   * acumulando un desbalance de 2+ jugadores cuando varias categorías
+   * quedaban cortas en la misma partida.
+   */
+  function pickTeam(): MatchTeam {
+    if (teamTotals.A.count !== teamTotals.B.count) {
+      return teamTotals.A.count < teamTotals.B.count ? 'A' : 'B';
+    }
+    const avgA = teamTotals.A.count > 0 ? teamTotals.A.sum / teamTotals.A.count : 0;
+    const avgB = teamTotals.B.count > 0 ? teamTotals.B.sum / teamTotals.B.count : 0;
+    return avgA <= avgB ? 'A' : 'B';
+  }
+
+  function assign(player: (typeof scored)[number], team: MatchTeam): void {
+    assignments.set(player.userId, team);
+    teamTotals[team].sum += player.score;
+    teamTotals[team].count += 1;
+  }
 
   for (const category of CATEGORY_ORDER) {
     const requiredPerTeam = MIN_PER_TEAM[category];
@@ -150,16 +173,15 @@ export function randomizeTeams(players: RandomizerPlayer[]): RandomizerResult {
       .filter((p) => !assignments.has(p.userId) && p.category === category)
       .sort((a, b) =>
         category === 'goalkeeper' ? b.stats.defense - a.stats.defense : b.score - a.score,
-      );
+      )
+      .slice(0, requiredTotal);
 
-    const order = snakeOrder(Math.min(requiredTotal, candidates.length));
     const countPerTeam: Record<MatchTeam, number> = { A: 0, B: 0 };
-
-    order.forEach((team, index) => {
-      const player = candidates[index];
-      assignments.set(player.userId, team);
+    for (const player of candidates) {
+      const team = pickTeam();
+      assign(player, team);
       countPerTeam[team] += 1;
-    });
+    }
 
     (['A', 'B'] as MatchTeam[]).forEach((team) => {
       if (countPerTeam[team] < requiredPerTeam) {
@@ -168,39 +190,15 @@ export function randomizeTeams(players: RandomizerPlayer[]): RandomizerResult {
     });
   }
 
-  // Resto de cupos: balanceo puro por promedio de stats, el jugador que sobra
-  // (total impar) queda cubierto naturalmente por este mismo criterio (regla 5).
-  const teamTotals: Record<MatchTeam, { sum: number; count: number }> = {
-    A: { sum: 0, count: 0 },
-    B: { sum: 0, count: 0 },
-  };
-  for (const player of scored) {
-    const team = assignments.get(player.userId);
-    if (team) {
-      teamTotals[team].sum += player.score;
-      teamTotals[team].count += 1;
-    }
-  }
-
+  // Resto de cupos: mismo criterio de balanceo (tamaño primero, score
+  // desempata) — el jugador que sobra en total impar queda cubierto
+  // naturalmente por esto (regla 5).
   const remaining = scored
     .filter((p) => !assignments.has(p.userId))
     .sort((a, b) => b.score - a.score);
 
   for (const player of remaining) {
-    // El tamaño manda primero (nunca deben quedar a más de 1 de diferencia,
-    // y esa diferencia de 1 solo debería darse con total impar — regla 5).
-    // El promedio de score solo decide en caso de empate de tamaño.
-    let team: MatchTeam;
-    if (teamTotals.A.count !== teamTotals.B.count) {
-      team = teamTotals.A.count < teamTotals.B.count ? 'A' : 'B';
-    } else {
-      const avgA = teamTotals.A.count > 0 ? teamTotals.A.sum / teamTotals.A.count : 0;
-      const avgB = teamTotals.B.count > 0 ? teamTotals.B.sum / teamTotals.B.count : 0;
-      team = avgA <= avgB ? 'A' : 'B';
-    }
-    assignments.set(player.userId, team);
-    teamTotals[team].sum += player.score;
-    teamTotals[team].count += 1;
+    assign(player, pickTeam());
   }
 
   return { assignments, warnings };

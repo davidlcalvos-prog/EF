@@ -92,10 +92,14 @@ export function usePlayerProfile(userKey: string, authEmail?: string) {
 
   const saveFullProfile = useCallback(
     (nextProfile: PlayerProfileData) => {
+      const positionChanged = nextProfile.favoritePositionId !== profile.favoritePositionId
       setProfile(nextProfile)
       persist(nextProfile, psychTest)
+      if (positionChanged) {
+        syncFavoritePositionToBackend(nextProfile.favoritePositionId)
+      }
     },
-    [persist, psychTest],
+    [persist, profile.favoritePositionId, psychTest],
   )
 
   const setFavoritePosition = useCallback(

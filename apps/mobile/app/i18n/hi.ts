@@ -447,6 +447,7 @@ const hi: Translations = {
     devResetTestsAction: "रीसेट",
     devResetTestsDone: "रीसेट हो गया",
     devResetTestsDoneMessage: "सभी टेस्ट फिर से ले सकते हैं।",
+    position_goalkeeper: "गोलकीपर",
     position_striker: "स्ट्राइकर",
     position_winger: "विंगर",
     position_cam: "अटैकिंग मिड",

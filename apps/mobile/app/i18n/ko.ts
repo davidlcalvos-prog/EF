@@ -446,6 +446,7 @@ const ko: Translations = {
     devResetTestsAction: "초기화",
     devResetTestsDone: "초기화됨",
     devResetTestsDoneMessage: "모든 테스트를 다시 할 수 있습니다.",
+    position_goalkeeper: "골키퍼",
     position_striker: "스트라이커",
     position_winger: "윙어",
     position_cam: "공격형 MF",

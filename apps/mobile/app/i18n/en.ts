@@ -460,6 +460,7 @@ const en = {
     devResetTestsAction: "Reset",
     devResetTestsDone: "Tests reset",
     devResetTestsDoneMessage: "You can take all tests again.",
+    position_goalkeeper: "Goalkeeper",
     position_striker: "Striker",
     position_winger: "Winger",
     position_cam: "Attacking mid",

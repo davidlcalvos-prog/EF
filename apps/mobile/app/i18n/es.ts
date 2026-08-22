@@ -464,6 +464,7 @@ const es: Translations = {
     devResetTestsAction: "Reiniciar",
     devResetTestsDone: "Tests reiniciados",
     devResetTestsDoneMessage: "Ya puedes tomar todos los tests de nuevo.",
+    position_goalkeeper: "Arquero",
     position_striker: "Delantero",
     position_winger: "Extremo",
     position_cam: "Mediapunta",

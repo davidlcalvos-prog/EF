@@ -7,9 +7,10 @@ import {
 import type { PsychTraitKey } from "@/data/psychologicalTest"
 
 export type PlayerPositionId =
-  "striker" | "winger" | "cam" | "cm" | "cdm" | "fullback" | "centerback"
+  "goalkeeper" | "striker" | "winger" | "cam" | "cm" | "cdm" | "fullback" | "centerback"
 
 export const ALL_PLAYER_POSITIONS: PlayerPositionId[] = [
+  "goalkeeper",
   "striker",
   "winger",
   "cam",
@@ -31,6 +32,7 @@ export interface PositionSuggestion {
 }
 
 const POSITION_LABEL_KEYS: Record<PlayerPositionId, PositionSuggestion["labelKey"]> = {
+  goalkeeper: "profileScreen:position_goalkeeper",
   striker: "profileScreen:position_striker",
   winger: "profileScreen:position_winger",
   cam: "profileScreen:position_cam",
@@ -42,6 +44,14 @@ const POSITION_LABEL_KEYS: Record<PlayerPositionId, PositionSuggestion["labelKey
 
 /** Perfil ideal de cada posición (pesos 0–1, suman ~1). */
 const POSITION_WEIGHTS: Record<PlayerPositionId, Record<StatKey, number>> = {
+  goalkeeper: {
+    defense: 0.4,
+    endurance: 0.15,
+    passes: 0.15,
+    speed: 0.1,
+    dribbling: 0.05,
+    attack: 0.05,
+  },
   striker: {
     attack: 0.38,
     speed: 0.22,
@@ -100,8 +110,21 @@ const POSITION_WEIGHTS: Record<PlayerPositionId, Record<StatKey, number>> = {
   },
 }
 
-/** Perfil mental ideal por posición (pesos 0–1). */
+/**
+ * Perfil mental ideal por posición (pesos 0–1). David solo definió los pesos
+ * físicos de arquero (Fase 6.5.4.1) — estos psicológicos son criterio propio,
+ * pendiente de que los revise: disciplina/organización priorizadas por sobre
+ * creatividad, coherente con el rol (lectura del juego y posicionamiento
+ * antes que último pase creativo).
+ */
 const POSITION_PSYCH_WEIGHTS: Record<PlayerPositionId, Record<PsychTraitKey, number>> = {
+  goalkeeper: {
+    discipline: 0.35,
+    organizer: 0.3,
+    competitiveness: 0.2,
+    directness: 0.1,
+    creativity: 0.05,
+  },
   striker: {
     directness: 0.32,
     competitiveness: 0.28,
