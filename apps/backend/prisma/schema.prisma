@@ -287,6 +287,8 @@ model Match {
   participants    MatchParticipant[]
   /// null hasta que el líder sortea equipos (Fase 6.5.4, solo partidos internal); se pisa en cada re-sorteo.
   teamsRandomizedAt DateTime?
+  /// null hasta que ambos lados llegan a maxPlayers/2 (Fase 6.5.5, solo partidos vs). Nunca se vuelve a null.
+  rosterConfirmedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -301,6 +303,13 @@ enum MatchTeam {
   B
 }
 
+/// Lado de un partido `vs` (Fase 6.5.5) — concepto distinto de MatchTeam, que es
+/// el sorteo aleatorio interno de la 6.5.4 y no se toca acá.
+enum MatchSide {
+  origin
+  opponent
+}
+
 model MatchParticipant {
   id          String     @id @default(uuid()) @db.Uuid
   matchId     String     @db.Uuid
@@ -310,6 +319,8 @@ model MatchParticipant {
   confirmedAt DateTime   @default(now())
   /// null hasta el sorteo de equipos (Fase 6.5.4); se llena/pisa al randomizar.
   team        MatchTeam?
+  /// solo se usa en partidos `vs`; null en partidos `internal`.
+  side        MatchSide?
 
   @@unique([matchId, userId])
   @@index([userId])
