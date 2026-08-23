@@ -10,6 +10,7 @@ import {
 import { useMMKVString } from "react-native-mmkv"
 
 import { api } from "@/services/api"
+import { unregisterPushToken } from "@/utils/pushNotifications"
 
 export type AuthContextType = {
   isAuthenticated: boolean
@@ -39,10 +40,11 @@ export const AuthProvider: FC<PropsWithChildren<AuthProviderProps>> = ({ childre
   }, [authToken])
 
   const logout = useCallback(() => {
+    if (authToken) void unregisterPushToken(authToken)
     setAuthToken(undefined)
     setAuthEmail("")
     setAuthUserId(undefined)
-  }, [setAuthEmail, setAuthToken, setAuthUserId])
+  }, [authToken, setAuthEmail, setAuthToken, setAuthUserId])
 
   const validationError = useMemo(() => {
     if (!authEmail || authEmail.length === 0) return "can't be blank"

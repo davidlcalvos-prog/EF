@@ -78,6 +78,15 @@ export class GroupRepository {
     });
   }
 
+  /** userIds de creator/admin de un grupo (puede haber más de un admin). */
+  async findLeaderUserIds(groupId: string): Promise<string[]> {
+    const rows = await this.prisma.groupMembership.findMany({
+      where: { groupId, role: { in: ['creator', 'admin'] } },
+      select: { userId: true },
+    });
+    return rows.map((row) => row.userId);
+  }
+
   async countAdmins(groupId: string): Promise<number> {
     return this.prisma.groupMembership.count({
       where: { groupId, role: 'admin' },

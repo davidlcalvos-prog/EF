@@ -43,6 +43,7 @@ model User {
   posts               Post[]               @relation("PostAuthor")
   postLikes           PostLike[]           @relation("PostLikeUser")
   postComments        PostComment[]        @relation("PostCommentAuthor")
+  pushTokens          PushToken[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -289,6 +290,12 @@ model Match {
   teamsRandomizedAt DateTime?
   /// null hasta que ambos lados llegan a maxPlayers/2 (Fase 6.5.5, solo partidos vs). Nunca se vuelve a null.
   rosterConfirmedAt DateTime?
+  /// Fase 6.5.5.1: flags de aviso push por umbral (6h/3h/1h/30min antes del kickoff, solo vs).
+  /// Simples a propósito (no una tabla de log) — cada uno se pone en true una sola vez, nunca se resetea.
+  alertSent6h  Boolean @default(false)
+  alertSent3h  Boolean @default(false)
+  alertSent1h  Boolean @default(false)
+  alertSent30m Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -325,6 +332,26 @@ model MatchParticipant {
   @@unique([matchId, userId])
   @@index([userId])
   @@map("match_participants")
+}
+
+/**
+ * Push tokens de Expo por usuario (Fase 6.5.5.1) — un usuario puede tener
+ * varios (varios dispositivos). platform es un string libre ('ios'/'android')
+ * en vez de enum: valor puramente informativo, no se filtra por él en ningún
+ * lado todavía.
+ */
+model PushToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String
+  platform  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, token])
+  @@index([userId])
+  @@map("push_tokens")
 }
 
 /**

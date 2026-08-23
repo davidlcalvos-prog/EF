@@ -19,6 +19,7 @@ import type { AppStackScreenProps } from "@/navigators/navigationTypes"
 import { api } from "@/services/api"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 import { openLinkInBrowser } from "@/utils/openLinkInBrowser"
+import { registerPushToken } from "@/utils/pushNotifications"
 
 type LoginScreenProps = AppStackScreenProps<"Login">
 
@@ -88,6 +89,7 @@ export const LoginScreen: FC<LoginScreenProps> = () => {
         setAuthToken(response.accessToken)
         setAuthEmail(response.user.email)
         setAuthUserId(response.user.id)
+        void registerPushToken()
         return
       }
 

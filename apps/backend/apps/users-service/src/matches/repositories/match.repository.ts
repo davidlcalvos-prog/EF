@@ -17,6 +17,22 @@ import {
 } from '@prisma/client';
 import type { RandomizerPlayer } from '../team-randomizer';
 
+export type AlertFlagField = 'alertSent6h' | 'alertSent3h' | 'alertSent1h' | 'alertSent30m';
+
+export interface VsMatchAlertCandidate {
+  id: string;
+  originGroupId: string;
+  opponentGroupId: string;
+  scheduledAt: Date;
+  originSideCount: number;
+  opponentSideCount: number;
+  sideCapacity: number;
+  alertSent6h: boolean;
+  alertSent3h: boolean;
+  alertSent1h: boolean;
+  alertSent30m: boolean;
+}
+
 @Injectable()
 export class MatchRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -180,6 +196,55 @@ export class MatchRepository {
       createdAt: match.createdAt.toISOString(),
       updatedAt: match.updatedAt.toISOString(),
     };
+  }
+
+  /**
+   * VS sin confirmar, con scheduledAt futuro y al menos un umbral de aviso
+   * todavia sin mandar — usado por VsMatchAlertsService (Fase 6.5.5.1). Un
+   * partido que ya paso su scheduledAt sale solo de este listado (regla 3
+   * del punto 4: no hace falta seguir evaluandolo en corridas futuras).
+   */
+  async findVsMatchesNeedingAlertCheck(): Promise<VsMatchAlertCandidate[]> {
+    const rows = await this.prisma.match.findMany({
+      where: {
+        type: 'vs',
+        status: { notIn: ['cancelled', 'played'] },
+        rosterConfirmedAt: null,
+        scheduledAt: { not: null, gt: new Date() },
+        OR: [
+          { alertSent6h: false },
+          { alertSent3h: false },
+          { alertSent1h: false },
+          { alertSent30m: false },
+        ],
+      },
+      include: {
+        participants: { select: { side: true } },
+      },
+    });
+
+    return rows
+      .filter((row) => row.opponentGroupId && row.scheduledAt)
+      .map((row) => ({
+        id: row.id,
+        originGroupId: row.originGroupId,
+        opponentGroupId: row.opponentGroupId as string,
+        scheduledAt: row.scheduledAt as Date,
+        originSideCount: row.participants.filter((p) => p.side === 'origin').length,
+        opponentSideCount: row.participants.filter((p) => p.side === 'opponent').length,
+        sideCapacity: row.maxPlayers / 2,
+        alertSent6h: row.alertSent6h,
+        alertSent3h: row.alertSent3h,
+        alertSent1h: row.alertSent1h,
+        alertSent30m: row.alertSent30m,
+      }));
+  }
+
+  async markAlertSent(matchId: string, field: AlertFlagField): Promise<void> {
+    await this.prisma.match.update({
+      where: { id: matchId },
+      data: { [field]: true },
+    });
   }
 
   async countParticipantsBySide(matchId: string, side: MatchSide): Promise<number> {

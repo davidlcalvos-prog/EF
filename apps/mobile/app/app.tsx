@@ -29,10 +29,11 @@ import { AuthProvider } from "./context/AuthContext"
 import { initI18n } from "./i18n"
 import tamaguiConfig from "../tamagui.config"
 import { AppNavigator } from "./navigators/AppNavigator"
-import { useNavigationPersistence } from "./navigators/navigationUtilities"
+import { navigate, useNavigationPersistence } from "./navigators/navigationUtilities"
 import { ThemeProvider } from "./theme/context"
 import { customFontsToLoad } from "./theme/typography"
 import { loadDateFnsLocale } from "./utils/formatDate"
+import { addNotificationTapListener } from "./utils/pushNotifications"
 import * as storage from "./utils/storage"
 
 export const NAVIGATION_PERSISTENCE_KEY = "NAVIGATION_STATE"
@@ -77,6 +78,13 @@ export function App() {
     initI18n()
       .then(() => setIsI18nInitialized(true))
       .then(() => loadDateFnsLocale())
+  }, [])
+
+  useEffect(() => {
+    const subscription = addNotificationTapListener((matchId) => {
+      navigate("MatchDetail", { matchId })
+    })
+    return () => subscription.remove()
   }, [])
 
   // Before we show the app, we have to wait for our state to be ready.

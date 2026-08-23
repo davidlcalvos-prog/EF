@@ -844,6 +844,44 @@ export class Api {
     return { kind: "ok", reservation: response.data }
   }
 
+  /** Registra el push token de este dispositivo contra el usuario autenticado. */
+  async registerPushToken(
+    token: string,
+    platform: "ios" | "android",
+  ): Promise<{ kind: "ok" } | GeneralApiProblem> {
+    const response = await this.apisauce.post("push-tokens", { token, platform })
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    return { kind: "ok" }
+  }
+
+  /**
+   * Sin `token`: borra todos los tokens del usuario. `bearerToken` permite pasar
+   * el Authorization explícito (usado en logout, donde el header compartido de
+   * `apisauce` puede haberse limpiado ya para cuando esta llamada resuelve).
+   */
+  async removePushToken(
+    token?: string,
+    bearerToken?: string,
+  ): Promise<{ kind: "ok" } | GeneralApiProblem> {
+    const axiosConfig: { data?: { token: string }; headers?: Record<string, string> } = {}
+    if (token) axiosConfig.data = { token }
+    if (bearerToken) axiosConfig.headers = { Authorization: `Bearer ${bearerToken}` }
+
+    const response = await this.apisauce.delete("push-tokens", {}, axiosConfig)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    return { kind: "ok" }
+  }
+
   /**
    * Gets a list of recent React Native Radio episodes.
    */

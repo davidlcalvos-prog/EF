@@ -66,6 +66,10 @@ export const MESSAGE_PATTERNS = {
     UPDATE_STATUS: 'matches.update_status',
     RANDOMIZE_TEAMS: 'matches.randomize_teams',
   },
+  PUSH_TOKENS: {
+    REGISTER: 'push_tokens.register',
+    REMOVE: 'push_tokens.remove',
+  },
   FEED: {
     CREATE_POST: 'feed.create_post',
     LIST_POSTS: 'feed.list_posts',
