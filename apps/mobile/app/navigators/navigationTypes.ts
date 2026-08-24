@@ -31,6 +31,8 @@ export type AppStackParamList = {
   MatchDetail: { matchId: string }
   Reservations: { matchId?: string } | undefined
   ReservationDetail: { reservationId: string }
+  Tournaments: undefined
+  TournamentDetail: { tournamentId: string }
   Login: undefined
   Register: undefined
   Demo: NavigatorScreenParams<DemoTabParamList>

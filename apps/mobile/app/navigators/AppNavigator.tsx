@@ -24,6 +24,8 @@ import { ProfileScreen } from "@/screens/profile/ProfileScreen"
 import { PsychologicalTestScreen } from "@/screens/profile/PsychologicalTestScreen"
 import { ReservationDetailScreen } from "@/screens/reservations/ReservationDetailScreen"
 import { ReservationsScreen } from "@/screens/reservations/ReservationsScreen"
+import { TournamentDetailScreen } from "@/screens/tournaments/TournamentDetailScreen"
+import { TournamentsScreen } from "@/screens/tournaments/TournamentsScreen"
 import { useAppTheme } from "@/theme/context"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
@@ -68,6 +70,8 @@ const AppStack = () => {
           <Stack.Screen name="MatchDetail" component={MatchDetailScreen} />
           <Stack.Screen name="Reservations" component={ReservationsScreen} />
           <Stack.Screen name="ReservationDetail" component={ReservationDetailScreen} />
+          <Stack.Screen name="Tournaments" component={TournamentsScreen} />
+          <Stack.Screen name="TournamentDetail" component={TournamentDetailScreen} />
 
           <Stack.Screen name="Demo" component={DemoNavigator} />
         </>
