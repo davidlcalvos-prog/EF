@@ -151,11 +151,12 @@ export class TournamentRepository {
     return this.toTournamentDto(updated);
   }
 
-  async delete(tournamentId: string, ownerId: string): Promise<void> {
+  async delete(tournamentId: string, ownerId: string): Promise<{ success: true }> {
     const tournament = await this.requireOwned(tournamentId, ownerId);
     await this.deleteReservationsForMatches(tournament.matches.map((m) => m.id));
     // Cascade se encarga de teams/players/matches.
     await this.prisma.tournament.delete({ where: { id: tournamentId } });
+    return { success: true };
   }
 
   /**

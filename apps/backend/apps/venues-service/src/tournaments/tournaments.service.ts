@@ -59,7 +59,7 @@ export class TournamentsService {
     return this.tournamentRepository.update(tournamentId, ownerId, patch);
   }
 
-  delete(tournamentId: string, ownerId: string): Promise<void> {
+  delete(tournamentId: string, ownerId: string): Promise<{ success: true }> {
     return this.tournamentRepository.delete(tournamentId, ownerId);
   }
 

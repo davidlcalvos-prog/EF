@@ -44,8 +44,11 @@ export class TournamentsProxyService {
     });
   }
 
-  delete(ownerId: string, tournamentId: string): Promise<void> {
-    return this.send<void>(MESSAGE_PATTERNS.TOURNAMENTS.DELETE, { ownerId, tournamentId });
+  delete(ownerId: string, tournamentId: string): Promise<{ success: true }> {
+    return this.send<{ success: true }>(MESSAGE_PATTERNS.TOURNAMENTS.DELETE, {
+      ownerId,
+      tournamentId,
+    });
   }
 
   upsertTeams(
