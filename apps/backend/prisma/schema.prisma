@@ -44,6 +44,7 @@ model User {
   postLikes           PostLike[]           @relation("PostLikeUser")
   postComments        PostComment[]        @relation("PostCommentAuthor")
   pushTokens          PushToken[]
+  ownedTournaments    Tournament[]         @relation("TournamentOwner")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -148,6 +149,7 @@ model Venue {
   pricePerHourCents Int           @default(0)
   availability      Json          @default("{}")
   reservations      Reservation[]
+  tournaments       Tournament[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -157,19 +159,22 @@ model Venue {
 }
 
 model Reservation {
-  id        String            @id @default(uuid()) @db.Uuid
-  userId    String            @db.Uuid
-  user      User              @relation("ReservationUser", fields: [userId], references: [id], onDelete: Cascade)
-  venueId   String?           @db.Uuid
-  venue     Venue?            @relation(fields: [venueId], references: [id], onDelete: SetNull)
-  venueName String
-  startsAt  DateTime
-  endsAt    DateTime
-  status    ReservationStatus @default(pending)
-  notes     String?
+  id                String            @id @default(uuid()) @db.Uuid
+  userId            String            @db.Uuid
+  user              User              @relation("ReservationUser", fields: [userId], references: [id], onDelete: Cascade)
+  venueId           String?           @db.Uuid
+  venue             Venue?            @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  venueName         String
+  startsAt          DateTime
+  endsAt            DateTime
+  status            ReservationStatus @default(pending)
+  notes             String?
   /// Vincula la reserva con el partido que la origina (Fase 4). Opcional: se puede reservar sin partido.
-  matchId   String?           @unique @db.Uuid
-  match     Match?            @relation(fields: [matchId], references: [id], onDelete: SetNull)
+  matchId           String?           @unique @db.Uuid
+  match             Match?            @relation(fields: [matchId], references: [id], onDelete: SetNull)
+  /// Vincula la reserva con el partido de torneo que la generó (Fase 7.1). Opcional.
+  tournamentMatchId String?           @unique @db.Uuid
+  tournamentMatch   TournamentMatch?  @relation(fields: [tournamentMatchId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -177,6 +182,129 @@ model Reservation {
   @@index([venueId])
   @@index([userId])
   @@map("reservations")
+}
+
+/**
+ * Torneos privados de un dueño de cancha (Fase 7.1 del roadmap — "Campeonatos
+ * Web"). Distinto de los torneos oficiales de Elite Forge (Fase 7.2, mobile):
+ * acá el organizador es el propio Empresario, sobre sus clientes/equipos, sin
+ * relación con Elite Forge como organizador.
+ */
+model Tournament {
+  id                String              @id @default(uuid()) @db.Uuid
+  ownerId           String              @db.Uuid
+  owner             User                @relation("TournamentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  /// Cancha del owner donde se juega el torneo — obligatoria para poder generar reservas reales al agendar partidos.
+  venueId           String              @db.Uuid
+  venue             Venue               @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  name              String
+  courtSize         TournamentCourtSize
+  format            TournamentFormat
+  maxTeams          Int
+  bracketKeys       Int
+  extraRoundEnabled Boolean             @default(false)
+  status            TournamentStatus    @default(registration)
+  /// ScheduleConfig tal cual (weekdays/startHour/endHour/matchDurationHours/courtsPerSlot).
+  schedule          Json
+  teams             TournamentTeam[]
+  matches           TournamentMatch[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([venueId])
+  @@map("tournaments")
+}
+
+model TournamentTeam {
+  id           String             @id @default(uuid()) @db.Uuid
+  tournamentId String             @db.Uuid
+  tournament   Tournament         @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  name         String
+  groupId      String?
+  wins         Int                @default(0)
+  draws        Int                @default(0)
+  losses       Int                @default(0)
+  lossesByW    Int                @default(0)
+  points       Int                @default(0)
+  goalsFor     Int                @default(0)
+  goalsAgainst Int                @default(0)
+  players      TournamentPlayer[]
+  homeMatches  TournamentMatch[]  @relation("TournamentMatchHome")
+  awayMatches  TournamentMatch[]  @relation("TournamentMatchAway")
+
+  @@index([tournamentId])
+  @@map("tournament_teams")
+}
+
+model TournamentPlayer {
+  id           String         @id @default(uuid()) @db.Uuid
+  teamId       String         @db.Uuid
+  team         TournamentTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  name         String
+  isGoalkeeper Boolean        @default(false)
+  goals        Int            @default(0)
+  goalsAgainst Int            @default(0)
+  assists      Int            @default(0)
+  /// Defensa férrea: recuperos de balón ante ataque rival.
+  dfr          Int            @default(0)
+  yellowCards  Int            @default(0)
+  redCards     Int            @default(0)
+
+  @@index([teamId])
+  @@map("tournament_players")
+}
+
+model TournamentMatch {
+  id           String                @id @default(uuid()) @db.Uuid
+  tournamentId String                @db.Uuid
+  tournament   Tournament            @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  roundLabel   String
+  keyIndex     Int
+  homeTeamId   String                @db.Uuid
+  homeTeam     TournamentTeam        @relation("TournamentMatchHome", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  awayTeamId   String                @db.Uuid
+  awayTeam     TournamentTeam        @relation("TournamentMatchAway", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  homeGoals    Int?
+  awayGoals    Int?
+  status       TournamentMatchStatus @default(scheduled)
+  /// MatchPlayerStat[] tal cual (array de {playerId,teamId,goals,assists,goalsAgainst,dfr,yellowCards,redCards}).
+  playerStats  Json                  @default("[]")
+  startsAt     DateTime?
+  endsAt       DateTime?
+  courtNumber  Int                   @default(1)
+  /// Reserva real que este partido de torneo generó (Fase 7.1). Null si no se pudo reservar (choque de horario).
+  reservation  Reservation?
+
+  @@index([tournamentId])
+  @@map("tournament_matches")
+}
+
+enum TournamentCourtSize {
+  six_vs_six
+  eight_vs_eight
+  eleven_vs_eleven
+}
+
+enum TournamentFormat {
+  groups_of_4
+  round_robin
+  brackets
+}
+
+enum TournamentStatus {
+  draft
+  registration
+  active
+  finished
+}
+
+enum TournamentMatchStatus {
+  scheduled
+  played
+  walkover_home
+  walkover_away
 }
 
 /**
@@ -271,31 +399,31 @@ enum MatchStatus {
 }
 
 model Match {
-  id              String             @id @default(uuid()) @db.Uuid
-  originGroupId   String             @db.Uuid
-  originGroup     Group              @relation("MatchOriginGroup", fields: [originGroupId], references: [id], onDelete: Cascade)
-  opponentGroupId String?            @db.Uuid
-  opponentGroup   Group?             @relation("MatchOpponentGroup", fields: [opponentGroupId], references: [id], onDelete: Cascade)
-  type            MatchType
-  format          String
-  maxPlayers      Int
-  status          MatchStatus        @default(scheduled)
-  scheduledAt     DateTime?
-  createdBy       String             @db.Uuid
-  creator         User               @relation("MatchCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  id                String             @id @default(uuid()) @db.Uuid
+  originGroupId     String             @db.Uuid
+  originGroup       Group              @relation("MatchOriginGroup", fields: [originGroupId], references: [id], onDelete: Cascade)
+  opponentGroupId   String?            @db.Uuid
+  opponentGroup     Group?             @relation("MatchOpponentGroup", fields: [opponentGroupId], references: [id], onDelete: Cascade)
+  type              MatchType
+  format            String
+  maxPlayers        Int
+  status            MatchStatus        @default(scheduled)
+  scheduledAt       DateTime?
+  createdBy         String             @db.Uuid
+  creator           User               @relation("MatchCreator", fields: [createdBy], references: [id], onDelete: Cascade)
   /// Vínculo real con la reserva que originó este partido (Fase 4). La FK vive en Reservation.matchId.
-  reservation     Reservation?
-  participants    MatchParticipant[]
+  reservation       Reservation?
+  participants      MatchParticipant[]
   /// null hasta que el líder sortea equipos (Fase 6.5.4, solo partidos internal); se pisa en cada re-sorteo.
   teamsRandomizedAt DateTime?
   /// null hasta que ambos lados llegan a maxPlayers/2 (Fase 6.5.5, solo partidos vs). Nunca se vuelve a null.
   rosterConfirmedAt DateTime?
   /// Fase 6.5.5.1: flags de aviso push por umbral (6h/3h/1h/30min antes del kickoff, solo vs).
   /// Simples a propósito (no una tabla de log) — cada uno se pone en true una sola vez, nunca se resetea.
-  alertSent6h  Boolean @default(false)
-  alertSent3h  Boolean @default(false)
-  alertSent1h  Boolean @default(false)
-  alertSent30m Boolean @default(false)
+  alertSent6h       Boolean            @default(false)
+  alertSent3h       Boolean            @default(false)
+  alertSent1h       Boolean            @default(false)
+  alertSent30m      Boolean            @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
