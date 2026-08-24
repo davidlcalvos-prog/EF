@@ -59,7 +59,10 @@ export interface TournamentTeamDto {
   points: number;
   goalsFor: number;
   goalsAgainst: number;
+  /** Etiqueta de grupo del FIXTURE (ej. "GA") — no es un Group real. */
   groupId: string | null;
+  /** Solo kind=elite_forge: el Group real inscrito. Mobile lo usa para excluir grupos ya inscritos del flujo de inscripción (Fase 7.3). */
+  enrolledGroupId: string | null;
 }
 
 export interface TournamentMatchPlayerStatDto {
@@ -86,6 +89,8 @@ export interface TournamentMatchDto {
   startsAt: string | null;
   endsAt: string | null;
   courtNumber: number;
+  /** Nombre de la cancha real asignada a este partido (Fase 7.2) — null si aún no tiene. Mobile lo muestra en el fixture (Fase 7.3). */
+  venueName: string | null;
 }
 
 export interface TournamentDto {

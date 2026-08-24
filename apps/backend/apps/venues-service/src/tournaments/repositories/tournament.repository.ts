@@ -42,7 +42,7 @@ function isUuid(id: string): boolean {
 
 const TOURNAMENT_INCLUDE = {
   teams: { include: { players: true } },
-  matches: true,
+  matches: { include: { venue: { select: { name: true } } } },
 } satisfies Prisma.TournamentInclude;
 
 type TournamentRow = Prisma.TournamentGetPayload<{ include: typeof TOURNAMENT_INCLUDE }>;
@@ -685,6 +685,7 @@ export class TournamentRepository {
       id: row.id,
       name: row.name,
       groupId: row.groupId,
+      enrolledGroupId: row.enrolledGroupId,
       players: row.players.map((p) => this.toPlayerDto(p)),
       wins: row.wins,
       draws: row.draws,
@@ -724,6 +725,7 @@ export class TournamentRepository {
       startsAt: row.startsAt ? row.startsAt.toISOString() : null,
       endsAt: row.endsAt ? row.endsAt.toISOString() : null,
       courtNumber: row.courtNumber,
+      venueName: row.venue?.name ?? null,
     };
   }
 }
