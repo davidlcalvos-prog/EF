@@ -1,3 +1,9 @@
+export type VenueSurfaceType =
+  | 'natural_grass'
+  | 'synthetic_grass'
+  | 'dirt_gravel'
+  | 'futsal_concrete'
+
 export type VenueRow = {
   id: string
   owner_id: string
@@ -5,6 +11,8 @@ export type VenueRow = {
   address: string | null
   price_per_hour_cents: number
   availability: Record<string, unknown>
+  /** Null hasta que el owner lo complete desde "Mi cancha" (Fase 7.2). */
+  surface_type: VenueSurfaceType | null
   created_at: string
   updated_at: string
 }

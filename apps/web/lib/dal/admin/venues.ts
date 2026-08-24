@@ -1,5 +1,5 @@
 import { apiFetchAuth } from '@/lib/api/server-client'
-import type { VenueRow } from '@/lib/dal/admin/types'
+import type { VenueRow, VenueSurfaceType } from '@/lib/dal/admin/types'
 
 interface VenueApiDto {
   id: string
@@ -8,6 +8,7 @@ interface VenueApiDto {
   address: string | null
   pricePerHourCents: number
   availability: Record<string, unknown>
+  surfaceType: VenueSurfaceType | null
   createdAt: string
   updatedAt: string
 }
@@ -20,6 +21,7 @@ function toVenueRow(dto: VenueApiDto): VenueRow {
     address: dto.address,
     price_per_hour_cents: dto.pricePerHourCents,
     availability: dto.availability,
+    surface_type: dto.surfaceType,
     created_at: dto.createdAt,
     updated_at: dto.updatedAt,
   }
@@ -44,6 +46,7 @@ export async function upsertMyVenue(
     name: string
     address?: string | null
     price_per_hour_cents?: number
+    surface_type?: VenueSurfaceType | null
   },
 ): Promise<VenueRow> {
   const row = await apiFetchAuth<VenueApiDto>('venues/mine', {
@@ -53,6 +56,7 @@ export async function upsertMyVenue(
       name: payload.name,
       address: payload.address,
       pricePerHourCents: payload.price_per_hour_cents,
+      surfaceType: payload.surface_type || undefined,
     }),
   })
   return toVenueRow(row)

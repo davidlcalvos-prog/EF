@@ -93,10 +93,15 @@ export const WEEKDAY_OPTIONS = [
   { value: 0, label: 'Dom' },
 ] as const
 
+/** private = Torneos privados (7.1, dueño de cancha). elite_forge = Copa Elite Forge (7.2, Administrador). */
+export type TournamentKind = 'private' | 'elite_forge'
+
 export type Tournament = {
   id: string
   ownerId: string
-  venueId: string
+  kind: TournamentKind
+  /** Cancha fija (private) o null (elite_forge — la cancha se decide por partido). */
+  venueId: string | null
   name: string
   courtSize: CourtSize
   format: TournamentFormat

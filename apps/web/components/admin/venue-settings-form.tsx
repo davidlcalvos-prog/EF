@@ -18,7 +18,15 @@ export type VenueFormBase = {
   name: string
   address: string | null
   price_per_hour_cents: number
+  surface_type: 'natural_grass' | 'synthetic_grass' | 'dirt_gravel' | 'futsal_concrete' | null
 }
+
+const SURFACE_TYPE_OPTIONS = [
+  { value: 'natural_grass', label: 'Césped natural' },
+  { value: 'synthetic_grass', label: 'Césped sintético' },
+  { value: 'dirt_gravel', label: 'Tierra o gravilla' },
+  { value: 'futsal_concrete', label: 'Cancha de sala / cemento' },
+] as const
 
 function AmenityToggle({
   id,
@@ -73,6 +81,7 @@ export function VenueSettingsForm({ venue }: { venue: VenueFormBase | null }) {
   const basePrice = venue ? Math.round(venue.price_per_hour_cents / 100) : 45000
   const [name, setName] = useState(venue?.name ?? '')
   const [address, setAddress] = useState(venue?.address ?? '')
+  const [surfaceType, setSurfaceType] = useState(venue?.surface_type ?? '')
   const [extras, setExtras] = useState<VenueExtras>(() => ({
     ...DEFAULT_VENUE_EXTRAS,
     price6: basePrice,
@@ -83,7 +92,8 @@ export function VenueSettingsForm({ venue }: { venue: VenueFormBase | null }) {
     setExtras(loadVenueExtras(venue?.id, basePrice))
     setName(venue?.name ?? '')
     setAddress(venue?.address ?? '')
-  }, [venue?.id, venue?.name, venue?.address, basePrice])
+    setSurfaceType(venue?.surface_type ?? '')
+  }, [venue?.id, venue?.name, venue?.address, venue?.surface_type, basePrice])
 
   const inventoryTotal = useMemo(() => totalCourts(extras), [extras])
 
@@ -133,6 +143,28 @@ export function VenueSettingsForm({ venue }: { venue: VenueFormBase | null }) {
             onChange={(e) => setAddress(e.target.value)}
             placeholder="Calle, ciudad"
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="surface_type">Tipo de superficie</Label>
+          <select
+            id="surface_type"
+            name="surface_type"
+            className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+            value={surfaceType}
+            onChange={(e) => setSurfaceType(e.target.value)}
+          >
+            <option value="">Sin especificar</option>
+            {SURFACE_TYPE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-muted-foreground">
+            Solo las canchas de césped sintético entran al sorteo de partidos
+            de Copa Elite Forge.
+          </p>
         </div>
       </section>
 

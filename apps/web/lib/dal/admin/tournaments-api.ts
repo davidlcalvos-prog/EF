@@ -21,6 +21,21 @@ import type {
   TournamentStatus,
 } from '@/lib/dal/admin/tournaments'
 
+/** Un partido de Copa Elite Forge que le tocó a la cancha del owner autenticado. */
+export interface AssignedTournamentMatch {
+  matchId: string
+  tournamentId: string
+  tournamentName: string
+  homeTeamName: string
+  awayTeamName: string
+  startsAt: string | null
+  endsAt: string | null
+  courtNumber: number
+  matchStatus: MatchStatus
+  reservationId: string | null
+  reservationStatus: 'pending' | 'confirmed' | 'cancelled' | null
+}
+
 export async function listTournamentsMine(): Promise<Tournament[]> {
   return apiFetchAuth<Tournament[]>('tournaments/mine')
 }
@@ -123,4 +138,28 @@ export async function updateTournamentMatchResult(
     method: 'PATCH',
     body: JSON.stringify(payload),
   })
+}
+
+// --- Copa Elite Forge (Fase 7.2) ---
+
+export async function listEliteForgeTournamentsMine(): Promise<Tournament[]> {
+  return apiFetchAuth<Tournament[]>('tournaments/elite-forge')
+}
+
+export async function createEliteForgeTournament(payload: {
+  name: string
+  courtSize: CourtSize
+  format: TournamentFormat
+  maxTeams: number
+  bracketKeys: number
+  schedule: ScheduleConfig
+}): Promise<Tournament> {
+  return apiFetchAuth<Tournament>('tournaments/elite-forge', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function listAssignedMatchesForVenueOwner(): Promise<AssignedTournamentMatch[]> {
+  return apiFetchAuth<AssignedTournamentMatch[]>('copa-elite-forge')
 }
