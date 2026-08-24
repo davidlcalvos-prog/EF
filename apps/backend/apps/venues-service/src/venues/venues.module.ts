@@ -6,5 +6,6 @@ import { VenueRepository } from './repositories/venue.repository';
 @Module({
   controllers: [VenuesController],
   providers: [VenuesService, VenueRepository],
+  exports: [VenueRepository],
 })
 export class VenuesModule {}
