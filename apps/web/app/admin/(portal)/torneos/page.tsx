@@ -27,6 +27,7 @@ export default async function AdminTorneosPage() {
 
   return (
     <TournamentsDashboard
+      kind="private"
       initialTournaments={tournaments}
       venues={venues}
       loadError={loadError}

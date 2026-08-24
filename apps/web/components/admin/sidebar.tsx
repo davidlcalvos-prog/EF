@@ -9,6 +9,7 @@ import {
   BarChart3,
   Trophy,
   ChartNoAxesCombined,
+  Medal,
 } from 'lucide-react'
 import { Logo } from '@/components/logo'
 import { AdminLogoutButton } from '@/components/admin/logout-button'
@@ -23,7 +24,15 @@ function linkClass(active: boolean, compact?: boolean) {
     : `${base} text-muted-foreground hover:bg-secondary/60 hover:text-foreground`
 }
 
-function CourtNav({ pathname, compact }: { pathname: string; compact?: boolean }) {
+function CourtNav({
+  pathname,
+  compact,
+  showCopaEliteForge,
+}: {
+  pathname: string
+  compact?: boolean
+  showCopaEliteForge: boolean
+}) {
   const icon = compact ? 'h-4 w-4' : 'h-5 w-5'
   const is = (href: string) =>
     href === '/admin' ? pathname === '/admin' : pathname.startsWith(href)
@@ -63,6 +72,15 @@ function CourtNav({ pathname, compact }: { pathname: string; compact?: boolean }
         <Trophy className={icon} />
         Torneos
       </Link>
+      {showCopaEliteForge && (
+        <Link
+          href="/admin/copa-elite-forge"
+          className={linkClass(is('/admin/copa-elite-forge'), compact)}
+        >
+          <Medal className={icon} />
+          Copa Elite Forge
+        </Link>
+      )}
     </>
   )
 }
@@ -85,11 +103,25 @@ function AdminNav({ pathname, compact }: { pathname: string; compact?: boolean }
         <BarChart3 className={icon} />
         Métricas
       </Link>
+      <Link
+        href="/admin/campeonatos-elite-forge"
+        className={linkClass(is('/admin/campeonatos-elite-forge'), compact)}
+      >
+        <Medal className={icon} />
+        Campeonatos Elite Forge
+      </Link>
     </>
   )
 }
 
-export function AdminSidebar({ role }: { role: AdminRole }) {
+export function AdminSidebar({
+  role,
+  showCopaEliteForge = false,
+}: {
+  role: AdminRole
+  /** Solo Empresario con surfaceType='synthetic_grass' ya configurado. */
+  showCopaEliteForge?: boolean
+}) {
   const pathname = usePathname()
   const isAdmin = role === 'Administrador'
 
@@ -106,7 +138,7 @@ export function AdminSidebar({ role }: { role: AdminRole }) {
           {isAdmin ? (
             <AdminNav pathname={pathname} compact />
           ) : (
-            <CourtNav pathname={pathname} compact />
+            <CourtNav pathname={pathname} compact showCopaEliteForge={showCopaEliteForge} />
           )}
         </nav>
       </div>
@@ -125,7 +157,7 @@ export function AdminSidebar({ role }: { role: AdminRole }) {
           {isAdmin ? (
             <AdminNav pathname={pathname} />
           ) : (
-            <CourtNav pathname={pathname} />
+            <CourtNav pathname={pathname} showCopaEliteForge={showCopaEliteForge} />
           )}
         </nav>
 

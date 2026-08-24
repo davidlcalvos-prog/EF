@@ -11,6 +11,13 @@ import {
 
 export type ReservationStatusDto = 'pending' | 'confirmed' | 'cancelled';
 
+/** Fase 7.2: solo synthetic_grass es elegible para el pool aleatorio de Copa Elite Forge. */
+export type VenueSurfaceTypeDto =
+  | 'natural_grass'
+  | 'synthetic_grass'
+  | 'dirt_gravel'
+  | 'futsal_concrete';
+
 export interface VenueDto {
   id: string;
   ownerId: string;
@@ -18,6 +25,8 @@ export interface VenueDto {
   address: string | null;
   pricePerHourCents: number;
   availability: Record<string, unknown>;
+  /** Null hasta que el owner lo complete desde "Mi cancha" — sin migración de datos existentes. */
+  surfaceType: VenueSurfaceTypeDto | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -39,6 +48,10 @@ export class UpsertVenueDto {
   @IsInt()
   @Min(0)
   pricePerHourCents?: number;
+
+  @IsOptional()
+  @IsEnum(['natural_grass', 'synthetic_grass', 'dirt_gravel', 'futsal_concrete'])
+  surfaceType?: VenueSurfaceTypeDto;
 }
 
 export interface ReservationDto {

@@ -80,6 +80,12 @@ export const MESSAGE_PATTERNS = {
     GENERATE_FIXTURE: 'tournaments.generate_fixture',
     ADD_EXTRA_ROUND: 'tournaments.add_extra_round',
     UPDATE_MATCH_RESULT: 'tournaments.update_match_result',
+    // Copa Elite Forge (Fase 7.2)
+    CREATE_ELITE_FORGE: 'tournaments.create_elite_forge',
+    LIST_ACTIVE_FOR_PLAYER: 'tournaments.list_active_for_player',
+    GET_PUBLIC: 'tournaments.get_public',
+    ENROLL_GROUP: 'tournaments.enroll_group',
+    LIST_ASSIGNED_MATCHES_FOR_VENUE_OWNER: 'tournaments.list_assigned_matches_for_venue_owner',
   },
   FEED: {
     CREATE_POST: 'feed.create_post',

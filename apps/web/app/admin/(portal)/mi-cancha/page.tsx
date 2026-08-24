@@ -40,6 +40,7 @@ export default async function MiCanchaPage() {
                 name: venue.name,
                 address: venue.address,
                 price_per_hour_cents: venue.price_per_hour_cents,
+                surface_type: venue.surface_type,
               }
             : null
         }

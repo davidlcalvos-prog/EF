@@ -2,8 +2,12 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { MESSAGE_PATTERNS } from '@ef/common';
 import {
+  CreateEliteForgeTournamentPayload,
   CreateTournamentPayload,
+  EnrollGroupPayload,
+  GetPublicTournamentDto,
   ListTournamentsMinePayload,
+  OwnerPayload,
   TournamentIdPayload,
   UpdateTournamentMatchResultPayload,
   UpdateTournamentPayload,
@@ -29,6 +33,12 @@ export class TournamentsController {
   create(@Payload() data: CreateTournamentPayload) {
     const { ownerId, ...dto } = data;
     return this.tournamentsService.create(ownerId, dto);
+  }
+
+  @MessagePattern(MESSAGE_PATTERNS.TOURNAMENTS.CREATE_ELITE_FORGE)
+  createEliteForge(@Payload() data: CreateEliteForgeTournamentPayload) {
+    const { ownerId, ...dto } = data;
+    return this.tournamentsService.createEliteForge(ownerId, dto);
   }
 
   @MessagePattern(MESSAGE_PATTERNS.TOURNAMENTS.UPDATE)
@@ -61,5 +71,34 @@ export class TournamentsController {
   updateMatchResult(@Payload() data: UpdateTournamentMatchResultPayload) {
     const { tournamentId, matchId, ownerId, ...patch } = data;
     return this.tournamentsService.updateMatchResult(tournamentId, matchId, ownerId, patch);
+  }
+
+  // --- Copa Elite Forge (Fase 7.2): lado jugador ---
+
+  @MessagePattern(MESSAGE_PATTERNS.TOURNAMENTS.LIST_ACTIVE_FOR_PLAYER)
+  listActiveForPlayer() {
+    return this.tournamentsService.listActiveForPlayer();
+  }
+
+  @MessagePattern(MESSAGE_PATTERNS.TOURNAMENTS.GET_PUBLIC)
+  getPublic(@Payload() data: GetPublicTournamentDto) {
+    return this.tournamentsService.getPublic(data.tournamentId);
+  }
+
+  @MessagePattern(MESSAGE_PATTERNS.TOURNAMENTS.ENROLL_GROUP)
+  enrollGroup(@Payload() data: EnrollGroupPayload) {
+    return this.tournamentsService.enrollGroup(
+      data.tournamentId,
+      data.requesterId,
+      data.groupId,
+      data.playerUserIds,
+    );
+  }
+
+  // --- Copa Elite Forge (Fase 7.2): lado dueño de cancha sintética ---
+
+  @MessagePattern(MESSAGE_PATTERNS.TOURNAMENTS.LIST_ASSIGNED_MATCHES_FOR_VENUE_OWNER)
+  listAssignedMatchesForVenueOwner(@Payload() data: OwnerPayload) {
+    return this.tournamentsService.listAssignedMatchesForVenueOwner(data.ownerId);
   }
 }

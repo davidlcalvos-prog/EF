@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@ef/database';
 import { MyReservationDto, PublicVenueDto, ReservationDto, VenueDto } from '@ef/contracts';
-import { GroupRole, ReservationStatus } from '@prisma/client';
+import { GroupRole, ReservationStatus, VenueSurfaceType } from '@prisma/client';
 
 @Injectable()
 export class VenueRepository {
@@ -23,6 +23,7 @@ export class VenueRepository {
       name: string;
       address?: string | null;
       pricePerHourCents?: number;
+      surfaceType?: VenueSurfaceType;
     },
   ): Promise<VenueDto> {
     if (payload.id) {
@@ -32,6 +33,7 @@ export class VenueRepository {
           name: payload.name,
           address: payload.address ?? null,
           pricePerHourCents: payload.pricePerHourCents ?? 0,
+          surfaceType: payload.surfaceType,
         },
       });
       return this.toVenueDto(updated);
@@ -43,9 +45,18 @@ export class VenueRepository {
         name: payload.name,
         address: payload.address ?? null,
         pricePerHourCents: payload.pricePerHourCents ?? 0,
+        surfaceType: payload.surfaceType,
       },
     });
     return this.toVenueDto(created);
+  }
+
+  /** Pool para la asignación aleatoria de cancha de Copa Elite Forge (Fase 7.2) — sin filtro extra de "activa", no existe ese concepto hoy. */
+  listSyntheticGrassVenues(): Promise<{ id: string; name: string; ownerId: string }[]> {
+    return this.prisma.venue.findMany({
+      where: { surfaceType: 'synthetic_grass' },
+      select: { id: true, name: true, ownerId: true },
+    });
   }
 
   async listReservationsForOwner(ownerId: string): Promise<ReservationDto[]> {
@@ -249,6 +260,7 @@ export class VenueRepository {
     address: string | null;
     pricePerHourCents: number;
     availability: unknown;
+    surfaceType: VenueSurfaceType | null;
     createdAt: Date;
     updatedAt: Date;
   }): VenueDto {
@@ -259,6 +271,7 @@ export class VenueRepository {
       address: row.address,
       pricePerHourCents: row.pricePerHourCents,
       availability: (row.availability as Record<string, unknown>) ?? {},
+      surfaceType: row.surfaceType,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     };

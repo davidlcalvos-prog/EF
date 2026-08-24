@@ -1,6 +1,7 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@ef/database';
 import {
+  AssignedTournamentMatchDto,
   DomainMatch,
   DomainMatchPlayerStat,
   DomainPlayer,
@@ -9,14 +10,18 @@ import {
   recomputeStandings,
   TournamentCourtSizeDto,
   TournamentDto,
+  TournamentKindDto,
   TournamentMatchDto,
   TournamentPlayerDto,
   TournamentScheduleDto,
+  TournamentStatusDto,
   TournamentTeamDto,
   TournamentTeamInputDto,
 } from '@ef/contracts';
-import { TournamentCourtSize as PrismaCourtSize, Prisma } from '@prisma/client';
+import { GroupRole, TournamentCourtSize as PrismaCourtSize, Prisma } from '@prisma/client';
 import { VenueRepository } from '../../venues/repositories/venue.repository';
+
+const GROUP_LEADER_ROLES: GroupRole[] = ['creator', 'admin'];
 
 const COURT_SIZE_TO_PRISMA: Record<TournamentCourtSizeDto, PrismaCourtSize> = {
   '6vs6': 'six_vs_six',
@@ -61,6 +66,148 @@ export class TournamentRepository {
     return rows.map((row) => this.toTournamentDto(row));
   }
 
+  // --- Copa Elite Forge (Fase 7.2): lado jugador ---
+
+  /** Cualquier usuario autenticado — sin filtro de owner. */
+  async listActiveForPlayer(): Promise<TournamentDto[]> {
+    const rows = await this.prisma.tournament.findMany({
+      where: { kind: 'elite_forge', status: { in: ['registration', 'active'] } },
+      include: TOURNAMENT_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    });
+    return rows.map((row) => this.toTournamentDto(row));
+  }
+
+  /** Detalle público (fixture/equipos/standings) de un torneo elite_forge — cualquier autenticado. */
+  async getPublic(tournamentId: string): Promise<TournamentDto> {
+    const row = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      include: TOURNAMENT_INCLUDE,
+    });
+    if (!row) throw new NotFoundException(`Tournament ${tournamentId} not found`);
+    if (row.kind !== 'elite_forge') {
+      throw new ForbiddenException('This tournament is private');
+    }
+    return this.toTournamentDto(row);
+  }
+
+  async getEnrollmentContext(
+    tournamentId: string,
+  ): Promise<{ kind: TournamentKindDto; status: TournamentStatusDto; courtSize: TournamentCourtSizeDto } | null> {
+    const row = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      select: { kind: true, status: true, courtSize: true },
+    });
+    if (!row) return null;
+    return { kind: row.kind, status: row.status, courtSize: COURT_SIZE_FROM_PRISMA[row.courtSize] };
+  }
+
+  /** Reusa la misma consulta que ya usa VenueRepository para el mismo criterio creator/admin. */
+  findGroupLeaderRole(groupId: string, userId: string): Promise<GroupRole | null> {
+    return this.venueRepository.findGroupMembershipRole(groupId, userId);
+  }
+
+  async isGroupEnrolled(tournamentId: string, groupId: string): Promise<boolean> {
+    const existing = await this.prisma.tournamentTeam.findFirst({
+      where: { tournamentId, enrolledGroupId: groupId },
+      select: { id: true },
+    });
+    return existing != null;
+  }
+
+  /**
+   * Inscribe el grupo como TournamentTeam + un TournamentPlayer por cada
+   * userId elegido. isGoalkeeper se resuelve por favoritePosition==='goalkeeper'
+   * (mismo criterio simple; no se usa el fallback por stats del randomizador de
+   * partidos internos, que exigiría traer PlayerStats acá sin necesidad real —
+   * ver nota en TournamentsService.enrollGroup).
+   */
+  async enrollGroup(
+    tournamentId: string,
+    groupId: string,
+    playerUserIds: string[],
+  ): Promise<TournamentDto> {
+    const members = await this.prisma.groupMembership.findMany({
+      where: { groupId, userId: { in: playerUserIds } },
+      select: { userId: true },
+    });
+    const validIds = new Set(members.map((m) => m.userId));
+    const invalid = playerUserIds.filter((id) => !validIds.has(id));
+    if (invalid.length > 0) {
+      throw new ConflictException('Some selected players are not members of this group');
+    }
+
+    const [group, users] = await Promise.all([
+      this.prisma.group.findUniqueOrThrow({ where: { id: groupId }, select: { name: true } }),
+      this.prisma.user.findMany({
+        where: { id: { in: playerUserIds } },
+        select: {
+          id: true,
+          firstname: true,
+          lastname: true,
+          profile: { select: { favoritePosition: true } },
+        },
+      }),
+    ]);
+
+    await this.prisma.tournamentTeam.create({
+      data: {
+        tournamentId,
+        enrolledGroupId: groupId,
+        name: group.name,
+        players: {
+          create: users.map((u) => ({
+            userId: u.id,
+            name: [u.firstname, u.lastname]
+              .map((part) => part.trim())
+              .filter(Boolean)
+              .join(' '),
+            isGoalkeeper: u.profile?.favoritePosition === 'goalkeeper',
+          })),
+        },
+      },
+    });
+
+    const reloaded = await this.prisma.tournament.findUniqueOrThrow({
+      where: { id: tournamentId },
+      include: TOURNAMENT_INCLUDE,
+    });
+    return this.toTournamentDto(reloaded);
+  }
+
+  // --- Copa Elite Forge (Fase 7.2): lado dueño de cancha sintética ---
+
+  async listAssignedMatchesForVenueOwner(ownerId: string): Promise<AssignedTournamentMatchDto[]> {
+    const venues = await this.prisma.venue.findMany({ where: { ownerId }, select: { id: true } });
+    const venueIds = venues.map((v) => v.id);
+    if (venueIds.length === 0) return [];
+
+    const matches = await this.prisma.tournamentMatch.findMany({
+      where: { venueId: { in: venueIds }, tournament: { kind: 'elite_forge' } },
+      include: {
+        tournament: { select: { id: true, name: true } },
+        homeTeam: { select: { name: true } },
+        awayTeam: { select: { name: true } },
+        reservation: { select: { id: true, status: true } },
+      },
+      orderBy: { startsAt: 'asc' },
+    });
+
+    return matches.map((m) => ({
+      matchId: m.id,
+      tournamentId: m.tournament.id,
+      tournamentName: m.tournament.name,
+      homeTeamName: m.homeTeam.name,
+      awayTeamName: m.awayTeam.name,
+      startsAt: m.startsAt ? m.startsAt.toISOString() : null,
+      endsAt: m.endsAt ? m.endsAt.toISOString() : null,
+      courtNumber: m.courtNumber,
+      matchStatus: m.status,
+      reservationId: m.reservation?.id ?? null,
+      reservationStatus: m.reservation?.status ?? null,
+    }));
+  }
+
   /** Lanza NotFound si no existe, Forbidden si existe pero es de otro owner (mismo criterio que VenueRepository/venues.service). */
   async requireOwned(tournamentId: string, ownerId: string): Promise<TournamentRow> {
     const row = await this.prisma.tournament.findUnique({
@@ -79,11 +226,18 @@ export class TournamentRepository {
     return this.toTournamentDto(row);
   }
 
+  /**
+   * kind='private': venueId obligatorio, se valida que la cancha sea del owner
+   * (comportamiento igual a la 7.1). kind='elite_forge': sin venueId — la
+   * cancha se decide por partido al generar el fixture (ver persistGeneratedMatches
+   * en TournamentsService).
+   */
   async create(
     ownerId: string,
     payload: {
       name: string;
-      venueId: string;
+      kind: TournamentKindDto;
+      venueId?: string;
       courtSize: TournamentCourtSizeDto;
       format: 'groups_of_4' | 'round_robin' | 'brackets';
       maxTeams: number;
@@ -91,19 +245,27 @@ export class TournamentRepository {
       schedule: TournamentScheduleDto;
     },
   ): Promise<TournamentDto> {
-    const venue = await this.prisma.venue.findUnique({
-      where: { id: payload.venueId },
-      select: { id: true, ownerId: true },
-    });
-    if (!venue) throw new NotFoundException(`Venue ${payload.venueId} not found`);
-    if (venue.ownerId !== ownerId) {
-      throw new ForbiddenException('This venue does not belong to you');
+    let venueId: string | null = null;
+    if (payload.kind === 'private') {
+      if (!payload.venueId) {
+        throw new ConflictException('venueId is required for private tournaments');
+      }
+      const venue = await this.prisma.venue.findUnique({
+        where: { id: payload.venueId },
+        select: { id: true, ownerId: true },
+      });
+      if (!venue) throw new NotFoundException(`Venue ${payload.venueId} not found`);
+      if (venue.ownerId !== ownerId) {
+        throw new ForbiddenException('This venue does not belong to you');
+      }
+      venueId = payload.venueId;
     }
 
     const created = await this.prisma.tournament.create({
       data: {
         ownerId,
-        venueId: payload.venueId,
+        kind: payload.kind,
+        venueId,
         name: payload.name,
         courtSize: COURT_SIZE_TO_PRISMA[payload.courtSize],
         format: payload.format,
@@ -376,7 +538,15 @@ export class TournamentRepository {
   async clearMatchSchedule(matchId: string): Promise<void> {
     await this.prisma.tournamentMatch.update({
       where: { id: matchId },
-      data: { startsAt: null, endsAt: null },
+      data: { startsAt: null, endsAt: null, venueId: null },
+    });
+  }
+
+  /** Cancha real asignada a ESTE partido (fija para private, sorteada para elite_forge). */
+  async assignMatchVenue(matchId: string, venueId: string): Promise<void> {
+    await this.prisma.tournamentMatch.update({
+      where: { id: matchId },
+      data: { venueId },
     });
   }
 
@@ -384,8 +554,20 @@ export class TournamentRepository {
     return this.venueRepository.hasOverlappingReservation(venueId, startsAt, endsAt);
   }
 
+  /** Pool de canchas synthetic_grass para el sorteo de Copa Elite Forge. */
+  listSyntheticVenues(): Promise<{ id: string; name: string; ownerId: string }[]> {
+    return this.venueRepository.listSyntheticGrassVenues();
+  }
+
+  /**
+   * userId: a quién le pertenece la reserva a efectos de /admin/reservas — para
+   * kind=private es el ownerId del torneo (== dueño de la cancha fija); para
+   * kind=elite_forge es el ownerId REAL de la cancha sorteada, que casi nunca
+   * coincide con el ownerId del torneo (el Administrador que lo creó). El
+   * caller (TournamentsService) decide cuál pasar — este método no lo infiere.
+   */
   async createReservationForMatch(params: {
-    ownerId: string;
+    userId: string;
     venueId: string;
     venueName: string;
     matchId: string;
@@ -395,7 +577,7 @@ export class TournamentRepository {
   }): Promise<void> {
     await this.prisma.reservation.create({
       data: {
-        userId: params.ownerId,
+        userId: params.userId,
         venueId: params.venueId,
         venueName: params.venueName,
         startsAt: params.startsAt,
@@ -481,6 +663,7 @@ export class TournamentRepository {
     return {
       id: row.id,
       ownerId: row.ownerId,
+      kind: row.kind,
       venueId: row.venueId,
       name: row.name,
       courtSize: COURT_SIZE_FROM_PRISMA[row.courtSize],

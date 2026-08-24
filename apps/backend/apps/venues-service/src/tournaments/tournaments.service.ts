@@ -1,6 +1,7 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
 import {
   addExtraRoundMatches,
+  AssignedTournamentMatchDto,
   DomainCourtSize,
   DomainMatch,
   ensureGroupIds,
@@ -14,6 +15,15 @@ import {
   TournamentTeamInputDto,
 } from '@ef/contracts';
 import { TournamentRepository } from './repositories/tournament.repository';
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 @Injectable()
 export class TournamentsService {
@@ -39,7 +49,22 @@ export class TournamentsService {
       schedule: TournamentScheduleDto;
     },
   ): Promise<TournamentDto> {
-    return this.tournamentRepository.create(ownerId, dto);
+    return this.tournamentRepository.create(ownerId, { ...dto, kind: 'private' });
+  }
+
+  /** Copa Elite Forge (Fase 7.2) — solo Administrador (gateway), sin cancha fija. */
+  createEliteForge(
+    ownerId: string,
+    dto: {
+      name: string;
+      courtSize: TournamentCourtSizeDto;
+      format: 'groups_of_4' | 'round_robin' | 'brackets';
+      maxTeams: number;
+      bracketKeys: number;
+      schedule: TournamentScheduleDto;
+    },
+  ): Promise<TournamentDto> {
+    return this.tournamentRepository.create(ownerId, { ...dto, kind: 'elite_forge' });
   }
 
   update(
@@ -69,6 +94,12 @@ export class TournamentsService {
     teams: TournamentTeamInputDto[],
   ): Promise<TournamentDto> {
     const tournament = await this.tournamentRepository.getOwned(tournamentId, ownerId);
+
+    if (tournament.kind === 'elite_forge') {
+      throw new ForbiddenException(
+        'Elite Forge tournaments only accept enrollment via ENROLL_GROUP',
+      );
+    }
 
     if (teams.length > tournament.maxTeams) {
       throw new ConflictException(`This tournament allows at most ${tournament.maxTeams} teams`);
@@ -100,7 +131,7 @@ export class TournamentsService {
     await this.tournamentRepository.deleteAllMatches(tournamentId);
 
     const generated = generateFixture({ ...domainTournament, teams, matches: [] });
-    return this.persistGeneratedMatches(tournamentId, row.venueId, ownerId, generated, row.name);
+    return this.persistGeneratedMatches(tournamentId, ownerId, generated, row.name, row.kind, row.venueId);
   }
 
   async addExtraRound(tournamentId: string, ownerId: string): Promise<GenerateFixtureResultDto> {
@@ -114,7 +145,7 @@ export class TournamentsService {
     const extended = addExtraRoundMatches({ ...domainTournament, extraRoundEnabled: true });
     const newMatches = extended.slice(domainTournament.matches.length);
 
-    return this.persistGeneratedMatches(tournamentId, row.venueId, ownerId, newMatches, row.name);
+    return this.persistGeneratedMatches(tournamentId, ownerId, newMatches, row.name, row.kind, row.venueId);
   }
 
   updateMatchResult(
@@ -140,21 +171,99 @@ export class TournamentsService {
     return this.tournamentRepository.updateMatchResult(tournamentId, matchId, ownerId, patch);
   }
 
+  // --- Copa Elite Forge (Fase 7.2): lado jugador ---
+
+  listActiveForPlayer(): Promise<TournamentDto[]> {
+    return this.tournamentRepository.listActiveForPlayer();
+  }
+
+  getPublic(tournamentId: string): Promise<TournamentDto> {
+    return this.tournamentRepository.getPublic(tournamentId);
+  }
+
+  /**
+   * Solo el creator/admin del grupo puede inscribirlo, y solo mientras el
+   * torneo está en 'registration'. isGoalkeeper se resuelve por
+   * favoritePosition==='goalkeeper' — no se usa el fallback por stats del
+   * randomizador de partidos internos (team-randomizer.ts): ese fallback
+   * existe para cuando hace falta balancear un partido SIN preferencia
+   * declarada, algo que no aplica acá (esto es un roster fijo, no un sorteo
+   * de equipos) — usar solo la posición favorita es la lectura más simple y
+   * correcta para este caso, evita traer PlayerStats sin necesidad real.
+   */
+  async enrollGroup(
+    tournamentId: string,
+    requesterId: string,
+    groupId: string,
+    playerUserIds: string[],
+  ): Promise<TournamentDto> {
+    const context = await this.tournamentRepository.getEnrollmentContext(tournamentId);
+    if (!context) {
+      throw new ConflictException(`Tournament ${tournamentId} not found`);
+    }
+    if (context.kind !== 'elite_forge') {
+      throw new ForbiddenException('Only Elite Forge tournaments accept group enrollment');
+    }
+    if (context.status !== 'registration') {
+      throw new ConflictException('This tournament is not open for registration');
+    }
+
+    const role = await this.tournamentRepository.findGroupLeaderRole(groupId, requesterId);
+    if (role !== 'creator' && role !== 'admin') {
+      throw new ForbiddenException('Only the creator or an admin of the group can enroll it');
+    }
+
+    const alreadyEnrolled = await this.tournamentRepository.isGroupEnrolled(tournamentId, groupId);
+    if (alreadyEnrolled) {
+      throw new ConflictException('This group is already enrolled in this tournament');
+    }
+
+    if (playerUserIds.length === 0) {
+      throw new ConflictException('At least one player is required');
+    }
+    const cap = maxPlayersPerTeam(context.courtSize as DomainCourtSize);
+    if (playerUserIds.length > cap) {
+      throw new ConflictException(`Roster exceeds the ${cap}-player cap for this format`);
+    }
+
+    return this.tournamentRepository.enrollGroup(tournamentId, groupId, playerUserIds);
+  }
+
+  // --- Copa Elite Forge (Fase 7.2): lado dueño de cancha sintética ---
+
+  listAssignedMatchesForVenueOwner(ownerId: string): Promise<AssignedTournamentMatchDto[]> {
+    return this.tournamentRepository.listAssignedMatchesForVenueOwner(ownerId);
+  }
+
   /**
    * Inserta los partidos generados y, para cada uno con horario asignado,
-   * intenta reservar la cancha real. Si hay choque (con otra reserva ya
-   * existente, de cualquier origen), el partido queda sin fecha/reserva —
-   * mismo camino que ya usa el algoritmo cuando se queda sin slots.
+   * intenta reservar cancha real:
+   * - kind='private': la cancha fija del torneo (comportamiento igual a la 7.1).
+   * - kind='elite_forge': sorteo entre canchas synthetic_grass — se baraja el
+   *   pool y se prueba una por una con hasOverlap hasta encontrar una libre.
+   *   La Reservation se crea con userId = ownerId REAL de esa cancha (nunca el
+   *   ownerId del torneo, que es el Administrador que lo creó — ver nota en
+   *   TournamentRepository.createReservationForMatch, es el bug más fácil de
+   *   cometer acá).
+   * Si no hay cancha libre (o el pool está vacío), el partido queda sin
+   * fecha/reserva — mismo camino que ya usa el algoritmo cuando se queda sin
+   * slots — y se cuenta en unscheduledCount.
    */
   private async persistGeneratedMatches(
     tournamentId: string,
-    venueId: string,
     ownerId: string,
     matches: DomainMatch[],
     tournamentName: string,
+    kind: 'private' | 'elite_forge',
+    fixedVenueId: string | null,
   ): Promise<GenerateFixtureResultDto> {
-    const venueName = await this.tournamentRepository.findVenueName(venueId);
     const created = await this.tournamentRepository.insertMatches(tournamentId, matches);
+
+    const fixedVenueName =
+      kind === 'private' && fixedVenueId
+        ? await this.tournamentRepository.findVenueName(fixedVenueId)
+        : null;
+    const syntheticPool = kind === 'elite_forge' ? await this.tournamentRepository.listSyntheticVenues() : [];
 
     let unscheduledCount = 0;
     for (const match of created) {
@@ -162,25 +271,57 @@ export class TournamentsService {
         unscheduledCount++;
         continue;
       }
-      const overlaps = await this.tournamentRepository.hasOverlap(
-        venueId,
-        match.startsAt,
-        match.endsAt,
-      );
-      if (overlaps) {
-        await this.tournamentRepository.clearMatchSchedule(match.id);
-        unscheduledCount++;
+
+      if (kind === 'private') {
+        const overlaps = await this.tournamentRepository.hasOverlap(
+          fixedVenueId as string,
+          match.startsAt,
+          match.endsAt,
+        );
+        if (overlaps) {
+          await this.tournamentRepository.clearMatchSchedule(match.id);
+          unscheduledCount++;
+          continue;
+        }
+        await this.tournamentRepository.assignMatchVenue(match.id, fixedVenueId as string);
+        await this.tournamentRepository.createReservationForMatch({
+          userId: ownerId,
+          venueId: fixedVenueId as string,
+          venueName: fixedVenueName as string,
+          matchId: match.id,
+          startsAt: match.startsAt,
+          endsAt: match.endsAt,
+          notes: `${tournamentName} · Cancha ${match.courtNumber}`,
+        });
         continue;
       }
-      await this.tournamentRepository.createReservationForMatch({
-        ownerId,
-        venueId,
-        venueName,
-        matchId: match.id,
-        startsAt: match.startsAt,
-        endsAt: match.endsAt,
-        notes: `${tournamentName} · Cancha ${match.courtNumber}`,
-      });
+
+      let assigned = false;
+      for (const venue of shuffle(syntheticPool)) {
+        const overlaps = await this.tournamentRepository.hasOverlap(
+          venue.id,
+          match.startsAt,
+          match.endsAt,
+        );
+        if (overlaps) continue;
+
+        await this.tournamentRepository.assignMatchVenue(match.id, venue.id);
+        await this.tournamentRepository.createReservationForMatch({
+          userId: venue.ownerId,
+          venueId: venue.id,
+          venueName: venue.name,
+          matchId: match.id,
+          startsAt: match.startsAt,
+          endsAt: match.endsAt,
+          notes: `Copa Elite Forge · ${tournamentName} · Cancha ${match.courtNumber}`,
+        });
+        assigned = true;
+        break;
+      }
+      if (!assigned) {
+        await this.tournamentRepository.clearMatchSchedule(match.id);
+        unscheduledCount++;
+      }
     }
 
     const tournament = await this.tournamentRepository.getOwned(tournamentId, ownerId);

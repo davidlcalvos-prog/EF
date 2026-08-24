@@ -9,8 +9,12 @@ import { AdminPageHeader } from '@/components/admin/page-header'
 import { TournamentDetail } from '@/components/admin/tournament-detail'
 import {
   createTournamentAction,
-  deleteTournamentAction,
+  deleteTournamentAction as deletePrivateTournamentAction,
 } from '@/app/admin/(portal)/torneos/actions'
+import {
+  createEliteForgeTournamentAction,
+  deleteTournamentAction as deleteEliteForgeTournamentAction,
+} from '@/app/admin/(portal)/campeonatos-elite-forge/actions'
 import {
   MAX_TEAMS,
   WEEKDAY_OPTIONS,
@@ -22,18 +26,23 @@ import {
   type ScheduleConfig,
   type Tournament,
   type TournamentFormat,
+  type TournamentKind,
 } from '@/lib/dal/admin/tournaments'
 import type { VenueRow } from '@/lib/dal/admin/types'
 
 export function TournamentsDashboard({
+  kind,
   initialTournaments,
   venues,
   loadError,
 }: {
+  kind: TournamentKind
   initialTournaments: Tournament[]
+  /** Solo relevante para kind='private' — elite_forge no tiene cancha fija. */
   venues: VenueRow[]
   loadError: string | null
 }) {
+  const isEliteForge = kind === 'elite_forge'
   const [items, setItems] = useState<Tournament[]>(initialTournaments)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
@@ -78,29 +87,33 @@ export function TournamentsDashboard({
   }
 
   function handleCreate() {
-    if (!draftVenueId) {
+    if (!isEliteForge && !draftVenueId) {
       setCreateError('Elegí una cancha para el torneo.')
       return
     }
     setCreateError(null)
     startTransition(async () => {
       try {
-        const tournament = await createTournamentAction({
+        const basePayload = {
           name: draftName.trim() || 'Nuevo torneo',
-          venueId: draftVenueId,
           courtSize: draftSize,
           format: draftFormat,
           maxTeams: Math.min(MAX_TEAMS, Math.max(2, draftMax)),
           bracketKeys: Math.max(1, draftKeys),
           schedule: draftSchedule,
-        })
+        }
+        const tournament = isEliteForge
+          ? await createEliteForgeTournamentAction(basePayload)
+          : await createTournamentAction({ ...basePayload, venueId: draftVenueId })
         replaceItem(tournament)
         setCreating(false)
         setDraftName('')
         setSelectedId(tournament.id)
       } catch (error) {
         setCreateError(
-          error instanceof Error ? error.message : 'No se pudo crear el torneo',
+          error instanceof Error
+            ? error.message
+            : `No se pudo crear el ${isEliteForge ? 'campeonato' : 'torneo'}`,
         )
       }
     })
@@ -108,7 +121,11 @@ export function TournamentsDashboard({
 
   function handleDelete(id: string) {
     startTransition(async () => {
-      await deleteTournamentAction(id)
+      if (isEliteForge) {
+        await deleteEliteForgeTournamentAction(id)
+      } else {
+        await deletePrivateTournamentAction(id)
+      }
       setItems((prev) => prev.filter((t) => t.id !== id))
       setSelectedId(null)
     })
@@ -130,8 +147,12 @@ export function TournamentsDashboard({
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-8">
       <AdminPageHeader
-        title="Torneos"
-        subtitle="Crea torneos 6/8/11, agenda días/horarios en calendario, registra equipos y rankings."
+        title={isEliteForge ? 'Campeonatos Elite Forge' : 'Torneos'}
+        subtitle={
+          isEliteForge
+            ? 'Torneos oficiales de Elite Forge: los grupos se inscriben con jugadores reales, la cancha se asigna al azar entre las canchas sintéticas registradas.'
+            : 'Crea torneos 6/8/11, agenda días/horarios en calendario, registra equipos y rankings.'
+        }
       />
 
       {loadError && (
@@ -140,17 +161,17 @@ export function TournamentsDashboard({
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          Máximo {MAX_TEAMS} equipos por torneo.
+          Máximo {MAX_TEAMS} equipos por {isEliteForge ? 'campeonato' : 'torneo'}.
         </p>
-        {venues.length > 0 && (
+        {(isEliteForge || venues.length > 0) && (
           <Button type="button" onClick={() => setCreating(true)}>
             <Plus className="mr-1 h-4 w-4" />
-            Crear torneo
+            Crear {isEliteForge ? 'campeonato' : 'torneo'}
           </Button>
         )}
       </div>
 
-      {venues.length === 0 && (
+      {!isEliteForge && venues.length === 0 && (
         <div className="mb-6 rounded-2xl border border-dashed border-border bg-card/50 p-6 text-center">
           <p className="text-sm text-muted-foreground">
             Todavía no tenés ninguna cancha registrada. Agregá una en{' '}
@@ -164,7 +185,7 @@ export function TournamentsDashboard({
       {creating && (
         <section className="mb-8 space-y-4 rounded-2xl border border-border bg-card p-5">
           <h2 className="font-heading text-lg font-bold uppercase italic tracking-tight">
-            Nuevo torneo
+            Nuevo {isEliteForge ? 'campeonato' : 'torneo'}
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
@@ -173,24 +194,26 @@ export function TournamentsDashboard({
                 id="new-name"
                 value={draftName}
                 onChange={(e) => setDraftName(e.target.value)}
-                placeholder="Copa Elite Forge"
+                placeholder={isEliteForge ? 'Copa Elite Forge Apertura' : 'Copa Elite Forge'}
               />
             </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="new-venue">Cancha</Label>
-              <select
-                id="new-venue"
-                className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
-                value={draftVenueId}
-                onChange={(e) => setDraftVenueId(e.target.value)}
-              >
-                {venues.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {!isEliteForge && (
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="new-venue">Cancha</Label>
+                <select
+                  id="new-venue"
+                  className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+                  value={draftVenueId}
+                  onChange={(e) => setDraftVenueId(e.target.value)}
+                >
+                  {venues.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="new-size">Cancha (formato)</Label>
               <select
@@ -350,8 +373,8 @@ export function TournamentsDashboard({
         <div className="rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center">
           <Trophy className="mx-auto h-10 w-10 text-muted-foreground" />
           <p className="mt-4 text-sm text-muted-foreground">
-            Todavía no hay torneos. Crea el primero para inscribir equipos y
-            armar llaves o grupos.
+            Todavía no hay {isEliteForge ? 'campeonatos' : 'torneos'}. Crea el
+            primero para inscribir equipos y armar llaves o grupos.
           </p>
         </div>
       ) : (

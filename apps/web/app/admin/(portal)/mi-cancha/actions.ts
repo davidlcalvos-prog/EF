@@ -10,6 +10,7 @@ export async function saveVenue(formData: FormData) {
   const name = String(formData.get('name') || '').trim()
   const address = String(formData.get('address') || '').trim()
   const price = Number(formData.get('price_per_hour') || 0)
+  const surfaceType = String(formData.get('surface_type') || '').trim()
 
   if (!name) {
     throw new Error('El nombre de la cancha es obligatorio')
@@ -20,6 +21,12 @@ export async function saveVenue(formData: FormData) {
     name,
     address: address || null,
     price_per_hour_cents: Math.round(price * 100),
+    surface_type: (surfaceType || null) as
+      | 'natural_grass'
+      | 'synthetic_grass'
+      | 'dirt_gravel'
+      | 'futsal_concrete'
+      | null,
   })
 
   revalidatePath('/admin/mi-cancha')

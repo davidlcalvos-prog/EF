@@ -5,13 +5,8 @@ import { Minus, Plus, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  generateTournamentFixtureAction,
-  addTournamentExtraRoundAction,
-  updateTournamentAction,
-  updateTournamentMatchResultAction,
-  upsertTournamentTeamsAction,
-} from '@/app/admin/(portal)/torneos/actions'
+import * as privateTournamentActions from '@/app/admin/(portal)/torneos/actions'
+import * as eliteForgeTournamentActions from '@/app/admin/(portal)/campeonatos-elite-forge/actions'
 import {
   courtSizeLabel,
   emptyPlayer,
@@ -58,6 +53,10 @@ export function TournamentDetail({
   const [isPending, startTransition] = useTransition()
   const [saveError, setSaveError] = useState<string | null>(null)
 
+  const isEliteForge = local.kind === 'elite_forge'
+  /** Mismos nombres/firmas en ambos módulos — solo cambia qué revalidatePath corren. */
+  const actions = isEliteForge ? eliteForgeTournamentActions : privateTournamentActions
+
   const rosterCap = maxPlayersPerTeam(local.courtSize)
   const teamMap = useMemo(
     () => new Map(local.teams.map((t) => [t.id, t])),
@@ -96,7 +95,7 @@ export function TournamentDetail({
     startTransition(async () => {
       setSaveError(null)
       try {
-        const updated = await updateTournamentAction(local.id, {
+        const updated = await actions.updateTournamentAction(local.id, {
           name: merged.name,
           courtSize: merged.courtSize,
           format: merged.format,
@@ -124,7 +123,7 @@ export function TournamentDetail({
     startTransition(async () => {
       setSaveError(null)
       try {
-        const updated = await upsertTournamentTeamsAction(local.id, teams)
+        const updated = await actions.upsertTournamentTeamsAction(local.id, teams)
         setLocal(updated)
         onChange(updated)
       } catch (error) {
@@ -163,7 +162,7 @@ export function TournamentDetail({
     startTransition(async () => {
       setSaveError(null)
       try {
-        const result = await generateTournamentFixtureAction(local.id)
+        const result = await actions.generateTournamentFixtureAction(local.id)
         setLocal(result.tournament)
         onChange(result.tournament)
         setSaveError(
@@ -183,7 +182,7 @@ export function TournamentDetail({
     startTransition(async () => {
       setSaveError(null)
       try {
-        const result = await addTournamentExtraRoundAction(local.id)
+        const result = await actions.addTournamentExtraRoundAction(local.id)
         setLocal(result.tournament)
         onChange(result.tournament)
         setSaveError(
@@ -203,7 +202,7 @@ export function TournamentDetail({
     startTransition(async () => {
       setSaveError(null)
       try {
-        const updated = await updateTournamentMatchResultAction(local.id, match.id, {
+        const updated = await actions.updateTournamentMatchResultAction(local.id, match.id, {
           status: match.status,
           homeGoals: match.homeGoals,
           awayGoals: match.awayGoals,
@@ -551,22 +550,27 @@ export function TournamentDetail({
         <section className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">
-              Registro manual. Máx. {rosterCap} jugadores por equipo (
-              {rosterCap - 4} en cancha + 4 suplentes).
+              {isEliteForge
+                ? 'Solo lectura — el líder de cada grupo se inscribe y arma el roster desde la app.'
+                : `Registro manual. Máx. ${rosterCap} jugadores por equipo (${rosterCap - 4} en cancha + 4 suplentes).`}
             </p>
-            <Button
-              type="button"
-              onClick={addTeam}
-              disabled={local.teams.length >= local.maxTeams || isPending}
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              Añadir equipo
-            </Button>
+            {!isEliteForge && (
+              <Button
+                type="button"
+                onClick={addTeam}
+                disabled={local.teams.length >= local.maxTeams || isPending}
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                Añadir equipo
+              </Button>
+            )}
           </div>
 
           {local.teams.length === 0 && (
             <p className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
-              Aún no hay equipos. Regístralos manualmente.
+              {isEliteForge
+                ? 'Todavía no se inscribió ningún grupo.'
+                : 'Aún no hay equipos. Regístralos manualmente.'}
             </p>
           )}
 
@@ -578,6 +582,7 @@ export function TournamentDetail({
               <div className="flex flex-wrap items-center gap-3">
                 <Input
                   value={team.name}
+                  disabled={isEliteForge}
                   onChange={(e) =>
                     updateTeam(team.id, (t) => ({ ...t, name: e.target.value }))
                   }
@@ -589,14 +594,16 @@ export function TournamentDetail({
                     Grupo {team.groupId}
                   </span>
                 )}
-                <button
-                  type="button"
-                  onClick={() => removeTeam(team.id)}
-                  className="ml-auto text-muted-foreground hover:text-destructive"
-                  aria-label="Eliminar equipo"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                {!isEliteForge && (
+                  <button
+                    type="button"
+                    onClick={() => removeTeam(team.id)}
+                    className="ml-auto text-muted-foreground hover:text-destructive"
+                    aria-label="Eliminar equipo"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
               </div>
 
               <div className="overflow-x-auto">
@@ -618,6 +625,7 @@ export function TournamentDetail({
                         <td className="py-2 pr-2">
                           <Input
                             value={player.name}
+                            disabled={isEliteForge}
                             onChange={(e) =>
                               updateTeam(team.id, (t) => ({
                                 ...t,
@@ -636,6 +644,7 @@ export function TournamentDetail({
                           <input
                             type="checkbox"
                             checked={player.isGoalkeeper}
+                            disabled={isEliteForge}
                             onChange={(e) => {
                               const teams = updateTeam(team.id, (t) => ({
                                 ...t,
@@ -660,20 +669,22 @@ export function TournamentDetail({
                           {player.redCards}
                         </td>
                         <td className="py-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const teams = updateTeam(team.id, (t) => ({
-                                ...t,
-                                players: t.players.filter(
-                                  (p) => p.id !== player.id,
-                                ),
-                              }))
-                              commitTeams(teams)
-                            }}
-                          >
-                            <Minus className="h-4 w-4 text-muted-foreground" />
-                          </button>
+                          {!isEliteForge && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const teams = updateTeam(team.id, (t) => ({
+                                  ...t,
+                                  players: t.players.filter(
+                                    (p) => p.id !== player.id,
+                                  ),
+                                }))
+                                commitTeams(teams)
+                              }}
+                            >
+                              <Minus className="h-4 w-4 text-muted-foreground" />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -681,22 +692,24 @@ export function TournamentDetail({
                 </table>
               </div>
 
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={team.players.length >= rosterCap || isPending}
-                onClick={() => {
-                  const teams = updateTeam(team.id, (t) => ({
-                    ...t,
-                    players: [...t.players, emptyPlayer('')],
-                  }))
-                  commitTeams(teams)
-                }}
-              >
-                <Plus className="mr-1 h-4 w-4" />
-                Jugador ({team.players.length}/{rosterCap})
-              </Button>
+              {!isEliteForge && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={team.players.length >= rosterCap || isPending}
+                  onClick={() => {
+                    const teams = updateTeam(team.id, (t) => ({
+                      ...t,
+                      players: [...t.players, emptyPlayer('')],
+                    }))
+                    commitTeams(teams)
+                  }}
+                >
+                  <Plus className="mr-1 h-4 w-4" />
+                  Jugador ({team.players.length}/{rosterCap})
+                </Button>
+              )}
 
               <p className="text-xs text-muted-foreground">
                 PJ vía partidos · PG {team.wins} · PE {team.draws} · PP{' '}

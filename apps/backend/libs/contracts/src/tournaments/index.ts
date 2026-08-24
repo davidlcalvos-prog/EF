@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsIn,
@@ -24,6 +25,8 @@ export type TournamentMatchStatusDto =
   | 'played'
   | 'walkover_home'
   | 'walkover_away';
+/** private = Torneos privados (7.1, dueño de cancha). elite_forge = Copa Elite Forge (7.2, Administrador). */
+export type TournamentKindDto = 'private' | 'elite_forge';
 
 export interface TournamentScheduleDto {
   weekdays: number[];
@@ -88,7 +91,9 @@ export interface TournamentMatchDto {
 export interface TournamentDto {
   id: string;
   ownerId: string;
-  venueId: string;
+  kind: TournamentKindDto;
+  /** Cancha fija (private) o null (elite_forge — la cancha se decide por partido). */
+  venueId: string | null;
   name: string;
   courtSize: TournamentCourtSizeDto;
   format: TournamentFormatDto;
@@ -167,6 +172,41 @@ export class CreateTournamentDto {
 }
 
 export class CreateTournamentPayload extends CreateTournamentDto {
+  @IsUUID()
+  ownerId!: string;
+}
+
+/**
+ * Copa Elite Forge (Fase 7.2) — mismos campos que CreateTournamentDto salvo
+ * venueId: acá no hay cancha fija, se asigna por partido al generar el fixture.
+ */
+export class CreateEliteForgeTournamentDto {
+  @IsString()
+  @MinLength(2)
+  name!: string;
+
+  @IsIn(['6vs6', '8vs8', '11vs11'])
+  courtSize!: TournamentCourtSizeDto;
+
+  @IsIn(['groups_of_4', 'round_robin', 'brackets'])
+  format!: TournamentFormatDto;
+
+  @IsInt()
+  @Min(2)
+  @Max(16)
+  maxTeams!: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(8)
+  bracketKeys!: number;
+
+  @ValidateNested()
+  @Type(() => TournamentScheduleInputDto)
+  schedule!: TournamentScheduleInputDto;
+}
+
+export class CreateEliteForgeTournamentPayload extends CreateEliteForgeTournamentDto {
   @IsUUID()
   ownerId!: string;
 }
@@ -337,3 +377,48 @@ export class TournamentIdPayload {
 }
 
 export { OwnerPayload as ListTournamentsMinePayload };
+
+// --- Copa Elite Forge (Fase 7.2): lado jugador (cualquier autenticado) ---
+
+export class GetPublicTournamentDto {
+  @IsUUID()
+  tournamentId!: string;
+}
+
+/** El lider de grupo inscribe a SU grupo, eligiendo manualmente el roster. */
+export class EnrollGroupDto {
+  @IsUUID()
+  groupId!: string;
+
+  @IsArray()
+  @IsUUID('4', { each: true })
+  @ArrayMinSize(1)
+  playerUserIds!: string[];
+}
+
+export class EnrollGroupPayload extends EnrollGroupDto {
+  @IsUUID()
+  tournamentId!: string;
+
+  /** El usuario autenticado que pide inscribir — se valida que sea creator/admin del groupId. */
+  @IsUUID()
+  requesterId!: string;
+}
+
+// --- Copa Elite Forge (Fase 7.2): lado dueño de cancha sintética ---
+
+/** Un partido de Copa Elite Forge que le tocó a la cancha de este owner. */
+export interface AssignedTournamentMatchDto {
+  matchId: string;
+  tournamentId: string;
+  tournamentName: string;
+  homeTeamName: string;
+  awayTeamName: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  courtNumber: number;
+  matchStatus: TournamentMatchStatusDto;
+  /** Null si el partido quedó sin reserva (choque de horario al momento de generar). */
+  reservationId: string | null;
+  reservationStatus: 'pending' | 'confirmed' | 'cancelled' | null;
+}
