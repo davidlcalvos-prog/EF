@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { join } from 'path';
 import { PrismaModule } from '@ef/database';
 import { VenuesModule } from './venues/venues.module';
+import { TournamentsModule } from './tournaments/tournaments.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { VenuesModule } from './venues/venues.module';
     }),
     PrismaModule,
     VenuesModule,
+    TournamentsModule,
   ],
 })
 export class AppModule {}

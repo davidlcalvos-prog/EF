@@ -2,7 +2,6 @@ import { useMemo, useState } from "react"
 import { ActivityIndicator, Keyboard, Modal, Pressable, ScrollView, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { addDays } from "date-fns/addDays"
-import { nextSaturday } from "date-fns/nextSaturday"
 import { setHours } from "date-fns/setHours"
 import { setMinutes } from "date-fns/setMinutes"
 import { startOfDay } from "date-fns/startOfDay"
@@ -14,6 +13,7 @@ import { translate } from "@/i18n/translate"
 import type { MyReservationApiDto, PublicVenueApiDto } from "@/services/api"
 import type { GeneralApiProblem } from "@/services/api/apiProblem"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
+import { formatDate } from "@/utils/formatDate"
 
 export interface CreateReservationModalProps {
   visible: boolean
@@ -29,7 +29,12 @@ export interface CreateReservationModalProps {
   }) => Promise<{ kind: "ok"; reservation: MyReservationApiDto } | GeneralApiProblem>
 }
 
-type DateOption = "today" | "tomorrow" | "saturday"
+const DAYS_AHEAD = 14
+
+function buildDateOptions(): Date[] {
+  const today = startOfDay(new Date())
+  return Array.from({ length: DAYS_AHEAD }, (_, i) => addDays(today, i))
+}
 
 function describeProblem(problem: GeneralApiProblem): string {
   switch (problem.kind) {
@@ -44,13 +49,6 @@ function describeProblem(problem: GeneralApiProblem): string {
     default:
       return translate("reservationsScreen:createError")
   }
-}
-
-function getBaseDate(option: DateOption): Date {
-  const now = new Date()
-  if (option === "tomorrow") return startOfDay(addDays(now, 1))
-  if (option === "saturday") return startOfDay(nextSaturday(now))
-  return startOfDay(now)
 }
 
 function formatPrice(cents: number): string {
@@ -70,33 +68,45 @@ function isValidTime(hour: string, minute: string): boolean {
   )
 }
 
-function Chip({
-  label,
+function DayCard({
+  date,
   selected,
   onPress,
 }: {
-  label: string
+  date: Date
   selected: boolean
   onPress: () => void
 }) {
+  const weekday = formatDate(date.toISOString(), "EEE")
+  const dayNumber = formatDate(date.toISOString(), "d")
   return (
     <Pressable onPress={onPress} accessibilityRole="button">
-      <XStack
-        paddingHorizontal={12}
-        paddingVertical={8}
-        borderRadius={10}
+      <YStack
+        width={52}
+        paddingVertical={10}
+        borderRadius={12}
         backgroundColor={selected ? "rgba(0,206,200,0.15)" : eliteForgeColors.carbonInput}
         borderWidth={1}
         borderColor={selected ? eliteForgeColors.emerald : eliteForgeColors.carbonBorder}
+        alignItems="center"
+        gap={4}
       >
         <Text
-          color={selected ? eliteForgeColors.emerald : "#FFFFFF"}
-          fontSize={13}
+          color={selected ? eliteForgeColors.emerald : "rgba(255,255,255,0.6)"}
+          fontSize={11}
           fontWeight="700"
+          textTransform="capitalize"
         >
-          {label}
+          {weekday}
         </Text>
-      </XStack>
+        <Text
+          color={selected ? eliteForgeColors.emerald : "#FFFFFF"}
+          fontSize={16}
+          fontWeight="800"
+        >
+          {dayNumber}
+        </Text>
+      </YStack>
     </Pressable>
   )
 }
@@ -132,8 +142,9 @@ export function CreateReservationModal({
   onCreate,
 }: CreateReservationModalProps) {
   const { insets } = useResponsiveLayout()
+  const dateOptions = useMemo(() => buildDateOptions(), [])
   const [venueId, setVenueId] = useState("")
-  const [dateOption, setDateOption] = useState<DateOption>("today")
+  const [selectedDate, setSelectedDate] = useState<Date>(dateOptions[0])
   const [startHour, setStartHour] = useState("19")
   const [startMinute, setStartMinute] = useState("00")
   const [endHour, setEndHour] = useState("20")
@@ -147,18 +158,17 @@ export function CreateReservationModal({
 
   const { startsAtIso, endsAtIso } = useMemo(() => {
     if (!startTimeValid || !endTimeValid) return { startsAtIso: null, endsAtIso: null }
-    const base = getBaseDate(dateOption)
-    const starts = setMinutes(setHours(base, Number(startHour)), Number(startMinute))
-    const ends = setMinutes(setHours(base, Number(endHour)), Number(endMinute))
+    const starts = setMinutes(setHours(selectedDate, Number(startHour)), Number(startMinute))
+    const ends = setMinutes(setHours(selectedDate, Number(endHour)), Number(endMinute))
     return { startsAtIso: starts.toISOString(), endsAtIso: ends.toISOString() }
-  }, [dateOption, startHour, startMinute, endHour, endMinute, startTimeValid, endTimeValid])
+  }, [selectedDate, startHour, startMinute, endHour, endMinute, startTimeValid, endTimeValid])
 
   const isRangeValid = !!startsAtIso && !!endsAtIso && endsAtIso > startsAtIso
   const isValid = !!venueId && isRangeValid
 
   const reset = () => {
     setVenueId("")
-    setDateOption("today")
+    setSelectedDate(dateOptions[0])
     setStartHour("19")
     setStartMinute("00")
     setEndHour("20")
@@ -345,23 +355,20 @@ export function CreateReservationModal({
               <Text color="rgba(255,255,255,0.6)" fontSize={12} fontWeight="700">
                 {translate("reservationsScreen:dateLabel")}
               </Text>
-              <XStack flexWrap="wrap" gap={8}>
-                <Chip
-                  label={translate("matchesScreen:dateToday")}
-                  selected={dateOption === "today"}
-                  onPress={() => setDateOption("today")}
-                />
-                <Chip
-                  label={translate("matchesScreen:dateTomorrow")}
-                  selected={dateOption === "tomorrow"}
-                  onPress={() => setDateOption("tomorrow")}
-                />
-                <Chip
-                  label={translate("matchesScreen:dateSaturday")}
-                  selected={dateOption === "saturday"}
-                  onPress={() => setDateOption("saturday")}
-                />
-              </XStack>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 8 }}
+              >
+                {dateOptions.map((date) => (
+                  <DayCard
+                    key={date.toISOString()}
+                    date={date}
+                    selected={date.getTime() === selectedDate.getTime()}
+                    onPress={() => setSelectedDate(date)}
+                  />
+                ))}
+              </ScrollView>
             </YStack>
 
             <YStack gap={8} marginBottom={16}>

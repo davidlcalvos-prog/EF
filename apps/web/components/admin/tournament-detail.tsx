@@ -1,22 +1,25 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { Minus, Plus, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
-  addExtraRoundMatches,
+  generateTournamentFixtureAction,
+  addTournamentExtraRoundAction,
+  updateTournamentAction,
+  updateTournamentMatchResultAction,
+  upsertTournamentTeamsAction,
+} from '@/app/admin/(portal)/torneos/actions'
+import {
   courtSizeLabel,
   emptyPlayer,
   emptyTeam,
   ensureGroupIds,
   formatLabel,
   formatMatchDate,
-  generateFixture,
   maxPlayersPerTeam,
-  recomputeStandings,
-  syncTournamentCalendarReservations,
   topFourFromRoundRobin,
   withPlayedCount,
   standingSort,
@@ -28,6 +31,7 @@ import {
   type Tournament,
   type TournamentFormat,
   type CourtSize,
+  type Team,
   MAX_TEAMS,
 } from '@/lib/dal/admin/tournaments'
 import { TournamentRankingsModal } from '@/components/admin/tournament-rankings-modal'
@@ -47,19 +51,22 @@ export function TournamentDetail({
   onBack: () => void
   onDelete: () => void
 }) {
+  const [local, setLocal] = useState<Tournament>(tournament)
   const [tab, setTab] = useState<Tab>('teams')
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null)
   const [rankingsOpen, setRankingsOpen] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const [saveError, setSaveError] = useState<string | null>(null)
 
-  const rosterCap = maxPlayersPerTeam(tournament.courtSize)
+  const rosterCap = maxPlayersPerTeam(local.courtSize)
   const teamMap = useMemo(
-    () => new Map(tournament.teams.map((t) => [t.id, t])),
-    [tournament.teams],
+    () => new Map(local.teams.map((t) => [t.id, t])),
+    [local.teams],
   )
 
   const standings = useMemo(() => {
-    const rows = withPlayedCount(tournament.teams, tournament.matches)
-    if (tournament.format === 'groups_of_4') {
+    const rows = withPlayedCount(local.teams, local.matches)
+    if (local.format === 'groups_of_4') {
       const groups = new Map<string, typeof rows>()
       for (const row of rows) {
         const g = row.groupId || 'Sin grupo'
@@ -78,91 +85,163 @@ export function TournamentDetail({
         rows: [...rows].sort(standingSort),
       },
     ]
-  }, [tournament])
+  }, [local])
 
-  function patch(partial: Partial<Tournament>) {
-    onChange({ ...tournament, ...partial })
+  function patchLocal(partial: Partial<Tournament>) {
+    setLocal((prev) => ({ ...prev, ...partial }))
   }
 
-  function updateTeam(teamId: string, updater: (t: Tournament['teams'][0]) => Tournament['teams'][0]) {
-    onChange({
-      ...tournament,
-      teams: tournament.teams.map((t) => (t.id === teamId ? updater(t) : t)),
+  function commitConfig(override?: Partial<Tournament>) {
+    const merged = override ? { ...local, ...override } : local
+    startTransition(async () => {
+      setSaveError(null)
+      try {
+        const updated = await updateTournamentAction(local.id, {
+          name: merged.name,
+          courtSize: merged.courtSize,
+          format: merged.format,
+          maxTeams: merged.maxTeams,
+          bracketKeys: merged.bracketKeys,
+          status: merged.status,
+          schedule: merged.schedule,
+        })
+        setLocal(updated)
+        onChange(updated)
+      } catch (error) {
+        setSaveError(
+          error instanceof Error ? error.message : 'No se pudo guardar',
+        )
+      }
     })
+  }
+
+  function patchAndCommit(partial: Partial<Tournament>) {
+    patchLocal(partial)
+    commitConfig(partial)
+  }
+
+  function commitTeams(teams: Team[]) {
+    startTransition(async () => {
+      setSaveError(null)
+      try {
+        const updated = await upsertTournamentTeamsAction(local.id, teams)
+        setLocal(updated)
+        onChange(updated)
+      } catch (error) {
+        setSaveError(
+          error instanceof Error ? error.message : 'No se pudieron guardar los equipos',
+        )
+      }
+    })
+  }
+
+  function updateTeam(
+    teamId: string,
+    updater: (t: Team) => Team,
+  ) {
+    const nextTeams = local.teams.map((t) => (t.id === teamId ? updater(t) : t))
+    patchLocal({ teams: nextTeams })
+    return nextTeams
   }
 
   function addTeam() {
-    if (tournament.teams.length >= tournament.maxTeams) return
-    const name = `Equipo ${tournament.teams.length + 1}`
-    let teams = [...tournament.teams, emptyTeam(name)]
-    if (tournament.format === 'groups_of_4') teams = ensureGroupIds(teams)
-    onChange({ ...tournament, teams })
+    if (local.teams.length >= local.maxTeams) return
+    const name = `Equipo ${local.teams.length + 1}`
+    let teams = [...local.teams, emptyTeam(name)]
+    if (local.format === 'groups_of_4') teams = ensureGroupIds(teams)
+    patchLocal({ teams })
+    commitTeams(teams)
   }
 
   function removeTeam(teamId: string) {
-    onChange({
-      ...tournament,
-      teams: tournament.teams.filter((t) => t.id !== teamId),
-      matches: tournament.matches.filter(
-        (m) => m.homeTeamId !== teamId && m.awayTeamId !== teamId,
-      ),
-    })
+    const teams = local.teams.filter((t) => t.id !== teamId)
+    patchLocal({ teams })
+    commitTeams(teams)
   }
 
   function regenerateFixture() {
-    // Conserva equipos/jugadores; solo reasigna grupos si aplica y agenda partidos.
-    let teams = tournament.teams
-    if (tournament.format === 'groups_of_4') {
-      teams = ensureGroupIds(teams)
-    }
-    const matches = generateFixture({ ...tournament, teams })
-    const next = recomputeStandings({ ...tournament, teams, matches })
-    syncTournamentCalendarReservations(next)
-    onChange(next)
+    startTransition(async () => {
+      setSaveError(null)
+      try {
+        const result = await generateTournamentFixtureAction(local.id)
+        setLocal(result.tournament)
+        onChange(result.tournament)
+        setSaveError(
+          result.unscheduledCount > 0
+            ? `${result.unscheduledCount} partido(s) no se pudieron agendar por choque de horario con otra reserva.`
+            : null,
+        )
+      } catch (error) {
+        setSaveError(
+          error instanceof Error ? error.message : 'No se pudo generar el fixture',
+        )
+      }
+    })
   }
 
   function enableExtraRound() {
-    const matches = addExtraRoundMatches({
-      ...tournament,
-      extraRoundEnabled: true,
+    startTransition(async () => {
+      setSaveError(null)
+      try {
+        const result = await addTournamentExtraRoundAction(local.id)
+        setLocal(result.tournament)
+        onChange(result.tournament)
+        setSaveError(
+          result.unscheduledCount > 0
+            ? `${result.unscheduledCount} partido(s) de la ronda extra no se pudieron agendar por choque de horario.`
+            : null,
+        )
+      } catch (error) {
+        setSaveError(
+          error instanceof Error ? error.message : 'No se pudo agregar la ronda extra',
+        )
+      }
     })
-    const next = { ...tournament, extraRoundEnabled: true, matches }
-    syncTournamentCalendarReservations(next)
-    onChange(next)
   }
 
   function saveMatch(match: Match) {
-    const matches = tournament.matches.map((m) =>
-      m.id === match.id ? match : m,
-    )
-    onChange(recomputeStandings({ ...tournament, matches }))
-    setEditingMatchId(null)
-  }
-
-  function toggleWeekday(day: number) {
-    const current = tournament.schedule?.weekdays ?? DEFAULT_SCHEDULE.weekdays
-    const next = current.includes(day)
-      ? current.filter((d) => d !== day)
-      : [...current, day].sort((a, b) => a - b)
-    onChange({
-      ...tournament,
-      schedule: {
-        ...(tournament.schedule ?? DEFAULT_SCHEDULE),
-        weekdays: next.length ? next : [...DEFAULT_SCHEDULE.weekdays],
-      },
+    startTransition(async () => {
+      setSaveError(null)
+      try {
+        const updated = await updateTournamentMatchResultAction(local.id, match.id, {
+          status: match.status,
+          homeGoals: match.homeGoals,
+          awayGoals: match.awayGoals,
+          playerStats: match.playerStats,
+        })
+        setLocal(updated)
+        onChange(updated)
+        setEditingMatchId(null)
+      } catch (error) {
+        setSaveError(
+          error instanceof Error ? error.message : 'No se pudo guardar el resultado',
+        )
+      }
     })
   }
 
-  const editingMatch = tournament.matches.find((m) => m.id === editingMatchId)
-  const schedule = tournament.schedule ?? DEFAULT_SCHEDULE
+  function toggleWeekday(day: number) {
+    const current = local.schedule?.weekdays ?? DEFAULT_SCHEDULE.weekdays
+    const next = current.includes(day)
+      ? current.filter((d) => d !== day)
+      : [...current, day].sort((a, b) => a - b)
+    const schedule = {
+      ...(local.schedule ?? DEFAULT_SCHEDULE),
+      weekdays: next.length ? next : [...DEFAULT_SCHEDULE.weekdays],
+    }
+    patchAndCommit({ schedule })
+  }
+
+  const editingMatch = local.matches.find((m) => m.id === editingMatchId)
+  const schedule = local.schedule ?? DEFAULT_SCHEDULE
   const sortedMatches = useMemo(
     () =>
-      [...tournament.matches].sort((a, b) => {
+      [...local.matches].sort((a, b) => {
         const ta = a.startsAt ? new Date(a.startsAt).getTime() : Number.MAX_SAFE_INTEGER
         const tb = b.startsAt ? new Date(b.startsAt).getTime() : Number.MAX_SAFE_INTEGER
         return ta - tb
       }),
-    [tournament.matches],
+    [local.matches],
   )
 
   return (
@@ -177,12 +256,12 @@ export function TournamentDetail({
             ← Volver a torneos
           </button>
           <h2 className="mt-2 font-heading text-2xl font-bold uppercase italic tracking-tight text-foreground">
-            {tournament.name}
+            {local.name}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {courtSizeLabel(tournament.courtSize)} ·{' '}
-            {formatLabel(tournament.format)} · {tournament.teams.length}/
-            {tournament.maxTeams} equipos
+            {courtSizeLabel(local.courtSize)} ·{' '}
+            {formatLabel(local.format)} · {local.teams.length}/
+            {local.maxTeams} equipos
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -199,6 +278,15 @@ export function TournamentDetail({
           </Button>
         </div>
       </div>
+
+      {saveError && (
+        <p className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          {saveError}
+        </p>
+      )}
+      {isPending && (
+        <p className="text-xs text-muted-foreground">Guardando…</p>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {(
@@ -231,8 +319,9 @@ export function TournamentDetail({
               <Label htmlFor="t-name">Nombre</Label>
               <Input
                 id="t-name"
-                value={tournament.name}
-                onChange={(e) => patch({ name: e.target.value })}
+                value={local.name}
+                onChange={(e) => patchLocal({ name: e.target.value })}
+                onBlur={() => commitConfig()}
               />
             </div>
             <div className="space-y-2">
@@ -240,9 +329,9 @@ export function TournamentDetail({
               <select
                 id="t-size"
                 className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
-                value={tournament.courtSize}
+                value={local.courtSize}
                 onChange={(e) =>
-                  patch({ courtSize: e.target.value as CourtSize })
+                  patchAndCommit({ courtSize: e.target.value as CourtSize })
                 }
               >
                 <option value="6vs6">6 vs 6 (máx. {maxPlayersPerTeam('6vs6')} jug.)</option>
@@ -257,9 +346,9 @@ export function TournamentDetail({
               <select
                 id="t-format"
                 className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
-                value={tournament.format}
+                value={local.format}
                 onChange={(e) =>
-                  patch({ format: e.target.value as TournamentFormat })
+                  patchAndCommit({ format: e.target.value as TournamentFormat })
                 }
               >
                 <option value="groups_of_4">Grupos de 4</option>
@@ -276,18 +365,19 @@ export function TournamentDetail({
                 type="number"
                 min={2}
                 max={MAX_TEAMS}
-                value={tournament.maxTeams}
+                value={local.maxTeams}
                 onChange={(e) =>
-                  patch({
+                  patchLocal({
                     maxTeams: Math.min(
                       MAX_TEAMS,
                       Math.max(2, Number(e.target.value || 2)),
                     ),
                   })
                 }
+                onBlur={() => commitConfig()}
               />
             </div>
-            {tournament.format === 'brackets' && (
+            {local.format === 'brackets' && (
               <div className="space-y-2">
                 <Label htmlFor="t-keys">Cantidad de llaves</Label>
                 <Input
@@ -295,15 +385,16 @@ export function TournamentDetail({
                   type="number"
                   min={1}
                   max={8}
-                  value={tournament.bracketKeys}
+                  value={local.bracketKeys}
                   onChange={(e) =>
-                    patch({
+                    patchLocal({
                       bracketKeys: Math.max(1, Number(e.target.value || 1)),
                     })
                   }
+                  onBlur={() => commitConfig()}
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Cada llave inicia con 2 equipos ({tournament.bracketKeys * 2}{' '}
+                  Cada llave inicia con 2 equipos ({local.bracketKeys * 2}{' '}
                   cupos en bracket).
                 </p>
               </div>
@@ -313,9 +404,9 @@ export function TournamentDetail({
               <select
                 id="t-status"
                 className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
-                value={tournament.status}
+                value={local.status}
                 onChange={(e) =>
-                  patch({
+                  patchAndCommit({
                     status: e.target.value as Tournament['status'],
                   })
                 }
@@ -333,9 +424,9 @@ export function TournamentDetail({
               Calendario del torneo
             </h3>
             <p className="text-xs text-muted-foreground">
-              Elige días y franja. Al generar partidos se reservan en el
-              calendario admin (p. ej. mié/jue 18:00–22:00 → 4 partidos/día, o 8
-              con 2 canchas).
+              Elige días y franja. Al generar partidos se reservan de verdad
+              en el calendario admin (p. ej. mié/jue 18:00–22:00 → 4
+              partidos/día, o 8 con 2 canchas).
             </p>
             <div className="flex flex-wrap gap-2">
               {WEEKDAY_OPTIONS.map((d) => {
@@ -365,14 +456,11 @@ export function TournamentDetail({
                   max={22}
                   value={schedule.startHour}
                   onChange={(e) =>
-                    onChange({
-                      ...tournament,
-                      schedule: {
-                        ...schedule,
-                        startHour: Number(e.target.value || 18),
-                      },
+                    patchLocal({
+                      schedule: { ...schedule, startHour: Number(e.target.value || 18) },
                     })
                   }
+                  onBlur={() => commitConfig()}
                 />
               </div>
               <div className="space-y-1">
@@ -383,14 +471,11 @@ export function TournamentDetail({
                   max={23}
                   value={schedule.endHour}
                   onChange={(e) =>
-                    onChange({
-                      ...tournament,
-                      schedule: {
-                        ...schedule,
-                        endHour: Number(e.target.value || 22),
-                      },
+                    patchLocal({
+                      schedule: { ...schedule, endHour: Number(e.target.value || 22) },
                     })
                   }
+                  onBlur={() => commitConfig()}
                 />
               </div>
               <div className="space-y-1">
@@ -399,8 +484,7 @@ export function TournamentDetail({
                   className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
                   value={schedule.courtsPerSlot}
                   onChange={(e) =>
-                    onChange({
-                      ...tournament,
+                    patchAndCommit({
                       schedule: {
                         ...schedule,
                         courtsPerSlot: Number(e.target.value) as 1 | 2,
@@ -420,25 +504,30 @@ export function TournamentDetail({
                   max={3}
                   value={schedule.matchDurationHours}
                   onChange={(e) =>
-                    onChange({
-                      ...tournament,
+                    patchLocal({
                       schedule: {
                         ...schedule,
                         matchDurationHours: Number(e.target.value || 1),
                       },
                     })
                   }
+                  onBlur={() => commitConfig()}
                 />
               </div>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={regenerateFixture}>
+            <Button type="button" onClick={regenerateFixture} disabled={isPending}>
               Generar / regenerar partidos + reservas
             </Button>
-            {tournament.format === 'brackets' && (
-              <Button type="button" variant="outline" onClick={enableExtraRound}>
+            {local.format === 'brackets' && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={enableExtraRound}
+                disabled={isPending}
+              >
                 Añadir ronda extra (equipos fuera de llave)
               </Button>
             )}
@@ -447,10 +536,10 @@ export function TournamentDetail({
             Regenerar solo reordena y agenda partidos. Los equipos y jugadores
             que registraste a mano se conservan.
           </p>
-          {tournament.format === 'round_robin' && (
+          {local.format === 'round_robin' && (
             <p className="text-xs text-muted-foreground">
               Clasifican los 4 primeros por puntos:{' '}
-              {topFourFromRoundRobin(tournament)
+              {topFourFromRoundRobin(local)
                 .map((t) => t.name)
                 .join(', ') || '—'}
             </p>
@@ -468,20 +557,20 @@ export function TournamentDetail({
             <Button
               type="button"
               onClick={addTeam}
-              disabled={tournament.teams.length >= tournament.maxTeams}
+              disabled={local.teams.length >= local.maxTeams || isPending}
             >
               <Plus className="mr-1 h-4 w-4" />
               Añadir equipo
             </Button>
           </div>
 
-          {tournament.teams.length === 0 && (
+          {local.teams.length === 0 && (
             <p className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
               Aún no hay equipos. Regístralos manualmente.
             </p>
           )}
 
-          {tournament.teams.map((team) => (
+          {local.teams.map((team) => (
             <div
               key={team.id}
               className="space-y-4 rounded-2xl border border-border bg-card p-5"
@@ -492,6 +581,7 @@ export function TournamentDetail({
                   onChange={(e) =>
                     updateTeam(team.id, (t) => ({ ...t, name: e.target.value }))
                   }
+                  onBlur={() => commitTeams(local.teams)}
                   className="max-w-xs font-semibold"
                 />
                 {team.groupId && (
@@ -538,6 +628,7 @@ export function TournamentDetail({
                                 ),
                               }))
                             }
+                            onBlur={() => commitTeams(local.teams)}
                             placeholder="Nombre"
                           />
                         </td>
@@ -545,8 +636,8 @@ export function TournamentDetail({
                           <input
                             type="checkbox"
                             checked={player.isGoalkeeper}
-                            onChange={(e) =>
-                              updateTeam(team.id, (t) => ({
+                            onChange={(e) => {
+                              const teams = updateTeam(team.id, (t) => ({
                                 ...t,
                                 players: t.players.map((p) =>
                                   p.id === player.id
@@ -554,7 +645,8 @@ export function TournamentDetail({
                                     : p,
                                 ),
                               }))
-                            }
+                              commitTeams(teams)
+                            }}
                           />
                         </td>
                         <td className="py-2 pr-2 font-semibold">{player.goals}</td>
@@ -570,14 +662,15 @@ export function TournamentDetail({
                         <td className="py-2">
                           <button
                             type="button"
-                            onClick={() =>
-                              updateTeam(team.id, (t) => ({
+                            onClick={() => {
+                              const teams = updateTeam(team.id, (t) => ({
                                 ...t,
                                 players: t.players.filter(
                                   (p) => p.id !== player.id,
                                 ),
                               }))
-                            }
+                              commitTeams(teams)
+                            }}
                           >
                             <Minus className="h-4 w-4 text-muted-foreground" />
                           </button>
@@ -592,13 +685,14 @@ export function TournamentDetail({
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={team.players.length >= rosterCap}
-                onClick={() =>
-                  updateTeam(team.id, (t) => ({
+                disabled={team.players.length >= rosterCap || isPending}
+                onClick={() => {
+                  const teams = updateTeam(team.id, (t) => ({
                     ...t,
                     players: [...t.players, emptyPlayer('')],
                   }))
-                }
+                  commitTeams(teams)
+                }}
               >
                 <Plus className="mr-1 h-4 w-4" />
                 Jugador ({team.players.length}/{rosterCap})
@@ -717,7 +811,7 @@ export function TournamentDetail({
       {editingMatch && (
         <MatchEditorModal
           match={editingMatch}
-          tournament={tournament}
+          tournament={local}
           onClose={() => setEditingMatchId(null)}
           onSave={saveMatch}
         />
@@ -725,7 +819,7 @@ export function TournamentDetail({
 
       {rankingsOpen && (
         <TournamentRankingsModal
-          tournament={tournament}
+          tournament={local}
           onClose={() => setRankingsOpen(false)}
         />
       )}

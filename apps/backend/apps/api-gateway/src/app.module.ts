@@ -14,6 +14,7 @@ import { MatchesProxyModule } from './matches/matches-proxy.module';
 import { ReservationsProxyModule } from './reservations/reservations-proxy.module';
 import { FeedProxyModule } from './feed/feed-proxy.module';
 import { PushTokensProxyModule } from './push-tokens/push-tokens-proxy.module';
+import { TournamentsProxyModule } from './tournaments/tournaments-proxy.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -43,6 +44,7 @@ import { HealthController } from './health/health.controller';
     ReservationsProxyModule,
     FeedProxyModule,
     PushTokensProxyModule,
+    TournamentsProxyModule,
   ],
   controllers: [HealthController],
   providers: [

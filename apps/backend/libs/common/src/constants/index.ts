@@ -70,6 +70,17 @@ export const MESSAGE_PATTERNS = {
     REGISTER: 'push_tokens.register',
     REMOVE: 'push_tokens.remove',
   },
+  TOURNAMENTS: {
+    LIST_MINE: 'tournaments.list_mine',
+    GET_MINE: 'tournaments.get_mine',
+    CREATE: 'tournaments.create',
+    UPDATE: 'tournaments.update',
+    DELETE: 'tournaments.delete',
+    UPSERT_TEAMS: 'tournaments.upsert_teams',
+    GENERATE_FIXTURE: 'tournaments.generate_fixture',
+    ADD_EXTRA_ROUND: 'tournaments.add_extra_round',
+    UPDATE_MATCH_RESULT: 'tournaments.update_match_result',
+  },
   FEED: {
     CREATE_POST: 'feed.create_post',
     LIST_POSTS: 'feed.list_posts',
