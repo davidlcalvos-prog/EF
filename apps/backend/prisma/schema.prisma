@@ -30,21 +30,22 @@ model User {
   roleId Int
   role   Role @relation(fields: [roleId], references: [id])
 
-  profile             Profile?
-  ownedVenues         Venue[]              @relation("VenueOwner")
-  reservations        Reservation[]        @relation("ReservationUser")
-  playerStats         PlayerStats?
-  physicalTestResults PhysicalTestResult[]
-  psychAssessments    PsychAssessment[]
-  createdGroups       Group[]              @relation("GroupCreator")
-  groupMemberships    GroupMembership[]
-  createdMatches      Match[]              @relation("MatchCreator")
-  matchParticipations MatchParticipant[]
-  posts               Post[]               @relation("PostAuthor")
-  postLikes           PostLike[]           @relation("PostLikeUser")
-  postComments        PostComment[]        @relation("PostCommentAuthor")
-  pushTokens          PushToken[]
-  ownedTournaments    Tournament[]         @relation("TournamentOwner")
+  profile                 Profile?
+  ownedVenues             Venue[]              @relation("VenueOwner")
+  reservations            Reservation[]        @relation("ReservationUser")
+  playerStats             PlayerStats?
+  physicalTestResults     PhysicalTestResult[]
+  psychAssessments        PsychAssessment[]
+  createdGroups           Group[]              @relation("GroupCreator")
+  groupMemberships        GroupMembership[]
+  createdMatches          Match[]              @relation("MatchCreator")
+  matchParticipations     MatchParticipant[]
+  posts                   Post[]               @relation("PostAuthor")
+  postLikes               PostLike[]           @relation("PostLikeUser")
+  postComments            PostComment[]        @relation("PostCommentAuthor")
+  pushTokens              PushToken[]
+  ownedTournaments        Tournament[]         @relation("TournamentOwner")
+  tournamentRosterEntries TournamentPlayer[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -140,16 +141,29 @@ enum ReservationStatus {
   cancelled
 }
 
+enum VenueSurfaceType {
+  natural_grass
+  synthetic_grass
+  dirt_gravel
+  futsal_concrete
+}
+
 model Venue {
-  id                String        @id @default(uuid()) @db.Uuid
-  ownerId           String        @db.Uuid
-  owner             User          @relation("VenueOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  name              String
-  address           String?
-  pricePerHourCents Int           @default(0)
-  availability      Json          @default("{}")
-  reservations      Reservation[]
-  tournaments       Tournament[]
+  id                        String            @id @default(uuid()) @db.Uuid
+  ownerId                   String            @db.Uuid
+  owner                     User              @relation("VenueOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  name                      String
+  address                   String?
+  pricePerHourCents         Int               @default(0)
+  availability              Json              @default("{}")
+  /// Fase 7.2: null en canchas ya registradas (no hay migracion de datos existentes,
+  /// el owner lo completa desde "Mi cancha" cuando quiera). Solo synthetic_grass es
+  /// elegible para el pool aleatorio de Copa Elite Forge.
+  surfaceType               VenueSurfaceType?
+  reservations              Reservation[]
+  tournaments               Tournament[]
+  /// Partidos de Copa Elite Forge (kind=elite_forge) asignados a esta cancha al azar.
+  assignedTournamentMatches TournamentMatch[] @relation("TournamentMatchVenue")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -190,13 +204,22 @@ model Reservation {
  * acá el organizador es el propio Empresario, sobre sus clientes/equipos, sin
  * relación con Elite Forge como organizador.
  */
+enum TournamentKind {
+  /// Fase 7.1 — dueño de cancha, jugadores de nombre libre, una cancha fija.
+  private
+  /// Fase 7.2 — Elite Forge, equipos = grupos reales, cancha asignada por partido.
+  elite_forge
+}
+
 model Tournament {
   id                String              @id @default(uuid()) @db.Uuid
   ownerId           String              @db.Uuid
   owner             User                @relation("TournamentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  /// Cancha del owner donde se juega el torneo — obligatoria para poder generar reservas reales al agendar partidos.
-  venueId           String              @db.Uuid
-  venue             Venue               @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  kind              TournamentKind      @default(private)
+  /// Obligatoria para kind=private (la cancha fija del dueño, igual que en la 7.1).
+  /// Null para kind=elite_forge (la cancha se decide por partido, ver TournamentMatch.venueId).
+  venueId           String?             @db.Uuid
+  venue             Venue?              @relation(fields: [venueId], references: [id], onDelete: Cascade)
   name              String
   courtSize         TournamentCourtSize
   format            TournamentFormat
@@ -218,22 +241,29 @@ model Tournament {
 }
 
 model TournamentTeam {
-  id           String             @id @default(uuid()) @db.Uuid
-  tournamentId String             @db.Uuid
-  tournament   Tournament         @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  name         String
-  groupId      String?
-  wins         Int                @default(0)
-  draws        Int                @default(0)
-  losses       Int                @default(0)
-  lossesByW    Int                @default(0)
-  points       Int                @default(0)
-  goalsFor     Int                @default(0)
-  goalsAgainst Int                @default(0)
-  players      TournamentPlayer[]
-  homeMatches  TournamentMatch[]  @relation("TournamentMatchHome")
-  awayMatches  TournamentMatch[]  @relation("TournamentMatchAway")
+  id              String             @id @default(uuid()) @db.Uuid
+  tournamentId    String             @db.Uuid
+  tournament      Tournament         @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  name            String
+  /// Etiqueta de grupo del FIXTURE (ej. "GA") — nada que ver con el modelo Group real.
+  groupId         String?
+  /// Solo para kind=elite_forge: el Group real que se inscribio. Nombrado distinto
+  /// de `groupId` (arriba, que es la etiqueta de fixture "GA"/"GB") para no chocar
+  /// con ese campo ya existente de la Fase 7.1.
+  enrolledGroupId String?            @db.Uuid
+  enrolledGroup   Group?             @relation(fields: [enrolledGroupId], references: [id], onDelete: Cascade)
+  wins            Int                @default(0)
+  draws           Int                @default(0)
+  losses          Int                @default(0)
+  lossesByW       Int                @default(0)
+  points          Int                @default(0)
+  goalsFor        Int                @default(0)
+  goalsAgainst    Int                @default(0)
+  players         TournamentPlayer[]
+  homeMatches     TournamentMatch[]  @relation("TournamentMatchHome")
+  awayMatches     TournamentMatch[]  @relation("TournamentMatchAway")
 
+  @@unique([tournamentId, enrolledGroupId])
   @@index([tournamentId])
   @@map("tournament_teams")
 }
@@ -251,6 +281,9 @@ model TournamentPlayer {
   dfr          Int            @default(0)
   yellowCards  Int            @default(0)
   redCards     Int            @default(0)
+  /// Solo para kind=elite_forge: el usuario real elegido por el lider para el roster.
+  userId       String?        @db.Uuid
+  user         User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([teamId])
   @@map("tournament_players")
@@ -274,10 +307,16 @@ model TournamentMatch {
   startsAt     DateTime?
   endsAt       DateTime?
   courtNumber  Int                   @default(1)
+  /// Cancha real asignada a ESTE partido. Para kind=private se copia de
+  /// Tournament.venueId al generar. Para kind=elite_forge se asigna al azar entre
+  /// canchas synthetic_grass disponibles en ese horario.
+  venueId      String?               @db.Uuid
+  venue        Venue?                @relation("TournamentMatchVenue", fields: [venueId], references: [id], onDelete: SetNull)
   /// Reserva real que este partido de torneo generó (Fase 7.1). Null si no se pudo reservar (choque de horario).
   reservation  Reservation?
 
   @@index([tournamentId])
+  @@index([venueId])
   @@map("tournament_matches")
 }
 
@@ -324,6 +363,9 @@ model Group {
 
   friendshipsAsA GroupFriendship[] @relation("GroupFriendshipA")
   friendshipsAsB GroupFriendship[] @relation("GroupFriendshipB")
+
+  /// Inscripciones a Copa Elite Forge (Fase 7.2) — este grupo como equipo de un torneo.
+  tournamentEnrollments TournamentTeam[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
