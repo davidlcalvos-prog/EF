@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useTransition } from 'react'
 import { Plus, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,28 +8,39 @@ import { Label } from '@/components/ui/label'
 import { AdminPageHeader } from '@/components/admin/page-header'
 import { TournamentDetail } from '@/components/admin/tournament-detail'
 import {
+  createTournamentAction,
+  deleteTournamentAction,
+} from '@/app/admin/(portal)/torneos/actions'
+import {
   MAX_TEAMS,
   WEEKDAY_OPTIONS,
   DEFAULT_SCHEDULE,
   courtSizeLabel,
-  createTournamentDraft,
-  deleteTournament,
   formatLabel,
-  loadTournaments,
   maxPlayersPerTeam,
-  upsertTournament,
   type CourtSize,
   type ScheduleConfig,
   type Tournament,
   type TournamentFormat,
 } from '@/lib/dal/admin/tournaments'
+import type { VenueRow } from '@/lib/dal/admin/types'
 
-export function TournamentsDashboard() {
-  const [items, setItems] = useState<Tournament[]>([])
-  const [ready, setReady] = useState(false)
+export function TournamentsDashboard({
+  initialTournaments,
+  venues,
+  loadError,
+}: {
+  initialTournaments: Tournament[]
+  venues: VenueRow[]
+  loadError: string | null
+}) {
+  const [items, setItems] = useState<Tournament[]>(initialTournaments)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const [createError, setCreateError] = useState<string | null>(null)
   const [draftName, setDraftName] = useState('')
+  const [draftVenueId, setDraftVenueId] = useState(venues[0]?.id ?? '')
   const [draftSize, setDraftSize] = useState<CourtSize>('6vs6')
   const [draftFormat, setDraftFormat] =
     useState<TournamentFormat>('groups_of_4')
@@ -40,15 +51,18 @@ export function TournamentsDashboard() {
     weekdays: [...DEFAULT_SCHEDULE.weekdays],
   })
 
-  useEffect(() => {
-    setItems(loadTournaments())
-    setReady(true)
-  }, [])
-
   const selected = items.find((t) => t.id === selectedId) ?? null
 
-  function persist(next: Tournament) {
-    setItems((prev) => upsertTournament(prev, next))
+  function replaceItem(next: Tournament) {
+    setItems((prev) => {
+      const idx = prev.findIndex((t) => t.id === next.id)
+      if (idx >= 0) {
+        const copy = [...prev]
+        copy[idx] = next
+        return copy
+      }
+      return [next, ...prev]
+    })
   }
 
   function toggleDraftDay(day: number) {
@@ -64,27 +78,40 @@ export function TournamentsDashboard() {
   }
 
   function handleCreate() {
-    const tournament = createTournamentDraft({
-      name: draftName.trim() || 'Nuevo torneo',
-      courtSize: draftSize,
-      format: draftFormat,
-      maxTeams: Math.min(MAX_TEAMS, Math.max(2, draftMax)),
-      bracketKeys: Math.max(1, draftKeys),
-      status: 'registration',
-      schedule: draftSchedule,
+    if (!draftVenueId) {
+      setCreateError('Elegí una cancha para el torneo.')
+      return
+    }
+    setCreateError(null)
+    startTransition(async () => {
+      try {
+        const tournament = await createTournamentAction({
+          name: draftName.trim() || 'Nuevo torneo',
+          venueId: draftVenueId,
+          courtSize: draftSize,
+          format: draftFormat,
+          maxTeams: Math.min(MAX_TEAMS, Math.max(2, draftMax)),
+          bracketKeys: Math.max(1, draftKeys),
+          schedule: draftSchedule,
+        })
+        replaceItem(tournament)
+        setCreating(false)
+        setDraftName('')
+        setSelectedId(tournament.id)
+      } catch (error) {
+        setCreateError(
+          error instanceof Error ? error.message : 'No se pudo crear el torneo',
+        )
+      }
     })
-    setItems((prev) => upsertTournament(prev, tournament))
-    setCreating(false)
-    setDraftName('')
-    setSelectedId(tournament.id)
   }
 
-  if (!ready) {
-    return (
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-8">
-        <AdminPageHeader title="Torneos" subtitle="Cargando…" />
-      </div>
-    )
+  function handleDelete(id: string) {
+    startTransition(async () => {
+      await deleteTournamentAction(id)
+      setItems((prev) => prev.filter((t) => t.id !== id))
+      setSelectedId(null)
+    })
   }
 
   if (selected) {
@@ -92,12 +119,9 @@ export function TournamentsDashboard() {
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-8">
         <TournamentDetail
           tournament={selected}
-          onChange={persist}
+          onChange={replaceItem}
           onBack={() => setSelectedId(null)}
-          onDelete={() => {
-            setItems((prev) => deleteTournament(prev, selected.id))
-            setSelectedId(null)
-          }}
+          onDelete={() => handleDelete(selected.id)}
         />
       </div>
     )
@@ -110,15 +134,32 @@ export function TournamentsDashboard() {
         subtitle="Crea torneos 6/8/11, agenda días/horarios en calendario, registra equipos y rankings."
       />
 
+      {loadError && (
+        <p className="mb-4 text-sm text-destructive">{loadError}</p>
+      )}
+
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          Máximo {MAX_TEAMS} equipos por torneo. Datos en este navegador.
+          Máximo {MAX_TEAMS} equipos por torneo.
         </p>
-        <Button type="button" onClick={() => setCreating(true)}>
-          <Plus className="mr-1 h-4 w-4" />
-          Crear torneo
-        </Button>
+        {venues.length > 0 && (
+          <Button type="button" onClick={() => setCreating(true)}>
+            <Plus className="mr-1 h-4 w-4" />
+            Crear torneo
+          </Button>
+        )}
       </div>
+
+      {venues.length === 0 && (
+        <div className="mb-6 rounded-2xl border border-dashed border-border bg-card/50 p-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            Todavía no tenés ninguna cancha registrada. Agregá una en{' '}
+            <span className="font-medium text-foreground">Mi cancha</span>{' '}
+            antes de crear un torneo — cada torneo se juega sobre una cancha
+            propia.
+          </p>
+        </div>
+      )}
 
       {creating && (
         <section className="mb-8 space-y-4 rounded-2xl border border-border bg-card p-5">
@@ -135,8 +176,23 @@ export function TournamentsDashboard() {
                 placeholder="Copa Elite Forge"
               />
             </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="new-venue">Cancha</Label>
+              <select
+                id="new-venue"
+                className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+                value={draftVenueId}
+                onChange={(e) => setDraftVenueId(e.target.value)}
+              >
+                {venues.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="space-y-2">
-              <Label htmlFor="new-size">Cancha</Label>
+              <Label htmlFor="new-size">Cancha (formato)</Label>
               <select
                 id="new-size"
                 className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
@@ -270,14 +326,19 @@ export function TournamentsDashboard() {
             </div>
           </div>
 
+          {createError && (
+            <p className="text-sm text-destructive">{createError}</p>
+          )}
+
           <div className="flex gap-2">
-            <Button type="button" onClick={handleCreate}>
-              Crear
+            <Button type="button" onClick={handleCreate} disabled={isPending}>
+              {isPending ? 'Creando…' : 'Crear'}
             </Button>
             <Button
               type="button"
               variant="outline"
               onClick={() => setCreating(false)}
+              disabled={isPending}
             >
               Cancelar
             </Button>
