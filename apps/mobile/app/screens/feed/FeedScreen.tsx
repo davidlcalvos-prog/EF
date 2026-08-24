@@ -70,6 +70,10 @@ export function FeedScreen(_props: AppStackScreenProps<"Feed">) {
         navigation.navigate("Matches")
         return
       }
+      if (id === "tournaments") {
+        navigation.navigate("Tournaments")
+        return
+      }
       navigation.navigate("Reservations")
     },
     [closeDrawer, navigation],
