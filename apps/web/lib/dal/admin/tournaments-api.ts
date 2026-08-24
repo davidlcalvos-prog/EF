@@ -71,9 +71,23 @@ export async function upsertTournamentTeams(
   id: string,
   teams: Team[],
 ): Promise<Tournament> {
+  // El endpoint solo acepta id/name/groupId/players — el resto (wins,
+  // points, etc.) son agregados de solo lectura que el backend recalcula
+  // en UPDATE_MATCH_RESULT; el ValidationPipe global (whitelist estricto)
+  // rechaza el body entero si viajan de más.
+  const input = teams.map((t) => ({
+    id: t.id,
+    name: t.name,
+    groupId: t.groupId,
+    players: t.players.map((p) => ({
+      id: p.id,
+      name: p.name,
+      isGoalkeeper: p.isGoalkeeper,
+    })),
+  }))
   return apiFetchAuth<Tournament>(`tournaments/mine/${id}/teams`, {
     method: 'PUT',
-    body: JSON.stringify({ teams }),
+    body: JSON.stringify({ teams: input }),
   })
 }
 
