@@ -3,7 +3,10 @@ import { ClientProxy } from '@nestjs/microservices';
 import { catchError, firstValueFrom, throwError } from 'rxjs';
 import { MESSAGE_PATTERNS, SERVICE_NAMES, toHttpException } from '@ef/common';
 import {
+  AssignedTournamentMatchDto,
+  CreateEliteForgeTournamentDto,
   CreateTournamentDto,
+  EnrollGroupDto,
   GenerateFixtureResultDto,
   TournamentDto,
   UpdateTournamentDto,
@@ -30,6 +33,16 @@ export class TournamentsProxyService {
 
   create(ownerId: string, dto: CreateTournamentDto): Promise<TournamentDto> {
     return this.send<TournamentDto>(MESSAGE_PATTERNS.TOURNAMENTS.CREATE, { ownerId, ...dto });
+  }
+
+  createEliteForge(
+    ownerId: string,
+    dto: CreateEliteForgeTournamentDto,
+  ): Promise<TournamentDto> {
+    return this.send<TournamentDto>(MESSAGE_PATTERNS.TOURNAMENTS.CREATE_ELITE_FORGE, {
+      ownerId,
+      ...dto,
+    });
   }
 
   update(
@@ -89,6 +102,37 @@ export class TournamentsProxyService {
       matchId,
       ...dto,
     });
+  }
+
+  // --- Copa Elite Forge (Fase 7.2): lado jugador ---
+
+  listActiveForPlayer(): Promise<TournamentDto[]> {
+    return this.send<TournamentDto[]>(MESSAGE_PATTERNS.TOURNAMENTS.LIST_ACTIVE_FOR_PLAYER, {});
+  }
+
+  getPublic(tournamentId: string): Promise<TournamentDto> {
+    return this.send<TournamentDto>(MESSAGE_PATTERNS.TOURNAMENTS.GET_PUBLIC, { tournamentId });
+  }
+
+  enrollGroup(
+    requesterId: string,
+    tournamentId: string,
+    dto: EnrollGroupDto,
+  ): Promise<TournamentDto> {
+    return this.send<TournamentDto>(MESSAGE_PATTERNS.TOURNAMENTS.ENROLL_GROUP, {
+      requesterId,
+      tournamentId,
+      ...dto,
+    });
+  }
+
+  // --- Copa Elite Forge (Fase 7.2): lado dueño de cancha sintética ---
+
+  listAssignedMatchesForVenueOwner(ownerId: string): Promise<AssignedTournamentMatchDto[]> {
+    return this.send<AssignedTournamentMatchDto[]>(
+      MESSAGE_PATTERNS.TOURNAMENTS.LIST_ASSIGNED_MATCHES_FOR_VENUE_OWNER,
+      { ownerId },
+    );
   }
 
   private send<T>(pattern: string, payload: unknown): Promise<T> {
