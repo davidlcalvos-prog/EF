@@ -22,6 +22,7 @@ import { PhysicalTestSessionScreen } from "@/screens/profile/PhysicalTestSession
 import { ProfileEditScreen } from "@/screens/profile/ProfileEditScreen"
 import { ProfileScreen } from "@/screens/profile/ProfileScreen"
 import { PsychologicalTestScreen } from "@/screens/profile/PsychologicalTestScreen"
+import { RankingsScreen } from "@/screens/rankings/RankingsScreen"
 import { ReservationDetailScreen } from "@/screens/reservations/ReservationDetailScreen"
 import { ReservationsScreen } from "@/screens/reservations/ReservationsScreen"
 import { TournamentDetailScreen } from "@/screens/tournaments/TournamentDetailScreen"
@@ -72,6 +73,7 @@ const AppStack = () => {
           <Stack.Screen name="ReservationDetail" component={ReservationDetailScreen} />
           <Stack.Screen name="Tournaments" component={TournamentsScreen} />
           <Stack.Screen name="TournamentDetail" component={TournamentDetailScreen} />
+          <Stack.Screen name="Rankings" component={RankingsScreen} />
 
           <Stack.Screen name="Demo" component={DemoNavigator} />
         </>
