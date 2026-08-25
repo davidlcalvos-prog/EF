@@ -46,11 +46,32 @@ model User {
   pushTokens              PushToken[]
   ownedTournaments        Tournament[]         @relation("TournamentOwner")
   tournamentRosterEntries TournamentPlayer[]
+  preferences             UserPreferences?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("users")
+}
+
+/**
+ * Preferencias de usuario (Fase D.0) — migrado desde MongoDB, que se elimina:
+ * era la única colección y no justificaba una segunda base en producción.
+ * Ni mobile ni web consumen este endpoint todavía, no hubo datos que migrar.
+ */
+model UserPreferences {
+  id            String  @id @default(uuid()) @db.Uuid
+  userId        String  @unique @db.Uuid
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme         String  @default("light")
+  language      String  @default("es")
+  notifications Boolean @default(true)
+  metadata      Json    @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_preferences")
 }
 
 model Profile {
