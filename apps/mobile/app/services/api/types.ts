@@ -283,3 +283,104 @@ export interface MyReservationApiDto {
   matchId: string | null
   createdAt: string
 }
+
+/**
+ * Forma real de los Campeonatos Elite Forge (Fase 7.3) — calcada de
+ * libs/contracts/src/tournaments/index.ts del backend. El backend devuelve el
+ * mismo TournamentDto completo tanto en el listado (`GET tournaments/active`)
+ * como en el detalle público (`GET tournaments/:id/public`) — no hay un
+ * "summary" recortado, así que acá hay un solo tipo para ambos.
+ */
+export type TournamentCourtSizeApi = "6vs6" | "8vs8" | "11vs11"
+
+export type TournamentFormatApi = "groups_of_4" | "round_robin" | "brackets"
+
+export type TournamentStatusApi = "draft" | "registration" | "active" | "finished"
+
+export type TournamentMatchStatusApi = "scheduled" | "played" | "walkover_home" | "walkover_away"
+
+export type TournamentKindApi = "private" | "elite_forge"
+
+export interface TournamentScheduleApiDto {
+  weekdays: number[]
+  startHour: number
+  endHour: number
+  matchDurationHours: number
+  courtsPerSlot: number
+}
+
+export interface TournamentPlayerApiDto {
+  id: string
+  name: string
+  isGoalkeeper: boolean
+  goals: number
+  goalsAgainst: number
+  assists: number
+  dfr: number
+  yellowCards: number
+  redCards: number
+}
+
+export interface TournamentTeamApiDto {
+  id: string
+  name: string
+  players: TournamentPlayerApiDto[]
+  wins: number
+  draws: number
+  losses: number
+  lossesByW: number
+  points: number
+  goalsFor: number
+  goalsAgainst: number
+  /** Etiqueta de grupo del FIXTURE (ej. "GA") — no es un Group real. */
+  groupId: string | null
+  /** El Group real inscrito — usado para excluir grupos ya inscritos del flujo de inscripción. */
+  enrolledGroupId: string | null
+}
+
+export interface TournamentMatchPlayerStatApiDto {
+  playerId: string
+  teamId: string
+  goals: number
+  assists: number
+  goalsAgainst: number
+  dfr: number
+  yellowCards: number
+  redCards: number
+}
+
+export interface TournamentMatchApiDto {
+  id: string
+  roundLabel: string
+  keyIndex: number
+  homeTeamId: string
+  awayTeamId: string
+  homeGoals: number | null
+  awayGoals: number | null
+  status: TournamentMatchStatusApi
+  playerStats: TournamentMatchPlayerStatApiDto[]
+  startsAt: string | null
+  endsAt: string | null
+  courtNumber: number
+  /** Nombre de la cancha asignada al azar a este partido — null si aún no tiene. */
+  venueName: string | null
+}
+
+export interface TournamentApiDto {
+  id: string
+  ownerId: string
+  kind: TournamentKindApi
+  venueId: string | null
+  name: string
+  courtSize: TournamentCourtSizeApi
+  format: TournamentFormatApi
+  maxTeams: number
+  bracketKeys: number
+  extraRoundEnabled: boolean
+  status: TournamentStatusApi
+  schedule: TournamentScheduleApiDto
+  teams: TournamentTeamApiDto[]
+  matches: TournamentMatchApiDto[]
+  createdAt: string
+  updatedAt: string
+}

@@ -30,6 +30,7 @@ import type {
   ProfileStatsApiResponse,
   PublicMemberProfileApiDto,
   PublicVenueApiDto,
+  TournamentApiDto,
 } from "@/services/api/types"
 
 import { GeneralApiProblem, getGeneralApiProblem } from "./apiProblem"
@@ -65,6 +66,17 @@ export type {
   PublicVenueApiDto,
   MyReservationApiDto,
   PublicMemberProfileApiDto,
+} from "./types"
+export type {
+  TournamentCourtSizeApi,
+  TournamentFormatApi,
+  TournamentStatusApi,
+  TournamentMatchStatusApi,
+  TournamentKindApi,
+  TournamentPlayerApiDto,
+  TournamentTeamApiDto,
+  TournamentMatchApiDto,
+  TournamentApiDto,
 } from "./types"
 
 /**
@@ -842,6 +854,76 @@ export class Api {
     }
     if (!response.data) return { kind: "bad-data" }
     return { kind: "ok", reservation: response.data }
+  }
+
+  /** Campeonatos Elite Forge activos (registration/active) — visibles para cualquier usuario autenticado. */
+  async listActiveTournaments(): Promise<
+    { kind: "ok"; tournaments: TournamentApiDto[] } | GeneralApiProblem
+  > {
+    const response = await this.apisauce.get<TournamentApiDto[]>("tournaments/active")
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", tournaments: response.data }
+  }
+
+  /** Detalle público de un campeonato (fixture/equipos/tabla). 403 si el torneo es privado (7.1). */
+  async getTournamentPublic(
+    tournamentId: string,
+  ): Promise<{ kind: "ok"; tournament: TournamentApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.get<TournamentApiDto>(
+      `tournaments/${tournamentId}/public`,
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", tournament: response.data }
+  }
+
+  /**
+   * Inscribe un grupo (solo su creator/admin, validado server-side) con el
+   * roster elegido. Los tres 409 posibles se distinguen por el `message` del
+   * backend — mismo límite de microservicio que randomizeTeams: solo viaja el
+   * message, así que estos strings deben calzar con los de
+   * tournaments.service.ts (venues-service).
+   */
+  async enrollGroupInTournament(
+    tournamentId: string,
+    groupId: string,
+    playerUserIds: string[],
+  ): Promise<
+    | { kind: "ok"; tournament: TournamentApiDto }
+    | { kind: "already-enrolled" }
+    | { kind: "roster-too-big" }
+    | { kind: "registration-closed" }
+    | GeneralApiProblem
+  > {
+    const response = await this.apisauce.post<TournamentApiDto>(
+      `tournaments/${tournamentId}/enroll`,
+      { groupId, playerUserIds },
+    )
+
+    if (!response.ok) {
+      if (response.status === 409) {
+        const message = (response.data as { message?: string } | undefined)?.message ?? ""
+        if (message.includes("already enrolled")) return { kind: "already-enrolled" }
+        if (message.startsWith("Roster exceeds")) return { kind: "roster-too-big" }
+        if (message.includes("not open for registration")) return { kind: "registration-closed" }
+      }
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", tournament: response.data }
   }
 
   /** Registra el push token de este dispositivo contra el usuario autenticado. */
