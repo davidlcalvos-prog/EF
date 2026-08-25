@@ -346,7 +346,11 @@ const en = {
     loadError: "Couldn't load the rankings.",
     emptySection: "No data yet.",
     topScorers: "Top scorers",
-    bestGoalkeepers: "Best goalkeepers",
+    bestGoalkeepers: "Best goalkeepers",
+    bestDefenders: "Best defender",
+    topAssisters: "Top playmaker",
+    recoveriesValue: "{{count}} recoveries",
+    assistsValue: "{{count}} assists",
     goalsValue: "{{count}} goals",
     concededValue: "{{value}} per match",
     matchesPlayed: "{{count}} MP",

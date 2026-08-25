@@ -284,6 +284,26 @@ export function TournamentRankingsScreen({
               authUserId={authUserId}
               onEntryPress={handleEntryPress}
             />
+
+            <RankingSection
+              title={translate("rankingsScreen:bestDefenders")}
+              entries={rankings.bestDefenders}
+              formatValue={(entry) =>
+                translate("rankingsScreen:recoveriesValue", { count: entry.value })
+              }
+              authUserId={authUserId}
+              onEntryPress={handleEntryPress}
+            />
+
+            <RankingSection
+              title={translate("rankingsScreen:topAssisters")}
+              entries={rankings.topAssisters}
+              formatValue={(entry) =>
+                translate("rankingsScreen:assistsValue", { count: entry.value })
+              }
+              authUserId={authUserId}
+              onEntryPress={handleEntryPress}
+            />
           </ScrollView>
         )}
       </YStack>

@@ -381,6 +381,10 @@ export interface RankingEntryApiDto {
 export interface TournamentRankingsApiResponse {
   topScorers: RankingEntryApiDto[]
   bestGoalkeepers: RankingEntryApiDto[]
+  /** value = recuperos de balón (dfr) en este torneo, secondary = partidos jugados. */
+  bestDefenders: RankingEntryApiDto[]
+  /** value = asistencias en este torneo, secondary = partidos jugados. */
+  topAssisters: RankingEntryApiDto[]
 }
 
 export interface TournamentApiDto {
