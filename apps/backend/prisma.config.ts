@@ -11,5 +11,7 @@ export default defineConfig({
   },
   datasource: {
     url: process.env["DATABASE_URL"],
+    // Solo para verificaciones (migrate diff --from-migrations) — opcional.
+    shadowDatabaseUrl: process.env["SHADOW_DATABASE_URL"],
   },
 });
