@@ -145,20 +145,14 @@ export class MatchesService {
       throw new ConflictException('You already joined this match');
     }
 
+    // El chequeo de cupo vive DENTRO del repositorio, en la misma transacción
+    // que el insert y serializado por partido (Fase 8.2) — acá ya no se cuenta.
     if (match.type === 'vs') {
       const side = await this.resolveJoinSide(match, payload.requesterId, payload.joinAsGroupId);
       const sideCapacity = match.maxPlayers / 2;
-      const sideCount = await this.matchRepository.countParticipantsBySide(match.id, side);
-      if (sideCount >= sideCapacity) {
-        throw new ConflictException('This side of the match is already full');
-      }
       await this.matchRepository.addVsParticipant(match.id, payload.requesterId, side, sideCapacity);
     } else {
-      const count = await this.matchRepository.countParticipants(match.id);
-      if (count >= match.maxPlayers) {
-        throw new ConflictException('Match already reached its player limit');
-      }
-      await this.matchRepository.addParticipant(match.id, payload.requesterId);
+      await this.matchRepository.addParticipant(match.id, payload.requesterId, match.maxPlayers);
     }
 
     const detail = (await this.matchRepository.findDetail(match.id)) as MatchDto;

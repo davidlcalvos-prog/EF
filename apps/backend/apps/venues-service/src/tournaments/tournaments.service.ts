@@ -262,73 +262,96 @@ export class TournamentsService {
     kind: 'private' | 'elite_forge',
     fixedVenueId: string | null,
   ): Promise<GenerateFixtureResultDto> {
-    const created = await this.tournamentRepository.insertMatches(tournamentId, matches);
+    // Todo el fixture (inserts + chequeos de solape + asignación de cancha +
+    // reservas) corre en UNA transacción interactiva (Fase 8.2): si algo falla
+    // a mitad del loop, no quedan partidos con cancha/reserva a medias. El
+    // FOR UPDATE sobre la fila de la cancha serializa dos generaciones
+    // concurrentes sobre la misma cancha — la segunda ve las reservas de la
+    // primera al chequear solape. Para elite_forge se lockea cada cancha en el
+    // momento en que se la evalúa, no todo el pool de entrada.
+    const unscheduledCount = await this.tournamentRepository.runInTransaction(async (tx) => {
+      const created = await this.tournamentRepository.insertMatches(tournamentId, matches, tx);
 
-    const fixedVenueName =
-      kind === 'private' && fixedVenueId
-        ? await this.tournamentRepository.findVenueName(fixedVenueId)
-        : null;
-    const syntheticPool = kind === 'elite_forge' ? await this.tournamentRepository.listSyntheticVenues() : [];
+      const fixedVenueName =
+        kind === 'private' && fixedVenueId
+          ? await this.tournamentRepository.findVenueName(fixedVenueId, tx)
+          : null;
+      const syntheticPool =
+        kind === 'elite_forge' ? await this.tournamentRepository.listSyntheticVenues(tx) : [];
 
-    let unscheduledCount = 0;
-    for (const match of created) {
-      if (!match.startsAt || !match.endsAt) {
-        unscheduledCount++;
-        continue;
-      }
-
-      if (kind === 'private') {
-        const overlaps = await this.tournamentRepository.hasOverlap(
-          fixedVenueId as string,
-          match.startsAt,
-          match.endsAt,
-        );
-        if (overlaps) {
-          await this.tournamentRepository.clearMatchSchedule(match.id);
-          unscheduledCount++;
+      let unscheduled = 0;
+      for (const match of created) {
+        if (!match.startsAt || !match.endsAt) {
+          unscheduled++;
           continue;
         }
-        await this.tournamentRepository.assignMatchVenue(match.id, fixedVenueId as string);
-        await this.tournamentRepository.createReservationForMatch({
-          userId: ownerId,
-          venueId: fixedVenueId as string,
-          venueName: fixedVenueName as string,
-          matchId: match.id,
-          startsAt: match.startsAt,
-          endsAt: match.endsAt,
-          notes: `${tournamentName} · Cancha ${match.courtNumber}`,
-        });
-        continue;
+
+        if (kind === 'private') {
+          await this.tournamentRepository.lockVenueRow(fixedVenueId as string, tx);
+          const overlaps = await this.tournamentRepository.hasOverlap(
+            fixedVenueId as string,
+            match.startsAt,
+            match.endsAt,
+            tx,
+          );
+          if (overlaps) {
+            await this.tournamentRepository.clearMatchSchedule(match.id, tx);
+            unscheduled++;
+            continue;
+          }
+          await this.tournamentRepository.assignMatchVenue(match.id, fixedVenueId as string, tx);
+          await this.tournamentRepository.createReservationForMatch(
+            {
+              userId: ownerId,
+              venueId: fixedVenueId as string,
+              venueName: fixedVenueName as string,
+              matchId: match.id,
+              startsAt: match.startsAt,
+              endsAt: match.endsAt,
+              notes: `${tournamentName} · Cancha ${match.courtNumber}`,
+            },
+            tx,
+          );
+          continue;
+        }
+
+        let assigned = false;
+        for (const venue of shuffle(syntheticPool)) {
+          await this.tournamentRepository.lockVenueRow(venue.id, tx);
+          const overlaps = await this.tournamentRepository.hasOverlap(
+            venue.id,
+            match.startsAt,
+            match.endsAt,
+            tx,
+          );
+          if (overlaps) continue;
+
+          await this.tournamentRepository.assignMatchVenue(match.id, venue.id, tx);
+          await this.tournamentRepository.createReservationForMatch(
+            {
+              userId: venue.ownerId,
+              venueId: venue.id,
+              venueName: venue.name,
+              matchId: match.id,
+              startsAt: match.startsAt,
+              endsAt: match.endsAt,
+              notes: `Copa Elite Forge · ${tournamentName} · Cancha ${match.courtNumber}`,
+            },
+            tx,
+          );
+          assigned = true;
+          break;
+        }
+        if (!assigned) {
+          await this.tournamentRepository.clearMatchSchedule(match.id, tx);
+          unscheduled++;
+        }
       }
 
-      let assigned = false;
-      for (const venue of shuffle(syntheticPool)) {
-        const overlaps = await this.tournamentRepository.hasOverlap(
-          venue.id,
-          match.startsAt,
-          match.endsAt,
-        );
-        if (overlaps) continue;
+      return unscheduled;
+    });
 
-        await this.tournamentRepository.assignMatchVenue(match.id, venue.id);
-        await this.tournamentRepository.createReservationForMatch({
-          userId: venue.ownerId,
-          venueId: venue.id,
-          venueName: venue.name,
-          matchId: match.id,
-          startsAt: match.startsAt,
-          endsAt: match.endsAt,
-          notes: `Copa Elite Forge · ${tournamentName} · Cancha ${match.courtNumber}`,
-        });
-        assigned = true;
-        break;
-      }
-      if (!assigned) {
-        await this.tournamentRepository.clearMatchSchedule(match.id);
-        unscheduledCount++;
-      }
-    }
-
+    // Fuera de la transacción a propósito — es solo la respuesta.
     const tournament = await this.tournamentRepository.getOwned(tournamentId, ownerId);
     return { tournament, unscheduledCount };
   }

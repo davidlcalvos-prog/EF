@@ -53,8 +53,16 @@ export class VsMatchAlertsService {
       if (!originIncomplete && !opponentIncomplete) continue; // se completó justo antes de esta corrida
 
       // Marca el flag antes de mandar nada más de este partido, para que un
-      // cron posterior (o el resto de este mismo loop) no lo repita.
-      await this.matchRepository.markAlertSent(match.id, threshold.field);
+      // cron posterior (o el resto de este mismo loop) no lo repita. Si otra
+      // corrida/réplica ya lo marcó (update idempotente devuelve false), no
+      // se notifica de nuevo (Fase 8.2).
+      const marked = await this.matchRepository.markAlertSent(match.id, threshold.field);
+      if (!marked) {
+        this.logger.debug(
+          `Alert ${threshold.field} for match ${match.id} already sent by another run — skipping`,
+        );
+        continue;
+      }
 
       if (originIncomplete) {
         await this.notifyGroupLeaders(match.originGroupId, match.id, threshold.urgent);

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from '@ef/database';
 import {
   MatchDto,
@@ -101,8 +101,25 @@ export class MatchRepository {
     return this.prisma.matchParticipant.count({ where: { matchId } });
   }
 
-  async addParticipant(matchId: string, userId: string): Promise<void> {
-    await this.prisma.matchParticipant.create({ data: { matchId, userId } });
+  /**
+   * Chequeo de cupo + insert en la MISMA transacción, serializados por partido
+   * con un lock de fila (SELECT ... FOR UPDATE sobre `matches`): dos joins
+   * concurrentes al mismo partido se ejecutan uno detrás del otro y el segundo
+   * ve el cupo ya ocupado (Fase 8.2 — antes count e insert eran dos statements
+   * sueltos y ambos podían pasar el chequeo).
+   */
+  async addParticipant(matchId: string, userId: string, maxPlayers: number): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT id FROM matches WHERE id = ${matchId}::uuid FOR UPDATE`;
+
+      const count = await tx.matchParticipant.count({ where: { matchId } });
+      if (count >= maxPlayers) {
+        // Mismo mensaje/código que devolvía matches.service.ts — mobile mapea este 409.
+        throw new ConflictException('Match already reached its player limit');
+      }
+
+      await tx.matchParticipant.create({ data: { matchId, userId } });
+    });
   }
 
   async removeParticipant(matchId: string, userId: string): Promise<void> {
@@ -240,24 +257,26 @@ export class MatchRepository {
       }));
   }
 
-  async markAlertSent(matchId: string, field: AlertFlagField): Promise<void> {
-    await this.prisma.match.update({
-      where: { id: matchId },
+  /**
+   * Idempotente (Fase 8.2): el `where` exige que el flag siga en false, así
+   * que si dos corridas del cron (o dos réplicas) evalúan el mismo partido a
+   * la vez, solo UNA logra marcarlo (count === 1) y es la única que notifica.
+   */
+  async markAlertSent(matchId: string, field: AlertFlagField): Promise<boolean> {
+    const { count } = await this.prisma.match.updateMany({
+      where: { id: matchId, [field]: false },
       data: { [field]: true },
     });
-  }
-
-  async countParticipantsBySide(matchId: string, side: MatchSide): Promise<number> {
-    return this.prisma.matchParticipant.count({
-      where: { matchId, side: side as PrismaMatchSide },
-    });
+    return count === 1;
   }
 
   /**
-   * Todo en una transacción: agrega al participante del lado indicado y, si
-   * con esta incorporación ambos lados llegan a sideCapacity por primera vez,
-   * confirma el roster. El guard `rosterConfirmedAt: null` en el update hace
-   * que la confirmación sea idempotente (nunca se pisa una ya existente).
+   * Todo en una transacción: chequeo de cupo del lado + alta del participante
+   * + confirmación de roster. Serializado por partido con lock de fila
+   * (SELECT ... FOR UPDATE sobre `matches`, Fase 8.2): dos joins concurrentes
+   * al mismo lado se ejecutan en serie y el segundo ve el cupo lleno. El guard
+   * `rosterConfirmedAt: null` en el update hace que la confirmación sea
+   * idempotente (nunca se pisa una ya existente).
    */
   async addVsParticipant(
     matchId: string,
@@ -266,6 +285,16 @@ export class MatchRepository {
     sideCapacity: number,
   ): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT id FROM matches WHERE id = ${matchId}::uuid FOR UPDATE`;
+
+      const sideCount = await tx.matchParticipant.count({
+        where: { matchId, side: side as PrismaMatchSide },
+      });
+      if (sideCount >= sideCapacity) {
+        // Mismo mensaje/código que devolvía matches.service.ts — mobile mapea este 409.
+        throw new ConflictException('This side of the match is already full');
+      }
+
       await tx.matchParticipant.create({
         data: { matchId, userId, side: side as PrismaMatchSide },
       });
