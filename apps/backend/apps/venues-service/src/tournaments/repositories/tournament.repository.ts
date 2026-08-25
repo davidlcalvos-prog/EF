@@ -7,12 +7,14 @@ import {
   DomainPlayer,
   DomainTeam,
   DomainTournament,
+  RankingEntry,
   recomputeStandings,
   TournamentCourtSizeDto,
   TournamentDto,
   TournamentKindDto,
   TournamentMatchDto,
   TournamentPlayerDto,
+  TournamentRankingsResponse,
   TournamentScheduleDto,
   TournamentStatusDto,
   TournamentTeamDto,
@@ -89,6 +91,107 @@ export class TournamentRepository {
       throw new ForbiddenException('This tournament is private');
     }
     return this.toTournamentDto(row);
+  }
+
+  /**
+   * Rankings del torneo consultado (Fase 9, corregida: por campeonato, no
+   * globales). Solo elite_forge — mismo guard que getPublic. Agregación en
+   * memoria: el volumen es el roster de UN torneo.
+   */
+  async getTournamentRankings(tournamentId: string): Promise<TournamentRankingsResponse> {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      select: { kind: true },
+    });
+    if (!tournament) throw new NotFoundException(`Tournament ${tournamentId} not found`);
+    if (tournament.kind !== 'elite_forge') {
+      throw new ForbiddenException('This tournament is private');
+    }
+
+    const rows = await this.prisma.tournamentPlayer.findMany({
+      where: {
+        userId: { not: null },
+        user: { estado: true },
+        team: { tournamentId },
+      },
+      select: {
+        userId: true,
+        isGoalkeeper: true,
+        goals: true,
+        goalsAgainst: true,
+        team: { select: { wins: true, draws: true, losses: true, lossesByW: true } },
+        user: {
+          select: {
+            firstname: true,
+            lastname: true,
+            profile: { select: { alias: true, favoritePosition: true } },
+          },
+        },
+      },
+    });
+
+    const entries = rows.map((row) => {
+      const alias = row.user?.profile?.alias;
+      const displayName =
+        alias ??
+        [row.user?.firstname ?? '', row.user?.lastname ?? '']
+          .map((part) => part.trim())
+          .filter(Boolean)
+          .join(' ');
+      return {
+        userId: row.userId as string, // where garantiza != null
+        displayName,
+        favoritePosition: row.user?.profile?.favoritePosition ?? null,
+        goals: row.goals,
+        goalsAgainst: row.goalsAgainst,
+        isGoalkeeper: row.isGoalkeeper,
+        // No hay conteo de partidos POR JUGADOR en el schema: se usa el del
+        // equipo (wins+draws+losses+lossesByW) como aproximación aceptada —
+        // asume que el jugador jugó los partidos de su equipo.
+        matchesPlayed: row.team.wins + row.team.draws + row.team.losses + row.team.lossesByW,
+      };
+    });
+
+    const topScorers: RankingEntry[] = entries
+      .filter((e) => e.goals > 0)
+      .sort(
+        (a, b) =>
+          b.goals - a.goals ||
+          a.matchesPlayed - b.matchesPlayed ||
+          a.displayName.localeCompare(b.displayName),
+      )
+      .slice(0, 5)
+      .map((e) => ({
+        userId: e.userId,
+        displayName: e.displayName,
+        favoritePosition: e.favoritePosition,
+        value: e.goals,
+        secondary: e.matchesPlayed,
+      }));
+
+    // Excluir 0 partidos jugados: si no, cualquier arquero sin jugar saldría primero con 0.
+    const bestGoalkeepers: RankingEntry[] = entries
+      .filter((e) => e.isGoalkeeper && e.matchesPlayed > 0)
+      .map((e) => ({
+        ...e,
+        concededPerMatch: Math.round((e.goalsAgainst / e.matchesPlayed) * 100) / 100,
+      }))
+      .sort(
+        (a, b) =>
+          a.concededPerMatch - b.concededPerMatch ||
+          b.matchesPlayed - a.matchesPlayed ||
+          a.displayName.localeCompare(b.displayName),
+      )
+      .slice(0, 5)
+      .map((e) => ({
+        userId: e.userId,
+        displayName: e.displayName,
+        favoritePosition: e.favoritePosition,
+        value: e.concededPerMatch,
+        secondary: e.matchesPlayed,
+      }));
+
+    return { topScorers, bestGoalkeepers };
   }
 
   async getEnrollmentContext(

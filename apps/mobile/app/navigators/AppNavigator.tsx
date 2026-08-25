@@ -25,6 +25,7 @@ import { PsychologicalTestScreen } from "@/screens/profile/PsychologicalTestScre
 import { ReservationDetailScreen } from "@/screens/reservations/ReservationDetailScreen"
 import { ReservationsScreen } from "@/screens/reservations/ReservationsScreen"
 import { TournamentDetailScreen } from "@/screens/tournaments/TournamentDetailScreen"
+import { TournamentRankingsScreen } from "@/screens/tournaments/TournamentRankingsScreen"
 import { TournamentsScreen } from "@/screens/tournaments/TournamentsScreen"
 import { useAppTheme } from "@/theme/context"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
@@ -72,6 +73,7 @@ const AppStack = () => {
           <Stack.Screen name="ReservationDetail" component={ReservationDetailScreen} />
           <Stack.Screen name="Tournaments" component={TournamentsScreen} />
           <Stack.Screen name="TournamentDetail" component={TournamentDetailScreen} />
+          <Stack.Screen name="TournamentRankings" component={TournamentRankingsScreen} />
 
           <Stack.Screen name="Demo" component={DemoNavigator} />
         </>

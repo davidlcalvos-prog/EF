@@ -344,6 +344,16 @@ const es: Translations = {
     notFoundError: "No encontrado.",
     linkedToMatch: "Vinculada a un partido",
   },
+  rankingsScreen: {
+    title: "Rankings",
+    loadError: "No se pudieron cargar los rankings.",
+    emptySection: "Todavía no hay datos.",
+    topScorers: "Goleadores",
+    bestGoalkeepers: "Valla menos vencida",
+    goalsValue: "{{count}} goles",
+    concededValue: "{{value}} por partido",
+    matchesPlayed: "{{count}} PJ",
+  },
   tournamentsScreen: {
     title: "Campeonatos",
     loadError: "No se pudieron cargar los campeonatos.",

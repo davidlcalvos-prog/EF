@@ -25,6 +25,12 @@ export class TournamentsPublicProxyController {
     return this.tournamentsProxy.getPublic(id);
   }
 
+  /** Rankings del campeonato (goleadores + valla) — solo datos de ESTE torneo. */
+  @Get(':id/rankings')
+  getRankings(@Param('id') id: string) {
+    return this.tournamentsProxy.getRankings(id);
+  }
+
   @Post(':id/enroll')
   enroll(
     @CurrentUser() user: { sub: string },

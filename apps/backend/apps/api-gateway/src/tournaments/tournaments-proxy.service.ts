@@ -9,6 +9,7 @@ import {
   EnrollGroupDto,
   GenerateFixtureResultDto,
   TournamentDto,
+  TournamentRankingsResponse,
   UpdateTournamentDto,
   UpdateTournamentMatchResultDto,
   UpsertTournamentTeamsDto,
@@ -112,6 +113,12 @@ export class TournamentsProxyService {
 
   getPublic(tournamentId: string): Promise<TournamentDto> {
     return this.send<TournamentDto>(MESSAGE_PATTERNS.TOURNAMENTS.GET_PUBLIC, { tournamentId });
+  }
+
+  getRankings(tournamentId: string): Promise<TournamentRankingsResponse> {
+    return this.send<TournamentRankingsResponse>(MESSAGE_PATTERNS.TOURNAMENTS.GET_RANKINGS, {
+      tournamentId,
+    });
   }
 
   enrollGroup(

@@ -335,6 +335,16 @@ const ko: Translations = {
     notFoundError: "찾을 수 없습니다.",
     linkedToMatch: "경기와 연결됨",
   },
+  rankingsScreen: {
+    title: "랭킹",
+    loadError: "랭킹을 불러오지 못했습니다.",
+    emptySection: "아직 데이터가 없습니다.",
+    topScorers: "득점 순위",
+    bestGoalkeepers: "최소 실점 골키퍼",
+    goalsValue: "{{count}}골",
+    concededValue: "경기당 {{value}}",
+    matchesPlayed: "{{count}}경기",
+  },
   tournamentsScreen: {
     title: "챔피언십",
     loadError: "챔피언십을 불러오지 못했습니다.",

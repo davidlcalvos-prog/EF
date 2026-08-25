@@ -85,6 +85,11 @@ export class TournamentsController {
     return this.tournamentsService.getPublic(data.tournamentId);
   }
 
+  @MessagePattern(MESSAGE_PATTERNS.TOURNAMENTS.GET_RANKINGS)
+  getRankings(@Payload() data: GetPublicTournamentDto) {
+    return this.tournamentsService.getRankings(data.tournamentId);
+  }
+
   @MessagePattern(MESSAGE_PATTERNS.TOURNAMENTS.ENROLL_GROUP)
   enrollGroup(@Payload() data: EnrollGroupPayload) {
     return this.tournamentsService.enrollGroup(

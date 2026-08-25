@@ -336,6 +336,16 @@ const ar: Translations = {
     notFoundError: "غير موجود.",
     linkedToMatch: "مرتبط بمباراة",
   },
+  rankingsScreen: {
+    title: "التصنيفات",
+    loadError: "تعذر تحميل التصنيفات.",
+    emptySection: "لا توجد بيانات بعد.",
+    topScorers: "الهدافون",
+    bestGoalkeepers: "أفضل حراس المرمى",
+    goalsValue: "{{count}} أهداف",
+    concededValue: "{{value}} لكل مباراة",
+    matchesPlayed: "{{count}} مباراة",
+  },
   tournamentsScreen: {
     title: "البطولات",
     loadError: "تعذر تحميل البطولات.",

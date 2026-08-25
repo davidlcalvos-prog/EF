@@ -336,6 +336,16 @@ const hi: Translations = {
     notFoundError: "नहीं मिला।",
     linkedToMatch: "एक मैच से जुड़ी हुई",
   },
+  rankingsScreen: {
+    title: "रैंकिंग",
+    loadError: "रैंकिंग लोड नहीं हो सकी।",
+    emptySection: "अभी कोई डेटा नहीं है।",
+    topScorers: "शीर्ष गोल स्कोरर",
+    bestGoalkeepers: "सर्वश्रेष्ठ गोलकीपर",
+    goalsValue: "{{count}} गोल",
+    concededValue: "{{value}} प्रति मैच",
+    matchesPlayed: "{{count}} मैच",
+  },
   tournamentsScreen: {
     title: "चैंपियनशिप",
     loadError: "चैंपियनशिप लोड नहीं हो सकीं।",

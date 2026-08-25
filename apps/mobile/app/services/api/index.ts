@@ -30,6 +30,7 @@ import type {
   PostApiDto,
   PostMediaType,
   ProfileStatsApiResponse,
+  TournamentRankingsApiResponse,
   PublicMemberProfileApiDto,
   PublicVenueApiDto,
   TournamentApiDto,
@@ -80,6 +81,7 @@ export type {
   TournamentMatchApiDto,
   TournamentApiDto,
 } from "./types"
+export type { RankingEntryApiDto, TournamentRankingsApiResponse } from "./types"
 
 /**
  * Configuring the apisauce instance.
@@ -861,6 +863,23 @@ export class Api {
     }
     if (!response.data) return { kind: "bad-data" }
     return { kind: "ok", reservation: response.data }
+  }
+
+  /** Rankings de UN campeonato (Fase 9) — goleadores y valla, solo datos de ese torneo. */
+  async getTournamentRankings(
+    tournamentId: string,
+  ): Promise<{ kind: "ok"; rankings: TournamentRankingsApiResponse } | GeneralApiProblem> {
+    const response = await this.apisauce.get<TournamentRankingsApiResponse>(
+      `tournaments/${tournamentId}/rankings`,
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", rankings: response.data }
   }
 
   /** Campeonatos Elite Forge activos (registration/active) — visibles para cualquier usuario autenticado. */

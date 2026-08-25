@@ -271,7 +271,34 @@ export function TournamentDetailScreen({
             {tournament?.name ?? translate("tournamentsScreen:title")}
           </Text>
 
-          <XStack width={40} height={40} />
+          {tournament ? (
+            <Pressable
+              onPress={() =>
+                navigation.navigate("TournamentRankings", {
+                  tournamentId: tournament.id,
+                  tournamentName: tournament.name,
+                })
+              }
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel={translate("rankingsScreen:title")}
+            >
+              <XStack
+                width={40}
+                height={40}
+                borderRadius={12}
+                backgroundColor={eliteForgeColors.carbonInput}
+                borderWidth={1}
+                borderColor={eliteForgeColors.carbonBorder}
+                alignItems="center"
+                justifyContent="center"
+              >
+                <Ionicons name="podium-outline" size={20} color={eliteForgeColors.emerald} />
+              </XStack>
+            </Pressable>
+          ) : (
+            <XStack width={40} height={40} />
+          )}
         </XStack>
 
         {loading ? (

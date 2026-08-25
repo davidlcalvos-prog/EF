@@ -338,6 +338,16 @@ const ja: Translations = {
     notFoundError: "見つかりません。",
     linkedToMatch: "試合に紐づいています",
   },
+  rankingsScreen: {
+    title: "ランキング",
+    loadError: "ランキングを読み込めませんでした。",
+    emptySection: "まだデータがありません。",
+    topScorers: "得点ランキング",
+    bestGoalkeepers: "最少失点GK",
+    goalsValue: "{{count}}得点",
+    concededValue: "1試合あたり{{value}}",
+    matchesPlayed: "{{count}}試合",
+  },
   tournamentsScreen: {
     title: "大会",
     loadError: "大会を読み込めませんでした。",

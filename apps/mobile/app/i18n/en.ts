@@ -341,6 +341,16 @@ const en = {
     notFoundError: "Not found.",
     linkedToMatch: "Linked to a match",
   },
+  rankingsScreen: {
+    title: "Rankings",
+    loadError: "Couldn't load the rankings.",
+    emptySection: "No data yet.",
+    topScorers: "Top scorers",
+    bestGoalkeepers: "Best goalkeepers",
+    goalsValue: "{{count}} goals",
+    concededValue: "{{value}} per match",
+    matchesPlayed: "{{count}} MP",
+  },
   tournamentsScreen: {
     title: "Championships",
     loadError: "Couldn't load championships.",
