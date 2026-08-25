@@ -130,7 +130,24 @@ export class TournamentRepository {
       },
     });
 
-    const entries = rows.map((row) => {
+    // Agrupado por userId (Fase 8.2): si un mismo usuario aparece en dos
+    // rosters del mismo torneo (dos grupos inscritos con ese jugador — hoy
+    // nada lo impide), sale UNA sola vez con goles/GC/PJ sumados, en vez de
+    // duplicar la fila (y romper la key de la lista en mobile).
+    const byUser = new Map<
+      string,
+      {
+        userId: string;
+        displayName: string;
+        favoritePosition: string | null;
+        goals: number;
+        goalsAgainst: number;
+        isGoalkeeper: boolean;
+        matchesPlayed: number;
+      }
+    >();
+    for (const row of rows) {
+      const userId = row.userId as string; // where garantiza != null
       const alias = row.user?.profile?.alias;
       const displayName =
         alias ??
@@ -138,19 +155,26 @@ export class TournamentRepository {
           .map((part) => part.trim())
           .filter(Boolean)
           .join(' ');
-      return {
-        userId: row.userId as string, // where garantiza != null
+      const current = byUser.get(userId) ?? {
+        userId,
         displayName,
         favoritePosition: row.user?.profile?.favoritePosition ?? null,
-        goals: row.goals,
-        goalsAgainst: row.goalsAgainst,
-        isGoalkeeper: row.isGoalkeeper,
-        // No hay conteo de partidos POR JUGADOR en el schema: se usa el del
-        // equipo (wins+draws+losses+lossesByW) como aproximación aceptada —
-        // asume que el jugador jugó los partidos de su equipo.
-        matchesPlayed: row.team.wins + row.team.draws + row.team.losses + row.team.lossesByW,
+        goals: 0,
+        goalsAgainst: 0,
+        isGoalkeeper: false,
+        matchesPlayed: 0,
       };
-    });
+      current.goals += row.goals;
+      current.goalsAgainst += row.goalsAgainst;
+      // Arquero en al menos uno de sus rosters: entra a la tabla de valla.
+      current.isGoalkeeper = current.isGoalkeeper || row.isGoalkeeper;
+      // No hay conteo de partidos POR JUGADOR en el schema: se usa el del
+      // equipo (wins+draws+losses+lossesByW) como aproximación aceptada —
+      // asume que el jugador jugó los partidos de su equipo.
+      current.matchesPlayed += row.team.wins + row.team.draws + row.team.losses + row.team.lossesByW;
+      byUser.set(userId, current);
+    }
+    const entries = [...byUser.values()];
 
     const topScorers: RankingEntry[] = entries
       .filter((e) => e.goals > 0)
@@ -605,9 +629,30 @@ export class TournamentRepository {
     }
   }
 
+  /**
+   * Transacción interactiva para la generación de fixture (Fase 8.2): todos
+   * los métodos de abajo aceptan un `client` opcional para participar de ella.
+   * Timeout ampliado: un fixture grande con muchos hasOverlap puede superar
+   * los 5 s del default de Prisma.
+   */
+  runInTransaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+    return this.prisma.$transaction(fn, { timeout: 30_000, maxWait: 5_000 });
+  }
+
+  /**
+   * Lock de fila sobre la cancha (SELECT ... FOR UPDATE en `venues`) — dos
+   * generaciones de fixture concurrentes que evalúan la misma cancha se
+   * serializan y la segunda ve las reservas que la primera acaba de crear.
+   * Solo tiene sentido DENTRO de runInTransaction.
+   */
+  async lockVenueRow(venueId: string, tx: Prisma.TransactionClient): Promise<void> {
+    await tx.$executeRaw`SELECT id FROM venues WHERE id = ${venueId}::uuid FOR UPDATE`;
+  }
+
   async insertMatches(
     tournamentId: string,
     matches: DomainMatch[],
+    client: Prisma.TransactionClient = this.prisma,
   ): Promise<{ id: string; homeTeamId: string; awayTeamId: string; startsAt: Date | null; endsAt: Date | null; courtNumber: number }[]> {
     const created: {
       id: string;
@@ -618,7 +663,7 @@ export class TournamentRepository {
       courtNumber: number;
     }[] = [];
     for (const match of matches) {
-      const row = await this.prisma.tournamentMatch.create({
+      const row = await client.tournamentMatch.create({
         data: {
           tournamentId,
           roundLabel: match.roundLabel,
@@ -638,28 +683,42 @@ export class TournamentRepository {
     return created;
   }
 
-  async clearMatchSchedule(matchId: string): Promise<void> {
-    await this.prisma.tournamentMatch.update({
+  async clearMatchSchedule(
+    matchId: string,
+    client: Prisma.TransactionClient = this.prisma,
+  ): Promise<void> {
+    await client.tournamentMatch.update({
       where: { id: matchId },
       data: { startsAt: null, endsAt: null, venueId: null },
     });
   }
 
   /** Cancha real asignada a ESTE partido (fija para private, sorteada para elite_forge). */
-  async assignMatchVenue(matchId: string, venueId: string): Promise<void> {
-    await this.prisma.tournamentMatch.update({
+  async assignMatchVenue(
+    matchId: string,
+    venueId: string,
+    client: Prisma.TransactionClient = this.prisma,
+  ): Promise<void> {
+    await client.tournamentMatch.update({
       where: { id: matchId },
       data: { venueId },
     });
   }
 
-  async hasOverlap(venueId: string, startsAt: Date, endsAt: Date): Promise<boolean> {
-    return this.venueRepository.hasOverlappingReservation(venueId, startsAt, endsAt);
+  async hasOverlap(
+    venueId: string,
+    startsAt: Date,
+    endsAt: Date,
+    client: Prisma.TransactionClient = this.prisma,
+  ): Promise<boolean> {
+    return this.venueRepository.hasOverlappingReservation(venueId, startsAt, endsAt, client);
   }
 
   /** Pool de canchas synthetic_grass para el sorteo de Copa Elite Forge. */
-  listSyntheticVenues(): Promise<{ id: string; name: string; ownerId: string }[]> {
-    return this.venueRepository.listSyntheticGrassVenues();
+  listSyntheticVenues(
+    client: Prisma.TransactionClient = this.prisma,
+  ): Promise<{ id: string; name: string; ownerId: string }[]> {
+    return this.venueRepository.listSyntheticGrassVenues(client);
   }
 
   /**
@@ -669,16 +728,19 @@ export class TournamentRepository {
    * coincide con el ownerId del torneo (el Administrador que lo creó). El
    * caller (TournamentsService) decide cuál pasar — este método no lo infiere.
    */
-  async createReservationForMatch(params: {
-    userId: string;
-    venueId: string;
-    venueName: string;
-    matchId: string;
-    startsAt: Date;
-    endsAt: Date;
-    notes: string;
-  }): Promise<void> {
-    await this.prisma.reservation.create({
+  async createReservationForMatch(
+    params: {
+      userId: string;
+      venueId: string;
+      venueName: string;
+      matchId: string;
+      startsAt: Date;
+      endsAt: Date;
+      notes: string;
+    },
+    client: Prisma.TransactionClient = this.prisma,
+  ): Promise<void> {
+    await client.reservation.create({
       data: {
         userId: params.userId,
         venueId: params.venueId,
@@ -692,8 +754,11 @@ export class TournamentRepository {
     });
   }
 
-  async findVenueName(venueId: string): Promise<string> {
-    const venue = await this.prisma.venue.findUniqueOrThrow({
+  async findVenueName(
+    venueId: string,
+    client: Prisma.TransactionClient = this.prisma,
+  ): Promise<string> {
+    const venue = await client.venue.findUniqueOrThrow({
       where: { id: venueId },
       select: { name: true },
     });

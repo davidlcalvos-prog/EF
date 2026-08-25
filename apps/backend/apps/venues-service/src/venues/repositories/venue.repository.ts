@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@ef/database';
 import { MyReservationDto, PublicVenueDto, ReservationDto, VenueDto } from '@ef/contracts';
-import { GroupRole, ReservationStatus, VenueSurfaceType } from '@prisma/client';
+import { GroupRole, Prisma, ReservationStatus, VenueSurfaceType } from '@prisma/client';
 
 @Injectable()
 export class VenueRepository {
@@ -52,8 +52,10 @@ export class VenueRepository {
   }
 
   /** Pool para la asignación aleatoria de cancha de Copa Elite Forge (Fase 7.2) — sin filtro extra de "activa", no existe ese concepto hoy. */
-  listSyntheticGrassVenues(): Promise<{ id: string; name: string; ownerId: string }[]> {
-    return this.prisma.venue.findMany({
+  listSyntheticGrassVenues(
+    client: Prisma.TransactionClient = this.prisma,
+  ): Promise<{ id: string; name: string; ownerId: string }[]> {
+    return client.venue.findMany({
       where: { surfaceType: 'synthetic_grass' },
       select: { id: true, name: true, ownerId: true },
     });
@@ -128,8 +130,9 @@ export class VenueRepository {
     venueId: string,
     startsAt: Date,
     endsAt: Date,
+    client: Prisma.TransactionClient = this.prisma,
   ): Promise<boolean> {
-    const count = await this.prisma.reservation.count({
+    const count = await client.reservation.count({
       where: {
         venueId,
         status: { in: ['pending', 'confirmed'] },
