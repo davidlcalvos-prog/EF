@@ -366,23 +366,21 @@ export interface TournamentMatchApiDto {
   venueName: string | null
 }
 
-/** Forma real de los Rankings globales (Fase 9) — calcada de libs/contracts/src/rankings/index.ts del backend. */
+/** Forma real de los Rankings de un campeonato (Fase 9) — calcada de libs/contracts/src/rankings/index.ts del backend. */
 export interface RankingEntryApiDto {
   userId: string
   /** Profile.alias si existe; si no, nombre y apellido. */
   displayName: string
   favoritePosition: string | null
-  /** El dato principal de esa tabla (goles, goles recibidos por partido, defense, passes). */
+  /** El dato principal de esa tabla (goles, o goles recibidos por partido). */
   value: number
-  /** Goleadores/valla: partidos jugados. Ausente en defensa/pases. */
+  /** Partidos jugados (del equipo del jugador en este torneo). */
   secondary?: number
 }
 
-export interface GlobalRankingsApiResponse {
+export interface TournamentRankingsApiResponse {
   topScorers: RankingEntryApiDto[]
   bestGoalkeepers: RankingEntryApiDto[]
-  bestDefense: RankingEntryApiDto[]
-  mostPasses: RankingEntryApiDto[]
 }
 
 export interface TournamentApiDto {

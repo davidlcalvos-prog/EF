@@ -10,7 +10,6 @@ import { FeedModule } from './feed/feed.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ProfileStatsModule } from './profile-stats/profile-stats.module';
 import { PushTokensModule } from './push-tokens/push-tokens.module';
-import { RankingsModule } from './rankings/rankings.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -32,7 +31,6 @@ import { UsersModule } from './users/users.module';
     MatchesModule,
     FeedModule,
     PushTokensModule,
-    RankingsModule,
     NotificationsModule,
   ],
 })

@@ -125,7 +125,6 @@ const ko: Translations = {
     groups: "그룹",
     matches: "경기",
     tournaments: "챔피언십",
-    rankings: "랭킹",
     reservations: "예약",
     comingSoon: "곧 제공",
     comingSoonTitle: "곧 제공",
@@ -341,11 +340,7 @@ const ko: Translations = {
     loadError: "랭킹을 불러오지 못했습니다.",
     emptySection: "아직 데이터가 없습니다.",
     topScorers: "득점 순위",
-    bestGoalkeepers: "최소 실점 골키퍼",
-    bestDefense: "최고 수비",
-    mostPasses: "가장 정확한 패스",
-    sourceTournaments: "Elite Forge 공식 챔피언십",
-    sourceProfile: "선수 프로필",
+    bestGoalkeepers: "최소 실점 골키퍼",
     goalsValue: "{{count}}골",
     concededValue: "경기당 {{value}}",
     matchesPlayed: "{{count}}경기",

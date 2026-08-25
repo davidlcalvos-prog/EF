@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StatusBar } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
@@ -10,13 +10,45 @@ import type { AppStackScreenProps } from "@/navigators/navigationTypes"
 import type { PlayerPositionId } from "@/data/suggestPlayerPosition"
 import { MemberProfileModal } from "@/screens/groups/components/MemberProfileModal"
 import { getPositionLabel } from "@/screens/profile/components/ProfileHeader"
-import type { RankingEntryApiDto } from "@/services/api"
+import { api, type RankingEntryApiDto, type TournamentRankingsApiResponse } from "@/services/api"
+import type { GeneralApiProblem } from "@/services/api/apiProblem"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
-
-import { useRankings } from "./useRankings"
 
 /** Oro/plata/bronce para el podio; el resto sin color especial. */
 const MEDAL_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32"] as const
+
+function useTournamentRankings(tournamentId: string) {
+  const [rankings, setRankings] = useState<TournamentRankingsApiResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<GeneralApiProblem | null>(null)
+  const inFlightRef = useRef(false)
+
+  const refresh = useCallback(async () => {
+    if (inFlightRef.current) return
+    inFlightRef.current = true
+    setRefreshing(true)
+    setError(null)
+
+    const result = await api.getTournamentRankings(tournamentId)
+    if (result.kind === "ok") {
+      setRankings(result.rankings)
+    } else {
+      setError(result)
+    }
+
+    setRefreshing(false)
+    setLoading(false)
+    inFlightRef.current = false
+  }, [tournamentId])
+
+  useEffect(() => {
+    refresh()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tournamentId])
+
+  return { rankings, loading, refreshing, error, refresh }
+}
 
 function RankingRow({
   entry,
@@ -91,18 +123,14 @@ function RankingRow({
 
 function RankingSection({
   title,
-  subtitle,
   entries,
   formatValue,
-  showSecondary,
   authUserId,
   onEntryPress,
 }: {
   title: string
-  subtitle: string
   entries: RankingEntryApiDto[]
   formatValue: (entry: RankingEntryApiDto) => string
-  showSecondary: boolean
   authUserId?: string
   onEntryPress: (userId: string) => void
 }) {
@@ -116,11 +144,8 @@ function RankingSection({
       gap={6}
       marginBottom={12}
     >
-      <Text color="#FFFFFF" fontWeight="800" fontSize={15}>
+      <Text color="#FFFFFF" fontWeight="800" fontSize={15} marginBottom={4}>
         {title}
-      </Text>
-      <Text color="rgba(255,255,255,0.45)" fontSize={11} marginBottom={4}>
-        {subtitle}
       </Text>
 
       {entries.length === 0 ? (
@@ -135,7 +160,7 @@ function RankingSection({
             rank={index + 1}
             valueText={formatValue(entry)}
             secondaryText={
-              showSecondary && entry.secondary != null
+              entry.secondary != null
                 ? translate("rankingsScreen:matchesPlayed", { count: entry.secondary })
                 : null
             }
@@ -148,9 +173,13 @@ function RankingSection({
   )
 }
 
-export function RankingsScreen({ navigation }: AppStackScreenProps<"Rankings">) {
+export function TournamentRankingsScreen({
+  route,
+  navigation,
+}: AppStackScreenProps<"TournamentRankings">) {
+  const { tournamentId, tournamentName } = route.params
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
-  const { rankings, loading, refreshing, error, refresh } = useRankings()
+  const { rankings, loading, refreshing, error, refresh } = useTournamentRankings(tournamentId)
   const { authUserId } = useAuth()
   const [profileUserId, setProfileUserId] = useState<string | null>(null)
 
@@ -193,6 +222,10 @@ export function RankingsScreen({ navigation }: AppStackScreenProps<"Rankings">) 
           <XStack width={40} height={40} />
         </XStack>
 
+        <Text color="rgba(255,255,255,0.55)" fontSize={13} textAlign="center" numberOfLines={1}>
+          {tournamentName}
+        </Text>
+
         {loading ? (
           <YStack paddingVertical={48} alignItems="center">
             <ActivityIndicator color={eliteForgeColors.emerald} />
@@ -234,44 +267,20 @@ export function RankingsScreen({ navigation }: AppStackScreenProps<"Rankings">) 
           >
             <RankingSection
               title={translate("rankingsScreen:topScorers")}
-              subtitle={translate("rankingsScreen:sourceTournaments")}
               entries={rankings.topScorers}
               formatValue={(entry) =>
                 translate("rankingsScreen:goalsValue", { count: entry.value })
               }
-              showSecondary
               authUserId={authUserId}
               onEntryPress={handleEntryPress}
             />
 
             <RankingSection
               title={translate("rankingsScreen:bestGoalkeepers")}
-              subtitle={translate("rankingsScreen:sourceTournaments")}
               entries={rankings.bestGoalkeepers}
               formatValue={(entry) =>
                 translate("rankingsScreen:concededValue", { value: entry.value.toFixed(2) })
               }
-              showSecondary
-              authUserId={authUserId}
-              onEntryPress={handleEntryPress}
-            />
-
-            <RankingSection
-              title={translate("rankingsScreen:bestDefense")}
-              subtitle={translate("rankingsScreen:sourceProfile")}
-              entries={rankings.bestDefense}
-              formatValue={(entry) => String(entry.value)}
-              showSecondary={false}
-              authUserId={authUserId}
-              onEntryPress={handleEntryPress}
-            />
-
-            <RankingSection
-              title={translate("rankingsScreen:mostPasses")}
-              subtitle={translate("rankingsScreen:sourceProfile")}
-              entries={rankings.mostPasses}
-              formatValue={(entry) => String(entry.value)}
-              showSecondary={false}
               authUserId={authUserId}
               onEntryPress={handleEntryPress}
             />

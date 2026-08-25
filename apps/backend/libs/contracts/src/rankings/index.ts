@@ -1,32 +1,27 @@
 /**
- * Rankings globales de jugador (Fase 9). Goleadores y valla menos vencida se
- * calculan SOLO con datos de campeonatos oficiales (Tournament.kind =
- * 'elite_forge', status active/finished) — decisión de alcance: no hay carga
- * de resultados para partidos internos/VS. Defensa y pases salen de
- * PlayerStats (perfil del jugador).
+ * Rankings de un campeonato oficial (Fase 9, corregida): se calculan SOLO con
+ * los datos del torneo consultado (Tournament.kind = 'elite_forge') — no hay
+ * rankings globales/históricos ni tablas basadas en PlayerStats. El acceso en
+ * mobile vive dentro de la sección de Campeonatos, no en el drawer.
  */
 export interface RankingEntry {
   userId: string;
   /** Profile.alias si existe; si no, `${firstname} ${lastname}`. */
   displayName: string;
   favoritePosition: string | null;
-  /** El dato principal de esa tabla (goles, goles recibidos por partido, defense, passes). */
+  /** El dato principal de esa tabla (goles, o goles recibidos por partido). */
   value: number;
-  /** Goleadores/valla: partidos jugados. Ausente en defensa/pases. */
+  /** Partidos jugados (del equipo del jugador en este torneo). */
   secondary?: number;
 }
 
 /**
- * Sin avatarBase64 a propósito: son hasta 20 filas y el base64 pesa mucho —
- * la ficha al tocar una fila ya trae el avatar por getPublicMemberProfile.
+ * Sin avatarBase64 a propósito: la ficha al tocar una fila ya trae el avatar
+ * por getPublicMemberProfile.
  */
-export interface GlobalRankingsResponse {
-  /** value = goles, secondary = partidos jugados. */
+export interface TournamentRankingsResponse {
+  /** value = goles en este torneo, secondary = partidos jugados. */
   topScorers: RankingEntry[];
   /** value = goles recibidos por partido (2 decimales), secondary = partidos jugados. */
   bestGoalkeepers: RankingEntry[];
-  /** value = PlayerStats.defense. */
-  bestDefense: RankingEntry[];
-  /** value = PlayerStats.passes. */
-  mostPasses: RankingEntry[];
 }

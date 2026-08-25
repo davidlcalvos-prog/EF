@@ -125,7 +125,6 @@ const ar: Translations = {
     groups: "المجموعات",
     matches: "المباريات",
     tournaments: "البطولات",
-    rankings: "التصنيفات",
     reservations: "الحجوزات",
     comingSoon: "قريباً",
     comingSoonTitle: "قريباً",
@@ -342,11 +341,7 @@ const ar: Translations = {
     loadError: "تعذر تحميل التصنيفات.",
     emptySection: "لا توجد بيانات بعد.",
     topScorers: "الهدافون",
-    bestGoalkeepers: "أفضل حراس المرمى",
-    bestDefense: "أفضل دفاع",
-    mostPasses: "أدق التمريرات",
-    sourceTournaments: "بطولات إيليت فورج الرسمية",
-    sourceProfile: "ملف اللاعب",
+    bestGoalkeepers: "أفضل حراس المرمى",
     goalsValue: "{{count}} أهداف",
     concededValue: "{{value}} لكل مباراة",
     matchesPlayed: "{{count}} مباراة",

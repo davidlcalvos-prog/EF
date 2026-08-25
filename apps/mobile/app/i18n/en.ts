@@ -124,7 +124,6 @@ const en = {
     groups: "Groups",
     matches: "Matches",
     tournaments: "Championships",
-    rankings: "Rankings",
     reservations: "Reservations",
     comingSoon: "Coming soon",
     comingSoonTitle: "Coming soon",
@@ -347,11 +346,7 @@ const en = {
     loadError: "Couldn't load the rankings.",
     emptySection: "No data yet.",
     topScorers: "Top scorers",
-    bestGoalkeepers: "Best goalkeepers",
-    bestDefense: "Best defense",
-    mostPasses: "Most accurate passes",
-    sourceTournaments: "Official Elite Forge championships",
-    sourceProfile: "Player profile",
+    bestGoalkeepers: "Best goalkeepers",
     goalsValue: "{{count}} goals",
     concededValue: "{{value}} per match",
     matchesPlayed: "{{count}} MP",

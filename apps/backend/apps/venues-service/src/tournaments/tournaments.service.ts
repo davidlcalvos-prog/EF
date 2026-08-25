@@ -11,6 +11,7 @@ import {
   TournamentCourtSizeDto,
   TournamentDto,
   TournamentMatchStatusDto,
+  TournamentRankingsResponse,
   TournamentScheduleDto,
   TournamentTeamInputDto,
 } from '@ef/contracts';
@@ -179,6 +180,10 @@ export class TournamentsService {
 
   getPublic(tournamentId: string): Promise<TournamentDto> {
     return this.tournamentRepository.getPublic(tournamentId);
+  }
+
+  getRankings(tournamentId: string): Promise<TournamentRankingsResponse> {
+    return this.tournamentRepository.getTournamentRankings(tournamentId);
   }
 
   /**

@@ -126,7 +126,6 @@ const ja: Translations = {
     groups: "グループ",
     matches: "試合",
     tournaments: "大会",
-    rankings: "ランキング",
     reservations: "予約",
     comingSoon: "近日公開",
     comingSoonTitle: "近日公開",
@@ -344,11 +343,7 @@ const ja: Translations = {
     loadError: "ランキングを読み込めませんでした。",
     emptySection: "まだデータがありません。",
     topScorers: "得点ランキング",
-    bestGoalkeepers: "最少失点GK",
-    bestDefense: "ベストディフェンス",
-    mostPasses: "パス成功数",
-    sourceTournaments: "Elite Forge公式大会",
-    sourceProfile: "選手プロフィール",
+    bestGoalkeepers: "最少失点GK",
     goalsValue: "{{count}}得点",
     concededValue: "1試合あたり{{value}}",
     matchesPlayed: "{{count}}試合",

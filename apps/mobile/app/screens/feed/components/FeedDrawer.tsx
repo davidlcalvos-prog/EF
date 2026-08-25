@@ -11,13 +11,7 @@ import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
 import { FeedAvatar } from "./FeedAvatar"
 
-export type FeedDrawerItemId =
-  | "profile"
-  | "groups"
-  | "matches"
-  | "tournaments"
-  | "rankings"
-  | "reservations"
+export type FeedDrawerItemId = "profile" | "groups" | "matches" | "tournaments" | "reservations"
 
 export interface FeedDrawerProps {
   onClose: () => void
@@ -34,7 +28,6 @@ const MENU_ITEMS: {
   { id: "groups", icon: "people-outline", labelKey: "feedDrawer:groups" },
   { id: "matches", icon: "football-outline", labelKey: "feedDrawer:matches" },
   { id: "tournaments", icon: "trophy-outline", labelKey: "feedDrawer:tournaments" },
-  { id: "rankings", icon: "podium-outline", labelKey: "feedDrawer:rankings" },
   { id: "reservations", icon: "calendar-outline", labelKey: "feedDrawer:reservations" },
 ]
 
@@ -165,9 +158,7 @@ export function FeedDrawer({ onClose, onItemPress, onLogout }: FeedDrawerProps) 
                       ? translate("matchesScreen:title")
                       : item.id === "tournaments"
                         ? translate("tournamentsScreen:title")
-                        : item.id === "rankings"
-                          ? translate("rankingsScreen:title")
-                          : translate("reservationsScreen:title")
+                        : translate("reservationsScreen:title")
               }
               onPress={() => onItemPress(item.id)}
             />

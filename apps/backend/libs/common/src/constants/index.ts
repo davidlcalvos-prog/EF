@@ -70,9 +70,6 @@ export const MESSAGE_PATTERNS = {
     REGISTER: 'push_tokens.register',
     REMOVE: 'push_tokens.remove',
   },
-  RANKINGS: {
-    GET_GLOBAL: 'rankings.get_global',
-  },
   TOURNAMENTS: {
     LIST_MINE: 'tournaments.list_mine',
     GET_MINE: 'tournaments.get_mine',
@@ -87,6 +84,7 @@ export const MESSAGE_PATTERNS = {
     CREATE_ELITE_FORGE: 'tournaments.create_elite_forge',
     LIST_ACTIVE_FOR_PLAYER: 'tournaments.list_active_for_player',
     GET_PUBLIC: 'tournaments.get_public',
+    GET_RANKINGS: 'tournaments.get_rankings',
     ENROLL_GROUP: 'tournaments.enroll_group',
     LIST_ASSIGNED_MATCHES_FOR_VENUE_OWNER: 'tournaments.list_assigned_matches_for_venue_owner',
   },

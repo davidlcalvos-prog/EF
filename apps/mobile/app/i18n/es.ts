@@ -127,7 +127,6 @@ const es: Translations = {
     groups: "Grupos",
     matches: "Partidos",
     tournaments: "Campeonatos",
-    rankings: "Rankings",
     reservations: "Reservas",
     comingSoon: "Próximamente",
     comingSoonTitle: "Próximamente",
@@ -350,11 +349,7 @@ const es: Translations = {
     loadError: "No se pudieron cargar los rankings.",
     emptySection: "Todavía no hay datos.",
     topScorers: "Goleadores",
-    bestGoalkeepers: "Valla menos vencida",
-    bestDefense: "Mejor defensa",
-    mostPasses: "Más pases acertados",
-    sourceTournaments: "Campeonatos oficiales Elite Forge",
-    sourceProfile: "Perfil de jugador",
+    bestGoalkeepers: "Valla menos vencida",
     goalsValue: "{{count}} goles",
     concededValue: "{{value}} por partido",
     matchesPlayed: "{{count}} PJ",

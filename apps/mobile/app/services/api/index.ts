@@ -30,7 +30,7 @@ import type {
   PostApiDto,
   PostMediaType,
   ProfileStatsApiResponse,
-  GlobalRankingsApiResponse,
+  TournamentRankingsApiResponse,
   PublicMemberProfileApiDto,
   PublicVenueApiDto,
   TournamentApiDto,
@@ -81,7 +81,7 @@ export type {
   TournamentMatchApiDto,
   TournamentApiDto,
 } from "./types"
-export type { RankingEntryApiDto, GlobalRankingsApiResponse } from "./types"
+export type { RankingEntryApiDto, TournamentRankingsApiResponse } from "./types"
 
 /**
  * Configuring the apisauce instance.
@@ -865,11 +865,13 @@ export class Api {
     return { kind: "ok", reservation: response.data }
   }
 
-  /** Rankings globales de jugador (Fase 9) — cualquier usuario autenticado. */
-  async getGlobalRankings(): Promise<
-    { kind: "ok"; rankings: GlobalRankingsApiResponse } | GeneralApiProblem
-  > {
-    const response = await this.apisauce.get<GlobalRankingsApiResponse>("rankings")
+  /** Rankings de UN campeonato (Fase 9) — goleadores y valla, solo datos de ese torneo. */
+  async getTournamentRankings(
+    tournamentId: string,
+  ): Promise<{ kind: "ok"; rankings: TournamentRankingsApiResponse } | GeneralApiProblem> {
+    const response = await this.apisauce.get<TournamentRankingsApiResponse>(
+      `tournaments/${tournamentId}/rankings`,
+    )
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)

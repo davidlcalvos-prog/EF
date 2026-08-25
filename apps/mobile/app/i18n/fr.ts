@@ -126,7 +126,6 @@ const fr: Translations = {
     groups: "Groupes",
     matches: "Matchs",
     tournaments: "Championnats",
-    rankings: "Classements",
     reservations: "Réservations",
     comingSoon: "Bientôt",
     comingSoonTitle: "Bientôt disponible",
@@ -350,11 +349,7 @@ const fr: Translations = {
     loadError: "Impossible de charger les classements.",
     emptySection: "Pas encore de données.",
     topScorers: "Meilleurs buteurs",
-    bestGoalkeepers: "Meilleure défense de but",
-    bestDefense: "Meilleure défense",
-    mostPasses: "Passes les plus précises",
-    sourceTournaments: "Championnats officiels Elite Forge",
-    sourceProfile: "Profil du joueur",
+    bestGoalkeepers: "Meilleure défense de but",
     goalsValue: "{{count}} buts",
     concededValue: "{{value}} par match",
     matchesPlayed: "{{count}} MJ",

@@ -125,7 +125,6 @@ const hi: Translations = {
     groups: "समूह",
     matches: "मैच",
     tournaments: "चैंपियनशिप",
-    rankings: "रैंकिंग",
     reservations: "आरक्षण",
     comingSoon: "जल्द आ रहा है",
     comingSoonTitle: "जल्द आ रहा है",
@@ -342,11 +341,7 @@ const hi: Translations = {
     loadError: "रैंकिंग लोड नहीं हो सकी।",
     emptySection: "अभी कोई डेटा नहीं है।",
     topScorers: "शीर्ष गोल स्कोरर",
-    bestGoalkeepers: "सर्वश्रेष्ठ गोलकीपर",
-    bestDefense: "सर्वश्रेष्ठ रक्षा",
-    mostPasses: "सबसे सटीक पास",
-    sourceTournaments: "आधिकारिक Elite Forge चैंपियनशिप",
-    sourceProfile: "खिलाड़ी प्रोफ़ाइल",
+    bestGoalkeepers: "सर्वश्रेष्ठ गोलकीपर",
     goalsValue: "{{count}} गोल",
     concededValue: "{{value}} प्रति मैच",
     matchesPlayed: "{{count}} मैच",
