@@ -9,7 +9,6 @@ import { ApiResponse, ApisauceInstance, create } from "apisauce"
 
 import Config from "@/config"
 import { AUTH_TOKEN_STORAGE_KEY } from "@/context/authTokenStorage"
-import { loadString } from "@/utils/storage"
 import type { PhysicalTestId } from "@/data/mockPlayerProfile"
 import type { PlayerPositionId } from "@/data/suggestPlayerPosition"
 import type {
@@ -35,6 +34,7 @@ import type {
   PublicVenueApiDto,
   TournamentApiDto,
 } from "@/services/api/types"
+import { loadString } from "@/utils/storage"
 
 import { GeneralApiProblem, getGeneralApiProblem } from "./apiProblem"
 
@@ -755,7 +755,9 @@ export class Api {
    * campo `reason` extra — ver RANDOMIZE_TEAMS_ERRORS en libs/contracts), así
    * que estos dos strings deben calzar exactamente con los del backend.
    */
-  async randomizeTeams(matchId: string): Promise<
+  async randomizeTeams(
+    matchId: string,
+  ): Promise<
     | { kind: "ok"; match: MatchApiDto; warnings: TeamAssignmentWarningApiDto[] }
     | { kind: "not-full" }
     | { kind: "wrong-status" }
@@ -901,9 +903,7 @@ export class Api {
   async getTournamentPublic(
     tournamentId: string,
   ): Promise<{ kind: "ok"; tournament: TournamentApiDto } | GeneralApiProblem> {
-    const response = await this.apisauce.get<TournamentApiDto>(
-      `tournaments/${tournamentId}/public`,
-    )
+    const response = await this.apisauce.get<TournamentApiDto>(`tournaments/${tournamentId}/public`)
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)

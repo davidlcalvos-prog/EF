@@ -13,8 +13,8 @@ import type { GeneralApiProblem } from "@/services/api/apiProblem"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
 import { GroupAvatar } from "./components/GroupAvatar"
-import { getOtherGroup, useGroupFriendships } from "./useGroupFriendships"
 import { useGroupDetail } from "./useGroupDetail"
+import { getOtherGroup, useGroupFriendships } from "./useGroupFriendships"
 
 function describeProblem(problem: GeneralApiProblem): string {
   switch (problem.kind) {
@@ -67,10 +67,7 @@ export function GroupFriendsScreen({ route, navigation }: AppStackScreenProps<"G
   const ownRole = group?.members.find((m) => m.userId === authUserId)?.role
   const isLeader = ownRole === "creator" || ownRole === "admin"
 
-  const handleRequest = useCallback(
-    (targetGroupId: string) => request(targetGroupId),
-    [request],
-  )
+  const handleRequest = useCallback((targetGroupId: string) => request(targetGroupId), [request])
 
   const handleAccept = useCallback(
     (friendship: GroupFriendshipApiDto) => {
@@ -214,8 +211,19 @@ export function GroupFriendsScreen({ route, navigation }: AppStackScreenProps<"G
                       borderBottomWidth={1}
                       borderBottomColor={eliteForgeColors.carbonBorder}
                     >
-                      <GroupAvatar seed={other.id} name={other.name} photoBase64={other.photoBase64} size={40} />
-                      <Text color="#FFFFFF" fontWeight="700" fontSize={14} flex={1} numberOfLines={1}>
+                      <GroupAvatar
+                        seed={other.id}
+                        name={other.name}
+                        photoBase64={other.photoBase64}
+                        size={40}
+                      />
+                      <Text
+                        color="#FFFFFF"
+                        fontWeight="700"
+                        fontSize={14}
+                        flex={1}
+                        numberOfLines={1}
+                      >
                         {other.name}
                       </Text>
                       {isLeader ? (
@@ -287,7 +295,12 @@ export function GroupFriendsScreen({ route, navigation }: AppStackScreenProps<"G
                       borderBottomWidth={1}
                       borderBottomColor={eliteForgeColors.carbonBorder}
                     >
-                      <GroupAvatar seed={other.id} name={other.name} photoBase64={other.photoBase64} size={40} />
+                      <GroupAvatar
+                        seed={other.id}
+                        name={other.name}
+                        photoBase64={other.photoBase64}
+                        size={40}
+                      />
                       <YStack flex={1}>
                         <Text color="#FFFFFF" fontWeight="700" fontSize={14} numberOfLines={1}>
                           {other.name}
@@ -344,8 +357,19 @@ export function GroupFriendsScreen({ route, navigation }: AppStackScreenProps<"G
                       borderBottomWidth={1}
                       borderBottomColor={eliteForgeColors.carbonBorder}
                     >
-                      <GroupAvatar seed={other.id} name={other.name} photoBase64={other.photoBase64} size={40} />
-                      <Text color="#FFFFFF" fontWeight="700" fontSize={14} flex={1} numberOfLines={1}>
+                      <GroupAvatar
+                        seed={other.id}
+                        name={other.name}
+                        photoBase64={other.photoBase64}
+                        size={40}
+                      />
+                      <Text
+                        color="#FFFFFF"
+                        fontWeight="700"
+                        fontSize={14}
+                        flex={1}
+                        numberOfLines={1}
+                      >
                         {other.name}
                       </Text>
                       {isLeader ? (

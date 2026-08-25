@@ -11,7 +11,6 @@ import {
   type GroupSummaryApiDto,
   type TournamentApiDto,
 } from "@/services/api"
-
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
 import { maxPlayersPerTeam } from "../tournamentHelpers"

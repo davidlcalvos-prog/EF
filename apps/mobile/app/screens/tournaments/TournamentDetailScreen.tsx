@@ -23,7 +23,15 @@ const TABS: { id: Tab; labelKey: string }[] = [
   { id: "teams", labelKey: "tournamentsScreen:tabTeams" },
 ]
 
-function TabChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+function TabChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string
+  active: boolean
+  onPress: () => void
+}) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button">
       <XStack
@@ -79,7 +87,11 @@ function FixtureCard({
         <Text color="#FFFFFF" fontWeight="700" fontSize={14} flex={1} numberOfLines={1}>
           {teamNameById.get(match.homeTeamId) ?? "?"}
         </Text>
-        <Text color={played ? eliteForgeColors.orange : "rgba(255,255,255,0.4)"} fontWeight="800" fontSize={14}>
+        <Text
+          color={played ? eliteForgeColors.orange : "rgba(255,255,255,0.4)"}
+          fontWeight="800"
+          fontSize={14}
+        >
           {match.homeGoals ?? "-"} : {match.awayGoals ?? "-"}
         </Text>
         <Text
@@ -135,18 +147,20 @@ function StandingsTable({
         <Text color="rgba(255,255,255,0.45)" fontSize={11} fontWeight="700" flex={1}>
           {translate("tournamentsScreen:colTeam")}
         </Text>
-        {["colPlayed", "colWins", "colDraws", "colLosses", "colGoalDiff", "colPoints"].map((key) => (
-          <Text
-            key={key}
-            color="rgba(255,255,255,0.45)"
-            fontSize={11}
-            fontWeight="700"
-            width={30}
-            textAlign="center"
-          >
-            {translate(`tournamentsScreen:${key}` as never)}
-          </Text>
-        ))}
+        {["colPlayed", "colWins", "colDraws", "colLosses", "colGoalDiff", "colPoints"].map(
+          (key) => (
+            <Text
+              key={key}
+              color="rgba(255,255,255,0.45)"
+              fontSize={11}
+              fontWeight="700"
+              width={30}
+              textAlign="center"
+            >
+              {translate(`tournamentsScreen:${key}` as never)}
+            </Text>
+          ),
+        )}
       </XStack>
       {sorted.map((team) => (
         <XStack key={team.id} gap={4} alignItems="center">
@@ -168,7 +182,13 @@ function StandingsTable({
           <Text color="rgba(255,255,255,0.7)" fontSize={13} width={30} textAlign="center">
             {team.goalsFor - team.goalsAgainst}
           </Text>
-          <Text color={eliteForgeColors.emerald} fontSize={13} fontWeight="800" width={30} textAlign="center">
+          <Text
+            color={eliteForgeColors.emerald}
+            fontSize={13}
+            fontWeight="800"
+            width={30}
+            textAlign="center"
+          >
             {team.points}
           </Text>
         </XStack>
@@ -373,7 +393,12 @@ export function TournamentDetailScreen({
             >
               {tab === "fixture" &&
                 (sortedMatches.length === 0 ? (
-                  <Text color="rgba(255,255,255,0.5)" fontSize={14} textAlign="center" paddingVertical={32}>
+                  <Text
+                    color="rgba(255,255,255,0.5)"
+                    fontSize={14}
+                    textAlign="center"
+                    paddingVertical={32}
+                  >
                     {translate("tournamentsScreen:emptyFixture")}
                   </Text>
                 ) : (
@@ -384,7 +409,12 @@ export function TournamentDetailScreen({
 
               {tab === "standings" &&
                 (tournament.teams.length === 0 ? (
-                  <Text color="rgba(255,255,255,0.5)" fontSize={14} textAlign="center" paddingVertical={32}>
+                  <Text
+                    color="rgba(255,255,255,0.5)"
+                    fontSize={14}
+                    textAlign="center"
+                    paddingVertical={32}
+                  >
                     {translate("tournamentsScreen:emptyTeams")}
                   </Text>
                 ) : (
@@ -400,7 +430,12 @@ export function TournamentDetailScreen({
 
               {tab === "teams" &&
                 (tournament.teams.length === 0 ? (
-                  <Text color="rgba(255,255,255,0.5)" fontSize={14} textAlign="center" paddingVertical={32}>
+                  <Text
+                    color="rgba(255,255,255,0.5)"
+                    fontSize={14}
+                    textAlign="center"
+                    paddingVertical={32}
+                  >
                     {translate("tournamentsScreen:emptyTeams")}
                   </Text>
                 ) : (
@@ -427,11 +462,7 @@ export function TournamentDetailScreen({
                       </XStack>
                       {team.players.map((player) => (
                         <XStack key={player.id} alignItems="center" gap={8}>
-                          <Ionicons
-                            name="person-outline"
-                            size={14}
-                            color="rgba(255,255,255,0.4)"
-                          />
+                          <Ionicons name="person-outline" size={14} color="rgba(255,255,255,0.4)" />
                           <Text color="rgba(255,255,255,0.75)" fontSize={13}>
                             {player.name}
                           </Text>

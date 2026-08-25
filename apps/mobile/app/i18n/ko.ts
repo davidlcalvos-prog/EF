@@ -291,7 +291,8 @@ const ko: Translations = {
     cancelRequestConfirmTitle: "요청을 취소할까요?",
     cancelRequestConfirmMessage: "{{name}}에게 보낸 요청이 취소됩니다.",
     endFriendshipConfirmTitle: "친구 관계를 종료할까요?",
-    endFriendshipConfirmMessage: "{{name}}은(는) 더 이상 친구 그룹이 아닙니다. 이미 예정된 경기에는 영향을 주지 않습니다.",
+    endFriendshipConfirmMessage:
+      "{{name}}은(는) 더 이상 친구 그룹이 아닙니다. 이미 예정된 경기에는 영향을 주지 않습니다.",
     searchTitle: "그룹 찾기",
     searchPlaceholder: "그룹 이름으로 검색",
     searchNoResults: "그룹을 찾을 수 없습니다.",
@@ -344,7 +345,8 @@ const ko: Translations = {
     bestDefenders: "최고 수비수",
     topAssisters: "최고 플레이메이커",
     recoveriesValue: "{{count}} 리커버리",
-    assistsValue: "{{count}} 어시스트",
+    assistsValue: "{{count}} 어시스트",
+
     goalsValue: "{{count}}골",
     concededValue: "경기당 {{value}}",
     matchesPlayed: "{{count}}경기",

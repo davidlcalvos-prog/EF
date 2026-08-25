@@ -9,8 +9,16 @@ type SimpleResult = { kind: "ok" } | GeneralApiProblem
 /** El grupo "del otro lado" de una amistad, visto desde `groupId`. */
 export function getOtherGroup(friendship: GroupFriendshipApiDto, groupId: string) {
   return friendship.groupAId === groupId
-    ? { id: friendship.groupBId, name: friendship.groupBName, photoBase64: friendship.groupBPhotoBase64 }
-    : { id: friendship.groupAId, name: friendship.groupAName, photoBase64: friendship.groupAPhotoBase64 }
+    ? {
+        id: friendship.groupBId,
+        name: friendship.groupBName,
+        photoBase64: friendship.groupBPhotoBase64,
+      }
+    : {
+        id: friendship.groupAId,
+        name: friendship.groupAName,
+        photoBase64: friendship.groupAPhotoBase64,
+      }
 }
 
 /**
@@ -46,10 +54,7 @@ export function useGroupFriendships(groupId: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupId])
 
-  const friends = useMemo(
-    () => friendships.filter((f) => f.status === "accepted"),
-    [friendships],
-  )
+  const friends = useMemo(() => friendships.filter((f) => f.status === "accepted"), [friendships])
   const incomingRequests = useMemo(
     () => friendships.filter((f) => f.status === "pending" && f.requestedByGroupId !== groupId),
     [friendships, groupId],

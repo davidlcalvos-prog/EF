@@ -3,10 +3,10 @@ import { ActivityIndicator, FlatList, Keyboard, Modal, Pressable, View } from "r
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
-import { GroupAvatar } from "@/screens/groups/components/GroupAvatar"
 import { TextField } from "@/components/TextField"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
+import { GroupAvatar } from "@/screens/groups/components/GroupAvatar"
 import { api, type GroupSearchResultApiDto } from "@/services/api"
 import type { GeneralApiProblem } from "@/services/api/apiProblem"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
@@ -210,7 +210,12 @@ export function GroupSearchModal({ visible, onClose, onRequest }: GroupSearchMod
                 borderBottomWidth={1}
                 borderBottomColor={eliteForgeColors.carbonBorder}
               >
-                <GroupAvatar seed={item.id} name={item.name} photoBase64={item.photoBase64} size={40} />
+                <GroupAvatar
+                  seed={item.id}
+                  name={item.name}
+                  photoBase64={item.photoBase64}
+                  size={40}
+                />
                 <YStack flex={1}>
                   <Text color="#FFFFFF" fontWeight="700" fontSize={14} numberOfLines={1}>
                     {item.name}

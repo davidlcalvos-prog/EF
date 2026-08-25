@@ -353,7 +353,8 @@ const fr: Translations = {
     bestDefenders: "Meilleur défenseur",
     topAssisters: "Meilleur passeur",
     recoveriesValue: "{{count}} récupérations",
-    assistsValue: "{{count}} passes décisives",
+    assistsValue: "{{count}} passes décisives",
+
     goalsValue: "{{count}} buts",
     concededValue: "{{value}} par match",
     matchesPlayed: "{{count}} MJ",
