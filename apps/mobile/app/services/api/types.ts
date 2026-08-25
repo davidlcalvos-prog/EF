@@ -366,6 +366,25 @@ export interface TournamentMatchApiDto {
   venueName: string | null
 }
 
+/** Forma real de los Rankings globales (Fase 9) — calcada de libs/contracts/src/rankings/index.ts del backend. */
+export interface RankingEntryApiDto {
+  userId: string
+  /** Profile.alias si existe; si no, nombre y apellido. */
+  displayName: string
+  favoritePosition: string | null
+  /** El dato principal de esa tabla (goles, goles recibidos por partido, defense, passes). */
+  value: number
+  /** Goleadores/valla: partidos jugados. Ausente en defensa/pases. */
+  secondary?: number
+}
+
+export interface GlobalRankingsApiResponse {
+  topScorers: RankingEntryApiDto[]
+  bestGoalkeepers: RankingEntryApiDto[]
+  bestDefense: RankingEntryApiDto[]
+  mostPasses: RankingEntryApiDto[]
+}
+
 export interface TournamentApiDto {
   id: string
   ownerId: string
