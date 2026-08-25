@@ -33,28 +33,28 @@ EF/
 │       ├── apps/
 │       │   ├── api-gateway/    # Punto de entrada HTTP (REST)
 │       │   ├── auth-service/   # Autenticación (PostgreSQL)
-│       │   └── users-service/  # Usuarios (PostgreSQL + MongoDB)
+│       │   ├── users-service/  # Usuarios, grupos, partidos, feed, push, rankings
+│       │   └── venues-service/ # Canchas, reservas y torneos
 │       └── libs/
 │           ├── common/         # Pipes, filtros, interceptores, constantes
 │           ├── contracts/      # DTOs e interfaces compartidas
-│           └── database/       # Módulos PostgreSQL y MongoDB
+│           └── database/       # Módulo PostgreSQL (Prisma)
 ├── infrastructure/
-│   ├── docker/                 # Docker Compose + Dockerfiles
-│   ├── kubernetes/             # Manifiestos K8s
-│   └── aws/                    # Terraform + scripts de despliegue
-└── .github/workflows/          # CI/CD con GitHub Actions
+│   ├── docker/                 # Compose dev + prod, Dockerfiles, Caddy, DEPLOY.md
+│   └── _legacy/                # AWS/EKS/K8s archivados (no mantenidos)
+└── .github/workflows/          # CI con GitHub Actions
 ```
 
 ## Stack Tecnológico
 
 | Capa | Tecnología |
 |------|-----------|
-| Frontend | React Native, Ignite CLI, Tamagui |
-| Backend | Node.js, NestJS (Microservicios) |
-| Base de Datos | PostgreSQL (relacional) + MongoDB (documentos) |
-| Contenedores | Docker, Kubernetes |
-| Cloud | AWS (ECR, EKS, RDS, DocumentDB) |
-| CI/CD | GitHub Actions |
+| Mobile | React Native (Expo Dev Client), Ignite, Tamagui — builds con EAS |
+| Web | Next.js (App Router) — desplegada en Hostinger (`hostinger.json`) |
+| Backend | Node.js, NestJS — 4 microservicios (gateway + auth + users + venues) |
+| Base de Datos | PostgreSQL (Prisma) — única base |
+| Despliegue backend | VPS con Docker Compose + Caddy (HTTPS automático) — ver [DEPLOY.md](./infrastructure/docker/DEPLOY.md) |
+| CI | GitHub Actions |
 
 ## Sistema de Diseño — Paleta de Colores
 
@@ -171,14 +171,14 @@ Hay **dos modos** de desarrollo backend. No los mezcles: ambos usan los puertos 
 
 | Modo | Cuándo usarlo | Qué corre en Docker | Qué corre en local (Node) |
 |------|---------------|---------------------|---------------------------|
-| **Híbrido (recomendado)** | Desarrollo diario con Prisma, hot-reload | PostgreSQL, MongoDB | auth-service, users-service, api-gateway |
+| **Híbrido (recomendado)** | Desarrollo diario con Prisma, hot-reload | PostgreSQL | auth-service, users-service, venues-service, api-gateway |
 | **Full Docker** | Probar imágenes / CI / despliegue | Todo el stack | Nada |
 
-#### Modo híbrido — solo bases de datos en Docker
+#### Modo híbrido — solo la base de datos en Docker
 
 ```bash
 # Desde la raíz del monorepo
-docker compose -f infrastructure/docker/docker-compose.yml up postgres mongodb -d
+docker compose -f infrastructure/docker/docker-compose.yml up postgres -d
 ```
 
 #### Modo full Docker — stack completo
@@ -199,13 +199,13 @@ Bruno / mobile / web
         ▼
   API Gateway (local)     :3000  HTTP  /api/*
         │ TCP
-        ├── auth-service (local)   :3001
-        └── users-service (local)  :3002
+        ├── auth-service (local)    :3001
+        ├── users-service (local)   :3002
+        └── venues-service (local)  :3003
                 │
-        ┌───────┴────────┐
-        ▼                ▼
-   PostgreSQL         MongoDB
-   (Docker :5433)    (Docker :27018)
+                ▼
+           PostgreSQL
+          (Docker :5433)
 ```
 
 #### Puertos
@@ -215,8 +215,8 @@ Bruno / mobile / web
 | API Gateway | `API_GATEWAY_PORT` | **3000** | Local |
 | auth-service | `AUTH_SERVICE_PORT` | **3001** | Local |
 | users-service | `USERS_SERVICE_PORT` | **3002** | Local |
+| venues-service | `VENUES_SERVICE_PORT` | **3003** | Local |
 | PostgreSQL | `POSTGRES_HOST_PORT` | **5433** → 5432 | Docker |
-| MongoDB | `MONGO_HOST_PORT` | **27018** → 27017 | Docker |
 
 Definidos en: `.env`, `apps/backend/apps/*/src/main.ts`, `infrastructure/docker/docker-compose.yml`.
 
@@ -224,10 +224,10 @@ Definidos en: `.env`, `apps/backend/apps/*/src/main.ts`, `infrastructure/docker/
 
 **1. Dejar el entorno libre de conflictos** (ver sección [Evitar EADDRINUSE](#evitar-eaddrinuse) más abajo).
 
-**2. Levantar PostgreSQL (y MongoDB si usas users-service):**
+**2. Levantar PostgreSQL:**
 
 ```bash
-docker compose -f infrastructure/docker/docker-compose.yml up postgres mongodb -d
+docker compose -f infrastructure/docker/docker-compose.yml up postgres -d
 ```
 
 **3. Seed Prisma** (solo la primera vez o si faltan roles del sistema):
@@ -243,10 +243,13 @@ npm run prisma:seed
 # Terminal 1 — Auth
 npm run start:auth
 
-# Terminal 2 — Users (si aplica)
+# Terminal 2 — Users
 npm run start:users
 
-# Terminal 3 — Gateway
+# Terminal 3 — Venues
+npm run start:venues
+
+# Terminal 4 — Gateway
 npm run start:gateway
 ```
 
@@ -283,11 +286,11 @@ docker ps --format 'table {{.Names}}\t{{.Ports}}\t{{.Status}}'
 **Limpiar entorno para desarrollo híbrido** (no borra volúmenes ni imágenes):
 
 ```bash
-# Detener solo los microservicios Docker (deja postgres y mongodb)
-docker compose -f infrastructure/docker/docker-compose.yml stop api-gateway auth-service users-service
+# Detener solo los microservicios Docker (deja postgres)
+docker compose -f infrastructure/docker/docker-compose.yml stop api-gateway auth-service users-service venues-service
 
 # O detener contenedores concretos por nombre
-docker stop ef-api-gateway ef-auth-service ef-users-service
+docker stop ef-api-gateway ef-auth-service ef-users-service ef-venues-service
 ```
 
 **Detener procesos Node locales** (sustituye `<PID>` por el valor de `lsof`):
@@ -358,36 +361,18 @@ Detalle de flujos, User/Profile y permisos: **[docs/BACKEND.md](./docs/BACKEND.m
 | POST | `/api/auth/validate` | Body `token` | Validar JWT |
 | GET | `/api/users/:id` | JWT | Perfil (propietario o Administrador) |
 | PATCH | `/api/users/:id/profile` | JWT | Actualizar perfil |
-| GET | `/api/users/:id/preferences` | JWT | Preferencias (MongoDB) |
+| GET | `/api/users/:id/preferences` | JWT | Preferencias (PostgreSQL) |
 | PATCH | `/api/users/:id/preferences` | JWT | Actualizar preferencias |
 
-## Kubernetes
+## Despliegue (producción)
+
+El backend completo (4 microservicios + Postgres + HTTPS) se despliega en un VPS con Docker Compose + Caddy. Runbook completo: **[infrastructure/docker/DEPLOY.md](./infrastructure/docker/DEPLOY.md)**.
 
 ```bash
-kubectl apply -f infrastructure/kubernetes/namespace.yaml
-kubectl apply -f infrastructure/kubernetes/configmap.yaml
-kubectl apply -f infrastructure/kubernetes/secrets.example.yaml  # renombrar y configurar
-kubectl apply -f infrastructure/kubernetes/postgres/
-kubectl apply -f infrastructure/kubernetes/mongodb/
-kubectl apply -f infrastructure/kubernetes/services/
+docker compose --env-file .env.production -f infrastructure/docker/docker-compose.prod.yml up -d --build
 ```
 
-## Despliegue AWS
-
-1. Configurar credenciales AWS
-2. Aplicar Terraform: `cd infrastructure/aws/terraform && terraform init && terraform apply`
-3. Desplegar con GitHub Actions (workflow `Deploy AWS`) o script:
-
-```bash
-export AWS_ACCOUNT_ID=123456789012
-bash infrastructure/aws/scripts/deploy.sh
-```
-
-### Secrets de GitHub requeridos
-
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-- `AWS_ACCOUNT_ID`
+La web se despliega en Hostinger (`hostinger.json`) y mobile se compila con EAS (`apps/mobile/eas.json`). La infra de AWS/EKS/Kubernetes quedó archivada en `infrastructure/_legacy/` (no mantenida).
 
 ## GitHub
 

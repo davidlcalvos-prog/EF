@@ -6,7 +6,11 @@
  * https://reactnative.dev/docs/security#storing-sensitive-info
  */
 export default {
-  API_URL: "https://api.eliteforge.com/api/",
+  /**
+   * La fuente es EXPO_PUBLIC_API_URL (inyectada por el perfil de eas.json en
+   * build time); el fallback solo cubre builds hechos sin esa variable.
+   */
+  API_URL: process.env.EXPO_PUBLIC_API_URL ?? "https://api.eliteforge.app/api/",
   /**
    * Registro en apps/web (NestJS + Prisma) — ya no usar el portal Hostinger antiguo (Supabase).
    * Cuando apps/web esté desplegado en producción, sustituye por la URL pública, p.ej.:

@@ -30,6 +30,9 @@
     "preview": {
       "extends": "production",
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.eliteforge.app/api/"
+      },
       "ios": { "simulator": true },
       "android": { "buildType": "apk" }
     },
@@ -37,7 +40,12 @@
       "extends": "preview",
       "ios": { "simulator": false }
     },
-    "production": {}
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.eliteforge.app/api/"
+      },
+      "android": { "buildType": "apk" }
+    }
   },
   "submit": {
     "production": {}
