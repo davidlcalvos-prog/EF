@@ -350,7 +350,8 @@ const en = {
     bestDefenders: "Best defender",
     topAssisters: "Top playmaker",
     recoveriesValue: "{{count}} recoveries",
-    assistsValue: "{{count}} assists",
+    assistsValue: "{{count}} assists",
+
     goalsValue: "{{count}} goals",
     concededValue: "{{value}} per match",
     matchesPlayed: "{{count}} MP",

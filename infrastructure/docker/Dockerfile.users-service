@@ -17,6 +17,11 @@ COPY apps/backend/package.json apps/backend/package.json
 COPY apps/mobile/package.json apps/mobile/package.json
 COPY apps/web/package.json apps/web/package.json
 
+# Prisma ANTES del npm ci: el postinstall de apps/backend corre `prisma generate`
+# y necesita prisma.config.ts + prisma/schema.prisma presentes (sin esto, npm ci falla).
+COPY apps/backend/prisma.config.ts apps/backend/prisma.config.ts
+COPY apps/backend/prisma apps/backend/prisma
+
 RUN npm ci --workspace=@ef/backend --include-workspace-root
 
 # Código fuente del backend NestJS (apps/ + libs/ internos)
@@ -28,7 +33,7 @@ WORKDIR /app/apps/backend
 RUN npm run build:users
 
 # -----------------------------------------------------------------------------
-# Production — solo dependencias de producción + artefacto compilado
+# Production — deps de producción + cliente Prisma generado + artefacto compilado
 # -----------------------------------------------------------------------------
 FROM node:${NODE_VERSION}-alpine AS production
 
@@ -40,6 +45,12 @@ COPY package.json package-lock.json ./
 COPY apps/backend/package.json apps/backend/package.json
 COPY apps/mobile/package.json apps/mobile/package.json
 COPY apps/web/package.json apps/web/package.json
+
+# Igual que en builder: el postinstall (prisma generate) necesita schema+config.
+# La CLI de prisma (dependencia normal, no dev) queda en la imagen final para
+# `prisma migrate deploy`, y las migraciones viajan dentro de prisma/.
+COPY apps/backend/prisma.config.ts apps/backend/prisma.config.ts
+COPY apps/backend/prisma apps/backend/prisma
 
 ENV NODE_ENV=production
 

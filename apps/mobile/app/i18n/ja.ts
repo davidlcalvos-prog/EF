@@ -261,9 +261,11 @@ const ja: Translations = {
     teamATitle: "チームA",
     teamBTitle: "チームB",
     warningLine: "チーム{{team}}: {{reason}}",
-    warningPosition_goalkeeper: "十分なゴールキーパー候補がいなかったため、最も適した選手で補いました",
+    warningPosition_goalkeeper:
+      "十分なゴールキーパー候補がいなかったため、最も適した選手で補いました",
     warningPosition_defense: "十分なディフェンダー候補がいなかったため、最も適した選手で補いました",
-    warningPosition_midfield: "十分なミッドフィルダー候補がいなかったため、最も適した選手で補いました",
+    warningPosition_midfield:
+      "十分なミッドフィルダー候補がいなかったため、最も適した選手で補いました",
     warningPosition_forward: "十分なフォワード候補がいなかったため、最も適した選手で補いました",
     sideCount: "{{count}}/{{capacity}}",
     sideHiddenUntilConfirmed: "両サイドが揃うまで非表示",
@@ -347,7 +349,8 @@ const ja: Translations = {
     bestDefenders: "ベストディフェンダー",
     topAssisters: "ベストプレーメーカー",
     recoveriesValue: "{{count}}奪取",
-    assistsValue: "{{count}}アシスト",
+    assistsValue: "{{count}}アシスト",
+
     goalsValue: "{{count}}得点",
     concededValue: "1試合あたり{{value}}",
     matchesPlayed: "{{count}}試合",

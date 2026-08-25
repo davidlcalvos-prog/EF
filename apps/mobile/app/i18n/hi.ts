@@ -260,10 +260,14 @@ const hi: Translations = {
     teamATitle: "टीम A",
     teamBTitle: "टीम B",
     warningLine: "टीम {{team}}: {{reason}}",
-    warningPosition_goalkeeper: "पर्याप्त गोलकीपर उपलब्ध नहीं थे — सबसे अच्छे उपलब्ध खिलाड़ी से पूरा किया गया",
-    warningPosition_defense: "पर्याप्त डिफेंडर उपलब्ध नहीं थे — सबसे अच्छे उपलब्ध खिलाड़ी से पूरा किया गया",
-    warningPosition_midfield: "पर्याप्त मिडफील्डर उपलब्ध नहीं थे — सबसे अच्छे उपलब्ध खिलाड़ी से पूरा किया गया",
-    warningPosition_forward: "पर्याप्त फॉरवर्ड उपलब्ध नहीं थे — सबसे अच्छे उपलब्ध खिलाड़ी से पूरा किया गया",
+    warningPosition_goalkeeper:
+      "पर्याप्त गोलकीपर उपलब्ध नहीं थे — सबसे अच्छे उपलब्ध खिलाड़ी से पूरा किया गया",
+    warningPosition_defense:
+      "पर्याप्त डिफेंडर उपलब्ध नहीं थे — सबसे अच्छे उपलब्ध खिलाड़ी से पूरा किया गया",
+    warningPosition_midfield:
+      "पर्याप्त मिडफील्डर उपलब्ध नहीं थे — सबसे अच्छे उपलब्ध खिलाड़ी से पूरा किया गया",
+    warningPosition_forward:
+      "पर्याप्त फॉरवर्ड उपलब्ध नहीं थे — सबसे अच्छे उपलब्ध खिलाड़ी से पूरा किया गया",
     sideCount: "{{count}}/{{capacity}}",
     sideHiddenUntilConfirmed: "दोनों तरफ पूरे होने तक छुपा हुआ",
     selectJoinSideTitle: "आप किस समूह से जुड़ रहे हैं?",
@@ -292,7 +296,8 @@ const hi: Translations = {
     cancelRequestConfirmTitle: "अनुरोध रद्द करें?",
     cancelRequestConfirmMessage: "{{name}} को भेजा गया आपका अनुरोध रद्द कर दिया जाएगा।",
     endFriendshipConfirmTitle: "मित्रता समाप्त करें?",
-    endFriendshipConfirmMessage: "{{name}} अब मित्र समूह नहीं रहेगा। इससे पहले से निर्धारित मैचों पर असर नहीं पड़ेगा।",
+    endFriendshipConfirmMessage:
+      "{{name}} अब मित्र समूह नहीं रहेगा। इससे पहले से निर्धारित मैचों पर असर नहीं पड़ेगा।",
     searchTitle: "समूह खोजें",
     searchPlaceholder: "समूह के नाम से खोजें",
     searchNoResults: "कोई समूह नहीं मिला।",
@@ -345,7 +350,8 @@ const hi: Translations = {
     bestDefenders: "सर्वश्रेष्ठ डिफेंडर",
     topAssisters: "सर्वश्रेष्ठ प्लेमेकर",
     recoveriesValue: "{{count}} रिकवरी",
-    assistsValue: "{{count}} असिस्ट",
+    assistsValue: "{{count}} असिस्ट",
+
     goalsValue: "{{count}} गोल",
     concededValue: "{{value}} प्रति मैच",
     matchesPlayed: "{{count}} मैच",

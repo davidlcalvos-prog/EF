@@ -353,7 +353,8 @@ const es: Translations = {
     bestDefenders: "Mejor defensa",
     topAssisters: "Mejor distribuidor",
     recoveriesValue: "{{count}} recuperos",
-    assistsValue: "{{count}} asistencias",
+    assistsValue: "{{count}} asistencias",
+
     goalsValue: "{{count}} goles",
     concededValue: "{{value}} por partido",
     matchesPlayed: "{{count}} PJ",

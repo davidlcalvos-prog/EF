@@ -18,20 +18,18 @@ Cliente (web / mobile)
         ├── users-service (:3002)   → perfiles y preferencias
         └── venues-service (:3003)  → canchas y reservas (lado dueño de cancha)
                 │
-        ┌───────┴───────┐
-        ▼               ▼
-   PostgreSQL        MongoDB
-   (Prisma)     (user_preferences)
+                ▼
+           PostgreSQL
+            (Prisma)
 ```
 
 | Pieza | Rol |
 |-------|-----|
 | **api-gateway** | Entrada HTTP REST (`/api/*`), validación de DTOs, JWT, proxy TCP |
 | **auth-service** | Registro, login, emisión/validación de JWT, creación de User + Profile |
-| **users-service** | Lectura/actualización de perfil (PostgreSQL) y preferencias (MongoDB) |
+| **users-service** | Lectura/actualización de perfil y preferencias (PostgreSQL) |
 | **venues-service** | Canchas y reservas del dueño de cancha (rol Empresario/Administrador) sobre PostgreSQL |
-| **PostgreSQL + Prisma** | Datos relacionales (`roles`, `users`, `profiles`, `venues`, `reservations`) |
-| **MongoDB** | Colección `user_preferences` |
+| **PostgreSQL + Prisma** | Única base de datos (usuarios, grupos, partidos, canchas, reservas, torneos, preferencias) |
 
 **Importante:** el frontend **nunca** debe llamar directamente a `auth-service`, `users-service` ni `venues-service`. Siempre consume el API Gateway en `/api/*`.
 
@@ -46,7 +44,6 @@ El dominio activo del jugador en backend es **auth + users** (incluye perfil "ri
 | Framework | NestJS 11 |
 | Comunicación interna | TCP (`MessagePattern`) |
 | SQL | PostgreSQL 16 + **Prisma** |
-| Documentos | MongoDB 7 + Mongoose |
 | Auth | JWT (`bcrypt` + `@nestjs/jwt` + Passport en gateway) |
 | Contratos compartidos | `libs/contracts` |
 | Contenedores | Docker Compose (modo híbrido recomendado) |
@@ -120,9 +117,9 @@ Modelo Prisma `Profile` (`profiles`), relación 1:1 con User:
 
 **Profile no es un perfil público de red social.** Representa datos de cuenta/jugador ligados al User, no publicaciones, feed ni grafo social.
 
-### Preferencias (MongoDB)
+### Preferencias (PostgreSQL)
 
-Colección `user_preferences` (users-service): `userId`, `theme`, `language`, `notifications`, `metadata`.
+Tabla `user_preferences` (users-service, Prisma — migrada desde MongoDB en la Fase D.0): `userId`, `theme`, `language`, `notifications`, `metadata`.
 
 ---
 
@@ -290,18 +287,11 @@ Modelos Prisma `Post`, `PostLike`, `PostComment` (`posts`, `post_likes`, `post_c
 
 Migraciones en `apps/backend/prisma/migrations/`. Seed de roles: `npm run prisma:seed` desde `apps/backend`.
 
-### MongoDB (Docker local)
-
-| Parámetro | Valor |
-|-----------|-------|
-| URI típica (host) | `mongodb://…@localhost:27018/ef_mongo?authSource=admin` |
-| Colección | `user_preferences` |
-
 ---
 
 ## Desarrollo local (modo híbrido)
 
-Recomendado: PostgreSQL + MongoDB en Docker; **api-gateway**, **auth-service**, **users-service** y **venues-service** en local.
+Recomendado: PostgreSQL en Docker; **api-gateway**, **auth-service**, **users-service** y **venues-service** en local.
 
 Detalle de arranque, puertos y `EADDRINUSE`: [README del monorepo](../README.md#3-backend--desarrollo-local-modo-hibrido).
 
@@ -310,8 +300,7 @@ API Gateway (local)     :3000  HTTP  /api/*
   ├── auth-service      :3001  TCP
   ├── users-service     :3002  TCP
   └── venues-service    :3003  TCP
-        ├── PostgreSQL  :5433 (Docker)
-        └── MongoDB     :27018 (Docker)
+        └── PostgreSQL  :5433 (Docker)
 ```
 
 Desde `apps/backend`:

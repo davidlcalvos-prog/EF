@@ -17,24 +17,6 @@ services:
       timeout: 5s
       retries: 5
 
-  mongodb:
-    image: mongo:7
-    container_name: ef-mongodb
-    restart: unless-stopped
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-ef_user}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-ef_password}
-      MONGO_INITDB_DATABASE: ${MONGO_DB:-ef_mongo}
-    ports:
-      - "${MONGO_HOST_PORT:-27018}:27017"
-    volumes:
-      - mongodb_data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   api-gateway:
     build:
       context: ../..
@@ -50,10 +32,14 @@ services:
       AUTH_SERVICE_PORT: 3001
       USERS_SERVICE_HOST: users-service
       USERS_SERVICE_PORT: 3002
+      VENUES_SERVICE_HOST: venues-service
+      VENUES_SERVICE_PORT: 3003
     depends_on:
       auth-service:
         condition: service_started
       users-service:
+        condition: service_started
+      venues-service:
         condition: service_started
 
   auth-service:
@@ -93,13 +79,29 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ef_password}
       POSTGRES_DB: ${POSTGRES_DB:-ef_db}
       DATABASE_URL: postgresql://${POSTGRES_USER:-ef_user}:${POSTGRES_PASSWORD:-ef_password}@postgres:5432/${POSTGRES_DB:-ef_db}?schema=public
-      MONGODB_URI: mongodb://${MONGO_USER:-ef_user}:${MONGO_PASSWORD:-ef_password}@mongodb:27017/${MONGO_DB:-ef_mongo}?authSource=admin
     depends_on:
       postgres:
         condition: service_healthy
-      mongodb:
+
+  venues-service:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.venues-service
+    container_name: ef-venues-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      VENUES_SERVICE_HOST: 0.0.0.0
+      VENUES_SERVICE_PORT: 3003
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-ef_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ef_password}
+      POSTGRES_DB: ${POSTGRES_DB:-ef_db}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ef_user}:${POSTGRES_PASSWORD:-ef_password}@postgres:5432/${POSTGRES_DB:-ef_db}?schema=public
+    depends_on:
+      postgres:
         condition: service_healthy
 
 volumes:
   postgres_data:
-  mongodb_data:

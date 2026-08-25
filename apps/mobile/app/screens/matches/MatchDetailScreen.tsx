@@ -50,7 +50,10 @@ function describeRandomizeProblem(
   }
 }
 
-function warningLine(warning: { team: "A" | "B"; position: "goalkeeper" | "defense" | "midfield" | "forward" }) {
+function warningLine(warning: {
+  team: "A" | "B"
+  position: "goalkeeper" | "defense" | "midfield" | "forward"
+}) {
   return translate("matchesScreen:warningLine", {
     team: warning.team,
     reason: translate(`matchesScreen:warningPosition_${warning.position}` as never),
@@ -663,7 +666,12 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
             ) : hasTeams ? (
               <YStack gap={16} marginBottom={8}>
                 <YStack>
-                  <Text color={eliteForgeColors.emerald} fontWeight="800" fontSize={13} marginBottom={4}>
+                  <Text
+                    color={eliteForgeColors.emerald}
+                    fontWeight="800"
+                    fontSize={13}
+                    marginBottom={4}
+                  >
                     {translate("matchesScreen:teamATitle")}
                   </Text>
                   {match.participants
@@ -673,7 +681,12 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
                     ))}
                 </YStack>
                 <YStack>
-                  <Text color={eliteForgeColors.orange} fontWeight="800" fontSize={13} marginBottom={4}>
+                  <Text
+                    color={eliteForgeColors.orange}
+                    fontWeight="800"
+                    fontSize={13}
+                    marginBottom={4}
+                  >
                     {translate("matchesScreen:teamBTitle")}
                   </Text>
                   {match.participants
@@ -779,7 +792,11 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
               ) : null}
 
               {canRandomizeTeams ? (
-                <Pressable onPress={handleRandomizeTeams} disabled={busy} accessibilityRole="button">
+                <Pressable
+                  onPress={handleRandomizeTeams}
+                  disabled={busy}
+                  accessibilityRole="button"
+                >
                   <XStack
                     backgroundColor={eliteForgeColors.carbonInput}
                     borderRadius={12}

@@ -1,52 +1,55 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { PrismaService } from '@ef/database';
 import {
   UpdatePreferencesDto,
   UserPreferences as UserPreferencesContract,
 } from '@ef/contracts';
-import {
-  UserPreferences,
-  UserPreferencesDocument,
-} from '../schemas/user-preferences.schema';
+import { Prisma, UserPreferences } from '@prisma/client';
 
+/**
+ * Migrado de MongoDB a Prisma/Postgres (Fase D.0) — era la única colección de
+ * Mongo y no justificaba una segunda base en producción. Mismo contrato y
+ * mismo comportamiento que antes: la primera lectura crea la fila con los
+ * defaults, el upsert pisa solo lo que llega.
+ */
 @Injectable()
 export class UserPreferencesRepository {
-  constructor(
-    @InjectModel(UserPreferences.name)
-    private readonly model: Model<UserPreferencesDocument>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async findByUserId(userId: string): Promise<UserPreferencesContract> {
-    let doc = await this.model.findOne({ userId }).exec();
-    if (!doc) {
-      doc = await this.model.create({ userId });
-    }
-    return this.toContract(doc);
+    const row = await this.prisma.userPreferences.upsert({
+      where: { userId },
+      create: { userId },
+      update: {},
+    });
+    return this.toContract(row);
   }
 
   async upsert(
     userId: string,
     preferences: UpdatePreferencesDto['preferences'],
   ): Promise<UserPreferencesContract> {
-    const doc = await this.model
-      .findOneAndUpdate(
-        { userId },
-        { $set: preferences },
-        { new: true, upsert: true },
-      )
-      .exec();
-
-    return this.toContract(doc!);
+    const data = {
+      theme: preferences.theme as string | undefined,
+      language: preferences.language as string | undefined,
+      notifications: preferences.notifications as boolean | undefined,
+      metadata: preferences.metadata as Prisma.InputJsonValue | undefined,
+    };
+    const row = await this.prisma.userPreferences.upsert({
+      where: { userId },
+      create: { userId, ...data },
+      update: data,
+    });
+    return this.toContract(row);
   }
 
-  private toContract(doc: UserPreferencesDocument): UserPreferencesContract {
+  private toContract(row: UserPreferences): UserPreferencesContract {
     return {
-      userId: doc.userId,
-      theme: doc.theme,
-      language: doc.language,
-      notifications: doc.notifications,
-      metadata: doc.metadata,
+      userId: row.userId,
+      theme: row.theme as 'light' | 'dark',
+      language: row.language,
+      notifications: row.notifications,
+      metadata: (row.metadata as Record<string, unknown>) ?? {},
     };
   }
 }

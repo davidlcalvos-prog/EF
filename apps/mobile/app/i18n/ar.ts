@@ -292,7 +292,8 @@ const ar: Translations = {
     cancelRequestConfirmTitle: "إلغاء الطلب؟",
     cancelRequestConfirmMessage: "سيتم إلغاء طلبك إلى {{name}}.",
     endFriendshipConfirmTitle: "إنهاء الصداقة؟",
-    endFriendshipConfirmMessage: "لن تكون {{name}} مجموعة صديقة بعد الآن. لن يؤثر هذا على المباريات المجدولة بالفعل.",
+    endFriendshipConfirmMessage:
+      "لن تكون {{name}} مجموعة صديقة بعد الآن. لن يؤثر هذا على المباريات المجدولة بالفعل.",
     searchTitle: "البحث عن مجموعة",
     searchPlaceholder: "ابحث باسم المجموعة",
     searchNoResults: "لم يتم العثور على مجموعات.",
@@ -345,7 +346,8 @@ const ar: Translations = {
     bestDefenders: "أفضل مدافع",
     topAssisters: "أفضل صانع ألعاب",
     recoveriesValue: "{{count}} استخلاصات",
-    assistsValue: "{{count}} تمريرات حاسمة",
+    assistsValue: "{{count}} تمريرات حاسمة",
+
     goalsValue: "{{count}} أهداف",
     concededValue: "{{value}} لكل مباراة",
     matchesPlayed: "{{count}} مباراة",

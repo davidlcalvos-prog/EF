@@ -1,0 +1,139 @@
+# Producción (Fase D.0) — VPS con Docker Compose + Caddy (HTTPS automático).
+#
+#   docker compose -f infrastructure/docker/docker-compose.prod.yml up -d --build
+#
+# Lee TODAS las variables desde ../../.env.production (raíz del repo) — ver
+# .env.production.example. Sin defaults para secretos: si JWT_SECRET o
+# POSTGRES_PASSWORD faltan, el compose falla en vez de levantar inseguro.
+# Solo Caddy publica puertos (80/443); el resto vive en la red interna.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER es obligatorio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD es obligatorio}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB es obligatorio}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # One-shot: aplica las migraciones ANTES de que arranque cualquier servicio.
+  # Reutiliza la imagen de users-service (trae la CLI de prisma + prisma/migrations).
+  # Variante elegida sobre "migrar al arrancar users-service": garantiza que
+  # NINGÚN servicio arranca con el schema desactualizado, es idempotente
+  # (migrate deploy no re-aplica), y no se re-ejecuta en cada restart del servicio.
+  migrate:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.users-service
+    restart: "no"
+    command: ["npx", "prisma", "migrate", "deploy"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  auth-service:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.auth-service
+    restart: always
+    environment:
+      NODE_ENV: production
+      AUTH_SERVICE_HOST: 0.0.0.0
+      AUTH_SERVICE_PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET es obligatorio}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  users-service:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.users-service
+    restart: always
+    environment:
+      NODE_ENV: production
+      USERS_SERVICE_HOST: 0.0.0.0
+      USERS_SERVICE_PORT: 3002
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  venues-service:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.venues-service
+    restart: always
+    environment:
+      NODE_ENV: production
+      VENUES_SERVICE_HOST: 0.0.0.0
+      VENUES_SERVICE_PORT: 3003
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  api-gateway:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.api-gateway
+    restart: always
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      API_GATEWAY_PORT: 3000
+      AUTH_SERVICE_HOST: auth-service
+      AUTH_SERVICE_PORT: 3001
+      USERS_SERVICE_HOST: users-service
+      USERS_SERVICE_PORT: 3002
+      VENUES_SERVICE_HOST: venues-service
+      VENUES_SERVICE_PORT: 3003
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET es obligatorio}
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS es obligatorio}
+    depends_on:
+      auth-service:
+        condition: service_started
+      users-service:
+        condition: service_started
+      venues-service:
+        condition: service_started
+
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?API_DOMAIN es obligatorio}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api-gateway:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

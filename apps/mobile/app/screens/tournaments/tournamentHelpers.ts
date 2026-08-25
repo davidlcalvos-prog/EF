@@ -1,4 +1,8 @@
-import type { TournamentCourtSizeApi, TournamentMatchApiDto, TournamentTeamApiDto } from "@/services/api"
+import type {
+  TournamentCourtSizeApi,
+  TournamentMatchApiDto,
+  TournamentTeamApiDto,
+} from "@/services/api"
 
 /**
  * Misma fórmula que libs/contracts/src/tournaments/domain.ts del backend

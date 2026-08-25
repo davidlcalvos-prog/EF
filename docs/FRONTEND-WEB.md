@@ -382,7 +382,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:5175
 ### Pasos
 
 ```bash
-# Backend: ver docs/BACKEND.md (Postgres/Mongo + servicios locales)
+# Backend: ver docs/BACKEND.md (Postgres + servicios locales)
 cd apps/backend
 # migraciones + seed → admin@eliteforge.com / Admin123!
 

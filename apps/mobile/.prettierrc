@@ -4,5 +4,5 @@
   "singleQuote": false,
   "trailingComma": "all",
   "quoteProps": "consistent",
-  "endOfLine": "auto"
+  "endOfLine": "lf"
 }
