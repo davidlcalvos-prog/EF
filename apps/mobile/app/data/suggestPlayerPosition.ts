@@ -45,11 +45,11 @@ const POSITION_LABEL_KEYS: Record<PlayerPositionId, PositionSuggestion["labelKey
 /** Perfil ideal de cada posición (pesos 0–1, suman ~1). */
 const POSITION_WEIGHTS: Record<PlayerPositionId, Record<StatKey, number>> = {
   goalkeeper: {
-    defense: 0.4,
-    endurance: 0.15,
-    passes: 0.15,
-    speed: 0.1,
-    dribbling: 0.05,
+    defense: 0.44,
+    endurance: 0.17,
+    passes: 0.17,
+    speed: 0.11,
+    dribbling: 0.06,
     attack: 0.05,
   },
   striker: {

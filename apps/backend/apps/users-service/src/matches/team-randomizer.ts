@@ -60,7 +60,7 @@ const POSITION_CATEGORY_MAP: Record<string, PositionCategory> = {
  * "posición sugerida" que ve el jugador en su perfil.
  */
 const POSITION_WEIGHTS: Record<string, Record<StatKey, number>> = {
-  goalkeeper: { defense: 0.4, endurance: 0.15, passes: 0.15, speed: 0.1, dribbling: 0.05, attack: 0.05 },
+  goalkeeper: { defense: 0.44, endurance: 0.17, passes: 0.17, speed: 0.11, dribbling: 0.06, attack: 0.05 },
   striker: { attack: 0.38, speed: 0.22, dribbling: 0.14, endurance: 0.1, passes: 0.06, defense: 0.1 },
   winger: { speed: 0.32, dribbling: 0.26, attack: 0.18, endurance: 0.12, passes: 0.07, defense: 0.05 },
   cam: { passes: 0.28, attack: 0.24, dribbling: 0.22, endurance: 0.12, speed: 0.09, defense: 0.05 },
