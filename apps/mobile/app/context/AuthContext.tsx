@@ -1,16 +1,9 @@
-import {
-  createContext,
-  FC,
-  PropsWithChildren,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-} from "react"
+import { createContext, FC, PropsWithChildren, useCallback, useContext, useMemo } from "react"
 import { useMMKVString } from "react-native-mmkv"
 
-import { api } from "@/services/api"
 import { unregisterPushToken } from "@/utils/pushNotifications"
+
+import { AUTH_TOKEN_STORAGE_KEY } from "./authTokenStorage"
 
 export type AuthContextType = {
   isAuthenticated: boolean
@@ -29,15 +22,16 @@ export const AuthContext = createContext<AuthContextType | null>(null)
 export interface AuthProviderProps {}
 
 export const AuthProvider: FC<PropsWithChildren<AuthProviderProps>> = ({ children }) => {
-  const [authToken, setAuthToken] = useMMKVString("AuthProvider.authToken")
+  // El header Authorization NO se sincroniza desde acá: el cliente API lee el
+  // token directo de MMKV (misma clave) en cada request, vía request transform
+  // — ver el constructor de `Api`. El useEffect que vivía acá corría después
+  // de los efectos de las pantallas recién montadas y causaba el 401 del
+  // primer fetch tras el login (Fase 8.1). El setter de useMMKVString escribe
+  // en MMKV de forma síncrona, así que el transform ve el valor nuevo en el
+  // mismo tick tanto en login como en logout.
+  const [authToken, setAuthToken] = useMMKVString(AUTH_TOKEN_STORAGE_KEY)
   const [authEmail, setAuthEmail] = useMMKVString("AuthProvider.authEmail")
   const [authUserId, setAuthUserId] = useMMKVString("AuthProvider.authUserId")
-
-  // Mantiene el header Authorization del cliente API en sync con el token
-  // (login, logout, e hidratación inicial desde MMKV al abrir la app).
-  useEffect(() => {
-    api.setAuthToken(authToken)
-  }, [authToken])
 
   const logout = useCallback(() => {
     if (authToken) void unregisterPushToken(authToken)

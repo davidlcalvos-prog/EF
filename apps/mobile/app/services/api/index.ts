@@ -8,6 +8,8 @@
 import { ApiResponse, ApisauceInstance, create } from "apisauce"
 
 import Config from "@/config"
+import { AUTH_TOKEN_STORAGE_KEY } from "@/context/authTokenStorage"
+import { loadString } from "@/utils/storage"
 import type { PhysicalTestId } from "@/data/mockPlayerProfile"
 import type { PlayerPositionId } from "@/data/suggestPlayerPosition"
 import type {
@@ -107,6 +109,24 @@ export class Api {
         Accept: "application/json",
       },
     })
+
+    // El token se lee de MMKV en CADA request, de forma síncrona. Antes el
+    // header se adjuntaba desde un useEffect de AuthContext que corre DESPUÉS
+    // de los efectos de las pantallas recién montadas (React ejecuta efectos
+    // hijo-antes-que-padre), así que el primer fetch tras el login salía sin
+    // Authorization → 401 (bug login→feed, Fase 8.1). Con el transform no hay
+    // coordinación posible que perder: cualquier pantalla, en cualquier
+    // momento, manda el token vigente — y tras logout (MMKV se limpia en el
+    // mismo tick) deja de mandarlo al instante, sin header viejo en el
+    // singleton. Un Authorization explícito por-request (ver removePushToken)
+    // nunca se pisa.
+    this.apisauce.addRequestTransform((request) => {
+      if (!request.headers || request.headers.Authorization) return
+      const token = loadString(AUTH_TOKEN_STORAGE_KEY)
+      if (token) {
+        request.headers.Authorization = `Bearer ${token}`
+      }
+    })
   }
 
   /**
@@ -138,19 +158,6 @@ export class Api {
       kind: "ok",
       accessToken: data.accessToken,
       user: data.user,
-    }
-  }
-
-  /**
-   * Adjunta (o quita) el Bearer token usado por los endpoints autenticados
-   * (`/api/profile/*`, etc). Debe llamarse cada vez que `authToken` cambia
-   * (login, logout, hidratación inicial desde MMKV) — ver `AuthContext`.
-   */
-  setAuthToken(token?: string) {
-    if (token) {
-      this.apisauce.setHeader("Authorization", `Bearer ${token}`)
-    } else {
-      this.apisauce.deleteHeader("Authorization")
     }
   }
 
