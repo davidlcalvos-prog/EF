@@ -340,7 +340,11 @@ const ko: Translations = {
     loadError: "랭킹을 불러오지 못했습니다.",
     emptySection: "아직 데이터가 없습니다.",
     topScorers: "득점 순위",
-    bestGoalkeepers: "최소 실점 골키퍼",
+    bestGoalkeepers: "최소 실점 골키퍼",
+    bestDefenders: "최고 수비수",
+    topAssisters: "최고 플레이메이커",
+    recoveriesValue: "{{count}} 리커버리",
+    assistsValue: "{{count}} 어시스트",
     goalsValue: "{{count}}골",
     concededValue: "경기당 {{value}}",
     matchesPlayed: "{{count}}경기",

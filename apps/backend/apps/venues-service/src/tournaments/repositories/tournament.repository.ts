@@ -119,6 +119,8 @@ export class TournamentRepository {
         isGoalkeeper: true,
         goals: true,
         goalsAgainst: true,
+        assists: true,
+        dfr: true,
         team: { select: { wins: true, draws: true, losses: true, lossesByW: true } },
         user: {
           select: {
@@ -142,6 +144,8 @@ export class TournamentRepository {
         favoritePosition: string | null;
         goals: number;
         goalsAgainst: number;
+        assists: number;
+        dfr: number;
         isGoalkeeper: boolean;
         matchesPlayed: number;
       }
@@ -161,11 +165,15 @@ export class TournamentRepository {
         favoritePosition: row.user?.profile?.favoritePosition ?? null,
         goals: 0,
         goalsAgainst: 0,
+        assists: 0,
+        dfr: 0,
         isGoalkeeper: false,
         matchesPlayed: 0,
       };
       current.goals += row.goals;
       current.goalsAgainst += row.goalsAgainst;
+      current.assists += row.assists;
+      current.dfr += row.dfr;
       // Arquero en al menos uno de sus rosters: entra a la tabla de valla.
       current.isGoalkeeper = current.isGoalkeeper || row.isGoalkeeper;
       // No hay conteo de partidos POR JUGADOR en el schema: se usa el del
@@ -176,22 +184,33 @@ export class TournamentRepository {
     }
     const entries = [...byUser.values()];
 
-    const topScorers: RankingEntry[] = entries
-      .filter((e) => e.goals > 0)
-      .sort(
-        (a, b) =>
-          b.goals - a.goals ||
-          a.matchesPlayed - b.matchesPlayed ||
-          a.displayName.localeCompare(b.displayName),
-      )
-      .slice(0, 5)
-      .map((e) => ({
-        userId: e.userId,
-        displayName: e.displayName,
-        favoritePosition: e.favoritePosition,
-        value: e.goals,
-        secondary: e.matchesPlayed,
-      }));
+    /**
+     * Top 5 por métrica acumulada (Fase 9.1): filtro > 0, orden desc,
+     * desempate por menos partidos jugados y luego displayName asc. Solo para
+     * las tablas descendentes — bestGoalkeepers tiene reglas propias (asc,
+     * división por PJ, exclusión de 0 PJ) y queda aparte.
+     */
+    const buildTopFive = (pick: (e: (typeof entries)[number]) => number): RankingEntry[] =>
+      entries
+        .filter((e) => pick(e) > 0)
+        .sort(
+          (a, b) =>
+            pick(b) - pick(a) ||
+            a.matchesPlayed - b.matchesPlayed ||
+            a.displayName.localeCompare(b.displayName),
+        )
+        .slice(0, 5)
+        .map((e) => ({
+          userId: e.userId,
+          displayName: e.displayName,
+          favoritePosition: e.favoritePosition,
+          value: pick(e),
+          secondary: e.matchesPlayed,
+        }));
+
+    const topScorers = buildTopFive((e) => e.goals);
+    const bestDefenders = buildTopFive((e) => e.dfr);
+    const topAssisters = buildTopFive((e) => e.assists);
 
     // Excluir 0 partidos jugados: si no, cualquier arquero sin jugar saldría primero con 0.
     const bestGoalkeepers: RankingEntry[] = entries
@@ -215,7 +234,7 @@ export class TournamentRepository {
         secondary: e.matchesPlayed,
       }));
 
-    return { topScorers, bestGoalkeepers };
+    return { topScorers, bestGoalkeepers, bestDefenders, topAssisters };
   }
 
   async getEnrollmentContext(

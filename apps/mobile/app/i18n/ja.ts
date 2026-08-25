@@ -343,7 +343,11 @@ const ja: Translations = {
     loadError: "ランキングを読み込めませんでした。",
     emptySection: "まだデータがありません。",
     topScorers: "得点ランキング",
-    bestGoalkeepers: "最少失点GK",
+    bestGoalkeepers: "最少失点GK",
+    bestDefenders: "ベストディフェンダー",
+    topAssisters: "ベストプレーメーカー",
+    recoveriesValue: "{{count}}奪取",
+    assistsValue: "{{count}}アシスト",
     goalsValue: "{{count}}得点",
     concededValue: "1試合あたり{{value}}",
     matchesPlayed: "{{count}}試合",

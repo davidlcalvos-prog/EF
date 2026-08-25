@@ -341,7 +341,11 @@ const ar: Translations = {
     loadError: "تعذر تحميل التصنيفات.",
     emptySection: "لا توجد بيانات بعد.",
     topScorers: "الهدافون",
-    bestGoalkeepers: "أفضل حراس المرمى",
+    bestGoalkeepers: "أفضل حراس المرمى",
+    bestDefenders: "أفضل مدافع",
+    topAssisters: "أفضل صانع ألعاب",
+    recoveriesValue: "{{count}} استخلاصات",
+    assistsValue: "{{count}} تمريرات حاسمة",
     goalsValue: "{{count}} أهداف",
     concededValue: "{{value}} لكل مباراة",
     matchesPlayed: "{{count}} مباراة",

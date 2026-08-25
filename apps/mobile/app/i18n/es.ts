@@ -349,7 +349,11 @@ const es: Translations = {
     loadError: "No se pudieron cargar los rankings.",
     emptySection: "Todavía no hay datos.",
     topScorers: "Goleadores",
-    bestGoalkeepers: "Valla menos vencida",
+    bestGoalkeepers: "Valla menos vencida",
+    bestDefenders: "Mejor defensa",
+    topAssisters: "Mejor distribuidor",
+    recoveriesValue: "{{count}} recuperos",
+    assistsValue: "{{count}} asistencias",
     goalsValue: "{{count}} goles",
     concededValue: "{{value}} por partido",
     matchesPlayed: "{{count}} PJ",

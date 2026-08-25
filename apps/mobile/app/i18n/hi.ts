@@ -341,7 +341,11 @@ const hi: Translations = {
     loadError: "रैंकिंग लोड नहीं हो सकी।",
     emptySection: "अभी कोई डेटा नहीं है।",
     topScorers: "शीर्ष गोल स्कोरर",
-    bestGoalkeepers: "सर्वश्रेष्ठ गोलकीपर",
+    bestGoalkeepers: "सर्वश्रेष्ठ गोलकीपर",
+    bestDefenders: "सर्वश्रेष्ठ डिफेंडर",
+    topAssisters: "सर्वश्रेष्ठ प्लेमेकर",
+    recoveriesValue: "{{count}} रिकवरी",
+    assistsValue: "{{count}} असिस्ट",
     goalsValue: "{{count}} गोल",
     concededValue: "{{value}} प्रति मैच",
     matchesPlayed: "{{count}} मैच",

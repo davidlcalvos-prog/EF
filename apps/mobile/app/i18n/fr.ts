@@ -349,7 +349,11 @@ const fr: Translations = {
     loadError: "Impossible de charger les classements.",
     emptySection: "Pas encore de données.",
     topScorers: "Meilleurs buteurs",
-    bestGoalkeepers: "Meilleure défense de but",
+    bestGoalkeepers: "Meilleure défense de but",
+    bestDefenders: "Meilleur défenseur",
+    topAssisters: "Meilleur passeur",
+    recoveriesValue: "{{count}} récupérations",
+    assistsValue: "{{count}} passes décisives",
     goalsValue: "{{count}} buts",
     concededValue: "{{value}} par match",
     matchesPlayed: "{{count}} MJ",
