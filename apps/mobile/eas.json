@@ -31,7 +31,8 @@
       "extends": "production",
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.eliteforge.app/api/"
+        "EXPO_PUBLIC_API_URL": "https://api.eliteforge.app/api/",
+        "EXPO_PUBLIC_SIGN_UP_URL": "https://eliteforge.app/auth/sign-up"
       },
       "ios": { "simulator": true },
       "android": { "buildType": "apk" }
@@ -42,7 +43,8 @@
     },
     "production": {
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.eliteforge.app/api/"
+        "EXPO_PUBLIC_API_URL": "https://api.eliteforge.app/api/",
+        "EXPO_PUBLIC_SIGN_UP_URL": "https://eliteforge.app/auth/sign-up"
       },
       "android": { "buildType": "apk" }
     }
