@@ -70,6 +70,9 @@ export const MESSAGE_PATTERNS = {
     REGISTER: 'push_tokens.register',
     REMOVE: 'push_tokens.remove',
   },
+  RANKINGS: {
+    GET_GLOBAL: 'rankings.get_global',
+  },
   TOURNAMENTS: {
     LIST_MINE: 'tournaments.list_mine',
     GET_MINE: 'tournaments.get_mine',
