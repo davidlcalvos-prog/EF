@@ -1,6 +1,6 @@
-import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Space_Grotesk, Inter, Geist_Mono } from 'next/font/google'
+import { eliteForgeColors } from '@/lib/theme/elite-forge'
 import './globals.css'
 
 const spaceGrotesk = Space_Grotesk({
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: 'dark',
-  themeColor: '#424242',
+  themeColor: eliteForgeColors.carbon,
 }
 
 export default function RootLayout({
@@ -33,12 +33,9 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`dark ${spaceGrotesk.variable} ${inter.variable} ${geistMono.variable} bg-background`}
+      className={`${spaceGrotesk.variable} ${inter.variable} ${geistMono.variable} bg-background`}
     >
-      <body className="font-sans antialiased">
-        {children}
-        {process.env.NODE_ENV === 'production' && <Analytics />}
-      </body>
+      <body className="font-sans antialiased">{children}</body>
     </html>
   )
 }
