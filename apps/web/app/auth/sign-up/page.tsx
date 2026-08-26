@@ -180,7 +180,7 @@ export default function SignUpPage() {
           )}
           <Button
             type="submit"
-            className="h-11 min-w-0 flex-1 font-heading font-semibold uppercase tracking-wide"
+            className="ef-cta h-11 min-w-0 flex-1 font-heading font-semibold uppercase tracking-wide"
             disabled={isLoading}
           >
             {isLoading ? 'Creando cuenta...' : 'Crear cuenta gratis'}

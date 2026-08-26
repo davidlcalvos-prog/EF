@@ -26,6 +26,10 @@ export default async function AdminCopaEliteForgePage() {
       <AdminPageHeader
         title="Copa Elite Forge"
         subtitle="Partidos oficiales de Elite Forge que le tocaron a tu cancha, sorteados entre todas las canchas de césped sintético registradas."
+        breadcrumbs={[
+          { label: 'Resumen', href: '/admin' },
+          { label: 'Copa Elite Forge' },
+        ]}
       />
 
       {loadError && (

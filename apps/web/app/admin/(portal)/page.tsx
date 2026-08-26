@@ -16,6 +16,7 @@ export default async function AdminHomePage() {
         <AdminPageHeader
           title={`Hola, ${session.name.split(' ')[0]}`}
           subtitle="Panel de métricas y rendimiento de jugadores."
+          breadcrumbs={[{ label: 'Resumen' }]}
         />
         <Button render={<Link href="/admin/metricas" />}>Ver métricas</Button>
       </div>

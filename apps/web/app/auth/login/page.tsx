@@ -104,7 +104,7 @@ export default function LoginPage() {
 
         <Button
           type="submit"
-          className="h-11 w-full font-heading font-semibold uppercase tracking-wide"
+          className="ef-cta h-11 w-full font-heading font-semibold uppercase tracking-wide"
           disabled={isLoading}
         >
           {isLoading ? 'Entrando...' : 'Iniciar sesión'}

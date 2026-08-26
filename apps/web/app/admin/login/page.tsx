@@ -5,6 +5,9 @@ import { ApiError } from '@/lib/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { LandingBackground } from '@/components/landing/landing-background'
+import { Logo } from '@/components/logo'
+import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
@@ -63,73 +66,90 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <p className="font-heading text-xs font-medium uppercase tracking-[0.3em] text-primary">
-            Elite Forge Admin
-          </p>
-          <h1 className="mt-2 font-heading text-3xl font-bold italic uppercase tracking-tight text-foreground">
-            Portal de gestión
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Acceso para administradores de canchas y empresarios
-          </p>
+    <main className="relative min-h-screen">
+      <LandingBackground />
+      <div className="relative z-10 flex min-h-screen flex-col px-4">
+        {/* Barra superior: volver + logo, integrada como en la landing */}
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between py-4 sm:px-2">
+          <Link
+            href="/"
+            className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/25 px-4 py-2 text-sm font-medium text-muted-foreground backdrop-blur-md transition-colors hover:border-primary/40 hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+            Volver
+          </Link>
+          <Link href="/" className="inline-flex items-center">
+            <Logo className="[&_img]:h-9" />
+          </Link>
         </div>
 
-        {accessDenied && (
-          <p className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-            No tienes permisos para acceder al portal de administración.
-          </p>
-        )}
+        <div className="flex flex-1 items-center justify-center pb-16">
+          <div className="w-full max-w-md">
+            <div className="mb-8 text-center">
+              <p className="font-heading text-xs font-medium uppercase tracking-[0.3em] text-primary">
+                Elite Forge Admin
+              </p>
+              <h1 className="mt-2 font-heading text-3xl font-bold italic uppercase tracking-tight text-foreground">
+                Portal de gestión
+              </h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Acceso para administradores de canchas y empresarios
+              </p>
+            </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Correo electrónico</Label>
-            <Input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <div className="ef-card rounded-2xl p-6 sm:p-8">
+              {accessDenied && (
+                <p className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                  No tienes permisos para acceder al portal de administración.
+                </p>
+              )}
+
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Correo electrónico</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Contraseña</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+
+                {error && <p className="text-sm text-destructive">{error}</p>}
+
+                <Button
+                  type="submit"
+                  className="ef-cta h-11 w-full font-heading font-semibold uppercase tracking-wide"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Entrando...' : 'Entrar al portal'}
+                </Button>
+              </form>
+            </div>
+
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              ¿Todavía no tenés cuenta de dueño de cancha? Escribinos a{' '}
+              <a
+                href="mailto:canchas@eliteforge.app"
+                className="font-medium text-primary hover:underline"
+              >
+                canchas@eliteforge.app
+              </a>
+            </p>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
-            <Input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-
-          {error && <p className="text-sm text-destructive">{error}</p>}
-
-          <Button
-            type="submit"
-            className="h-11 w-full font-heading font-semibold uppercase tracking-wide"
-            disabled={isLoading}
-          >
-            {isLoading ? 'Entrando...' : 'Entrar al portal'}
-          </Button>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          ¿Aún no tienes cuenta?{' '}
-          <Link
-            href="/auth/sign-up"
-            className="font-medium text-primary hover:underline"
-          >
-            Regístrate
-          </Link>
-          {' · '}
-          <Link href="/" className="font-medium text-primary hover:underline">
-            Volver a la web pública
-          </Link>
-        </p>
+        </div>
       </div>
-    </div>
+    </main>
   )
 }

@@ -12,14 +12,15 @@ import {
   computeHourOccupancy,
 } from '@/lib/dal/admin/analytics'
 import { AdminPageHeader } from '@/components/admin/page-header'
+import { eliteForgeColors } from '@/lib/theme/elite-forge'
 
 const PHONE_KEY = 'ef-admin-phone-reservations'
 const EDITS_KEY = 'ef-admin-edited-reservations'
 
 const BRAND = {
-  emerald: '#00CEC8',
-  orange: '#FF8C00',
-  gray: '#8A8A8A',
+  emerald: eliteForgeColors.emerald,
+  orange: eliteForgeColors.orange,
+  gray: eliteForgeColors.muted,
 } as const
 
 function pct(value: number) {
@@ -102,10 +103,14 @@ export function AnalyticsDashboard({
       <AdminPageHeader
         title="Analíticas"
         subtitle="Ocupación de canchas, horarios pico y fidelidad de clientes a partir de tus reservas."
+        breadcrumbs={[
+          { label: 'Resumen', href: '/admin' },
+          { label: 'Analíticas' },
+        ]}
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="rounded-2xl ef-card p-5">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
             Reservas activas
           </p>
@@ -116,7 +121,7 @@ export function AnalyticsDashboard({
             Pendientes + confirmadas
           </p>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="rounded-2xl ef-card p-5">
           <div className="text-xs uppercase tracking-wide text-muted-foreground">
             Canceladas
           </div>
@@ -130,7 +135,7 @@ export function AnalyticsDashboard({
             En el historial analizado
           </p>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="rounded-2xl ef-card p-5">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
             Clientes únicos
           </p>
@@ -147,7 +152,7 @@ export function AnalyticsDashboard({
       </div>
 
       <section className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="rounded-2xl ef-card p-5">
           <h2 className="font-heading text-lg font-bold uppercase italic tracking-tight text-foreground">
             Días con más ocupación
           </h2>
@@ -182,7 +187,7 @@ export function AnalyticsDashboard({
           </ul>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="rounded-2xl ef-card p-5">
           <h2 className="font-heading text-lg font-bold uppercase italic tracking-tight text-foreground">
             Días con menos ocupación
           </h2>
@@ -220,7 +225,7 @@ export function AnalyticsDashboard({
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="rounded-2xl ef-card p-5">
           <h2 className="font-heading text-lg font-bold uppercase italic tracking-tight text-foreground">
             Horarios más demandados
           </h2>
@@ -240,7 +245,7 @@ export function AnalyticsDashboard({
           </ul>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="rounded-2xl ef-card p-5">
           <h2 className="font-heading text-lg font-bold uppercase italic tracking-tight text-foreground">
             Horarios menos ocupados
           </h2>
@@ -261,7 +266,7 @@ export function AnalyticsDashboard({
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-5">
+      <section className="rounded-2xl ef-card p-5">
         <h2 className="font-heading text-lg font-bold uppercase italic tracking-tight text-foreground">
           Clientes más frecuentes
         </h2>

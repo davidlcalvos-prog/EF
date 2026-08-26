@@ -471,6 +471,32 @@ Tras cambiar `NEXT_PUBLIC_*`: Redeploy. Si ves versión vieja: Cache Manager →
 
 ---
 
+## Fase W.0 — Colorimetría, navegación y rediseño visual (2026-08-26)
+
+Rama `feature/web-w0-colorimetria-navegacion`. Alcance final de la fase:
+
+- Paleta Elite Forge como única fuente de verdad en `:root` (se eliminaron
+  los bloques `.dark`/`@media` de shadcn que la pisaban); tokens
+  `--color-emerald`/`--color-orange` disponibles como utilidades Tailwind.
+- Cero colores hardcodeados fuera de `globals.css` y `lib/theme/elite-forge.ts`.
+- Navegación: acceso "Soy dueño de cancha" en la landing, footer con
+  columnas, páginas legales placeholder, header/sidebar seccionado y
+  breadcrumbs en el portal, 404 y error del portal.
+- Rediseño visual futurista: fondo `landing-bg.svg` fijo a página completa
+  (parallax) con armonía esmeralda-estructura / naranja-luz, navbar
+  transparente→vidrio al scrollear, sistema `ef-card`/`ef-chip`/`ef-cta`
+  aplicado a landing, auth, 404 y portal (con velo atenuador), y mapa de
+  Colombia con 7 ciudades etiquetadas en el buscador de partidos.
+
+**Notas de cierre:**
+
+1. **David revisó y aprobó los cambios de esta fase** (2026-08-26).
+2. **La web puede recibir más cambios a futuro** — este rediseño no es
+   definitivo; las fases W.1–W.4 (persistencia real, registro de dueños,
+   contenido legal, etc.) siguen pendientes.
+
+---
+
 ## Referencias
 
 | Recurso | Contenido |
@@ -484,4 +510,4 @@ Tras cambiar `NEXT_PUBLIC_*`: Redeploy. Si ves versión vieja: Cache Manager →
 
 ---
 
-*Última actualización: 2026-07-15 — documentación regenerada con portal completo (Resumen, Reservas, Mi cancha, Analíticas, Torneos).*
+*Última actualización: 2026-08-26 — Fase W.0: paleta, navegación y rediseño visual futurista, revisada y aprobada por David.*

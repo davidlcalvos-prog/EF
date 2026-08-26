@@ -15,14 +15,15 @@ import {
   loadVenueExtras,
   totalCourts,
 } from '@/lib/dal/admin/venue-extras'
+import { eliteForgeColors } from '@/lib/theme/elite-forge'
 
 const PHONE_KEY = 'ef-admin-phone-reservations'
 const EDITS_KEY = 'ef-admin-edited-reservations'
 
 const BRAND = {
-  emerald: '#00CEC8',
-  orange: '#FF8C00',
-  gray: '#8A8A8A',
+  emerald: eliteForgeColors.emerald,
+  orange: eliteForgeColors.orange,
+  gray: eliteForgeColors.muted,
 } as const
 
 export function OwnerSummaryDashboard({
@@ -92,6 +93,7 @@ export function OwnerSummaryDashboard({
       <AdminPageHeader
         title={`Hola, ${firstName}`}
         subtitle="Opera tus canchas: inventario, ocupación en tiempo real y reservas."
+        breadcrumbs={[{ label: 'Resumen' }]}
       />
 
       <section className="mb-6 space-y-4">
@@ -114,7 +116,7 @@ export function OwnerSummaryDashboard({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl ef-card p-5">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
               Canchas totales
             </p>
@@ -126,7 +128,7 @@ export function OwnerSummaryDashboard({
               {extras.courts11}×11vs11
             </p>
           </div>
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl ef-card p-5">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
               Ocupadas ahora
             </p>
@@ -140,7 +142,7 @@ export function OwnerSummaryDashboard({
               Con reserva activa en este momento
             </p>
           </div>
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl ef-card p-5">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
               Libres ahora
             </p>
@@ -193,7 +195,7 @@ export function OwnerSummaryDashboard({
       </section>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="rounded-2xl ef-card p-5">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
             Complejos
           </p>
@@ -215,7 +217,7 @@ export function OwnerSummaryDashboard({
             Esperan tu confirmación
           </p>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="rounded-2xl ef-card p-5">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
             Confirmadas
           </p>
@@ -229,7 +231,7 @@ export function OwnerSummaryDashboard({
       </div>
 
       {venues[0] && (
-        <div className="mt-6 rounded-2xl border border-border bg-card/80 p-5">
+        <div className="mt-6 rounded-2xl ef-card/80 p-5">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
             Cancha principal
           </p>

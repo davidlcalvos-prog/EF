@@ -20,7 +20,8 @@ const cards = [
 
 export function TournamentsSection() {
   return (
-    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+    <section className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6">
+      <div aria-hidden className="ef-glow-orange absolute -right-48 top-1/3 h-[26rem] w-[34rem]" />
       <div className="text-center">
         <h2 className="font-heading text-3xl font-bold italic uppercase tracking-tight text-foreground text-balance sm:text-4xl">
           Organización de torneos y equipos
@@ -31,13 +32,13 @@ export function TournamentsSection() {
       </div>
 
       <div className="mt-12 grid gap-6 md:grid-cols-3">
-        {cards.map((card) => (
+        {cards.map((card, i) => (
           <div
             key={card.title}
-            className="rounded-2xl border border-border bg-card p-6 transition-colors hover:border-primary/50"
+            className={`ef-card ef-card-hover rounded-2xl p-6 ${i === 1 ? 'ef-card-orange' : ''}`}
           >
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15">
-              <card.icon className="h-6 w-6 text-primary" />
+            <span className={`ef-chip h-12 w-12 ${i === 1 ? 'ef-chip-orange' : ''}`}>
+              <card.icon className="h-6 w-6" />
             </span>
             <h3 className="mt-4 font-heading text-lg font-semibold uppercase tracking-wide text-card-foreground">
               {card.title}

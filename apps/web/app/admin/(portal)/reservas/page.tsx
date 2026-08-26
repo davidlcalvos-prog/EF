@@ -27,6 +27,10 @@ export default async function AdminReservasPage() {
       <AdminPageHeader
         title="Reservas"
         subtitle="Calendario 8 AM–10 PM · formato 6/8/11 · día, semana y mes."
+        breadcrumbs={[
+          { label: 'Resumen', href: '/admin' },
+          { label: 'Reservas' },
+        ]}
       />
 
       {loadError && (

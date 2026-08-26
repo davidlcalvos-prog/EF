@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { CalendarX2, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { releaseAssignedMatch } from '@/app/admin/(portal)/copa-elite-forge/actions'
-import { formatReservationSchedule } from '@/lib/dal/admin/reservations'
+import { formatReservationSchedule } from '@/lib/dal/admin/reservation-format'
 import type { AssignedTournamentMatch } from '@/lib/dal/admin/tournaments-api'
 
 const MATCH_STATUS_LABELS: Record<AssignedTournamentMatch['matchStatus'], string> = {
@@ -53,7 +53,7 @@ export function CopaEliteForgeList({ matches }: { matches: AssignedTournamentMat
       {matches.map((match) => (
         <li
           key={match.matchId}
-          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl ef-card p-4"
         >
           <div>
             <p className="text-[11px] uppercase tracking-wide text-primary">

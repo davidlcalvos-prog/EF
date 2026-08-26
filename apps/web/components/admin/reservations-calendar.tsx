@@ -15,6 +15,7 @@ import {
   type CalendarReservation,
 } from '@/lib/dal/admin/mock-reservations'
 import { AddReservationModal, ReservationFormModal } from '@/components/admin/add-reservation-modal'
+import { eliteForgeColors } from '@/lib/theme/elite-forge'
 
 const PHONE_RESERVATIONS_KEY = 'ef-admin-phone-reservations'
 const EDITED_RESERVATIONS_KEY = 'ef-admin-edited-reservations'
@@ -32,11 +33,13 @@ const VIEWS: { id: CalendarView; label: string }[] = [
 ]
 
 const BRAND = {
-  emerald: '#00CEC8',
-  orange: '#FF8C00',
-  gray: '#8A8A8A',
-  grayBg: '#5A5A5A',
-  white: '#FFFFFF',
+  emerald: eliteForgeColors.emerald,
+  orange: eliteForgeColors.orange,
+  gray: eliteForgeColors.muted,
+  grayBg: eliteForgeColors.carbonBorder,
+  white: eliteForgeColors.white,
+  onEmerald: eliteForgeColors.onEmerald,
+  onOrange: eliteForgeColors.onOrange,
 } as const
 
 function startOfDay(date: Date) {
@@ -87,13 +90,13 @@ function statusChipStyle(status: ReservationStatus): CSSProperties {
       return {
         backgroundColor: BRAND.emerald,
         borderColor: BRAND.emerald,
-        color: '#0b2e2c',
+        color: BRAND.onEmerald,
       }
     case 'cancelled':
       return {
         backgroundColor: BRAND.orange,
         borderColor: BRAND.orange,
-        color: '#2a1500',
+        color: BRAND.onOrange,
       }
     case 'pending':
       return {
@@ -187,7 +190,7 @@ function ReservationModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl"
+        className="w-full max-w-md rounded-2xl ef-card p-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-start justify-between gap-3">
@@ -324,7 +327,7 @@ function DayTimeline({
   onOpen: (id: string) => void
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+    <div className="overflow-hidden rounded-2xl ef-card">
       <div className="border-b border-border px-4 py-3">
         <p className="font-heading text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           {day.toLocaleDateString('es', {
@@ -611,7 +614,7 @@ export function ReservationsCalendar({
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex w-full rounded-xl border border-border bg-card p-1 sm:w-auto">
+            <div className="inline-flex w-full rounded-xl ef-card p-1 sm:w-auto">
               {VIEWS.map((item) => (
                 <button
                   key={item.id}
@@ -719,7 +722,7 @@ export function ReservationsCalendar({
       {(view === 'week' || view === 'day') && (
         <>
           {view === 'week' && (
-            <div className="grid grid-cols-7 gap-1 rounded-2xl border border-border bg-card p-2 sm:gap-2 sm:p-3">
+            <div className="grid grid-cols-7 gap-1 rounded-2xl ef-card p-2 sm:gap-2 sm:p-3">
               {weekDays.map((day) => {
                 const isSelected = sameDay(day, anchor)
                 const isToday = sameDay(day, new Date())
@@ -745,7 +748,7 @@ export function ReservationsCalendar({
                         backgroundColor:
                           isSelected || isToday ? BRAND.emerald : 'transparent',
                         color:
-                          isSelected || isToday ? '#0b2e2c' : BRAND.white,
+                          isSelected || isToday ? BRAND.onEmerald : BRAND.white,
                       }}
                     >
                       {day.getDate()}
@@ -770,7 +773,7 @@ export function ReservationsCalendar({
       )}
 
       {view === 'month' && (
-        <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-2xl border border-border bg-card p-3 sm:p-5">
+        <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-2xl ef-card p-3 sm:p-5">
           <div className="grid grid-cols-7 gap-1 pb-2">
             {['do.', 'lu.', 'ma.', 'mi.', 'ju.', 'vi.', 'sá.'].map((label) => (
               <div
@@ -801,9 +804,9 @@ export function ReservationsCalendar({
                     className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold sm:h-9 sm:w-9"
                     style={{
                       color: !inMonth
-                        ? '#666'
+                        ? BRAND.gray
                         : isSelected || isToday
-                          ? '#0b2e2c'
+                          ? BRAND.onEmerald
                           : BRAND.white,
                       backgroundColor:
                         isSelected || isToday ? BRAND.emerald : 'transparent',

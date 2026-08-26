@@ -112,7 +112,7 @@ export function VenueSettingsForm({ venue }: { venue: VenueFormBase | null }) {
         value={extras.price6 || extras.price8 || extras.price11 || basePrice}
       />
 
-      <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
+      <section className="space-y-4 rounded-2xl ef-card p-5">
         <div>
           <h2 className="font-heading text-lg font-bold uppercase italic tracking-tight text-foreground">
             Identidad
@@ -168,7 +168,7 @@ export function VenueSettingsForm({ venue }: { venue: VenueFormBase | null }) {
         </div>
       </section>
 
-      <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
+      <section className="space-y-4 rounded-2xl ef-card p-5">
         <div>
           <h2 className="font-heading text-lg font-bold uppercase italic tracking-tight text-foreground">
             Inventario de canchas
@@ -234,7 +234,7 @@ export function VenueSettingsForm({ venue }: { venue: VenueFormBase | null }) {
         </p>
       </section>
 
-      <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
+      <section className="space-y-4 rounded-2xl ef-card p-5">
         <div>
           <h2 className="font-heading text-lg font-bold uppercase italic tracking-tight text-foreground">
             Tarifas por formato
@@ -282,7 +282,7 @@ export function VenueSettingsForm({ venue }: { venue: VenueFormBase | null }) {
         </p>
       </section>
 
-      <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
+      <section className="space-y-4 rounded-2xl ef-card p-5">
         <div>
           <h2 className="font-heading text-lg font-bold uppercase italic tracking-tight text-foreground">
             Servicios del complejo

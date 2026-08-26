@@ -30,8 +30,9 @@ import {
   MAX_TEAMS,
 } from '@/lib/dal/admin/tournaments'
 import { TournamentRankingsModal } from '@/components/admin/tournament-rankings-modal'
+import { eliteForgeColors } from '@/lib/theme/elite-forge'
 
-const BRAND = { emerald: '#00CEC8', orange: '#FF8C00' } as const
+const BRAND = { emerald: eliteForgeColors.emerald, orange: eliteForgeColors.orange } as const
 
 type Tab = 'config' | 'teams' | 'standings' | 'matches'
 
@@ -312,7 +313,7 @@ export function TournamentDetail({
       </div>
 
       {tab === 'config' && (
-        <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
+        <section className="space-y-4 rounded-2xl ef-card p-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="t-name">Nombre</Label>
@@ -577,7 +578,7 @@ export function TournamentDetail({
           {local.teams.map((team) => (
             <div
               key={team.id}
-              className="space-y-4 rounded-2xl border border-border bg-card p-5"
+              className="space-y-4 rounded-2xl ef-card p-5"
             >
               <div className="flex flex-wrap items-center gap-3">
                 <Input
@@ -725,7 +726,7 @@ export function TournamentDetail({
           {standings.map((block) => (
             <div
               key={block.groupId}
-              className="overflow-x-auto rounded-2xl border border-border bg-card p-5"
+              className="overflow-x-auto rounded-2xl ef-card p-5"
             >
               <h3 className="font-heading text-sm font-bold uppercase tracking-wide">
                 {block.groupId}
@@ -783,7 +784,7 @@ export function TournamentDetail({
             return (
               <div
                 key={match.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl ef-card p-4"
               >
                 <div>
                   <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -912,7 +913,7 @@ function MatchEditorModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl ef-card p-5 shadow-xl">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="font-heading text-lg font-bold uppercase italic">
