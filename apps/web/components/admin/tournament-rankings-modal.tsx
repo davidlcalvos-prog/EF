@@ -7,8 +7,9 @@ import {
 } from '@/lib/dal/admin/tournaments'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { eliteForgeColors, medalColors } from '@/lib/theme/elite-forge'
 
-const BRAND = { emerald: '#00CEC8', orange: '#FF8C00' } as const
+const BRAND = { emerald: eliteForgeColors.emerald, orange: eliteForgeColors.orange } as const
 
 function Podium({
   title,
@@ -23,7 +24,7 @@ function Podium({
   unit: string
   invertRankColor?: boolean
 }) {
-  const medals = ['#FFD700', '#C0C0C0', '#CD7F32', BRAND.emerald, BRAND.orange]
+  const medals = [...medalColors, BRAND.emerald, BRAND.orange]
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5">

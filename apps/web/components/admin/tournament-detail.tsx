@@ -30,8 +30,9 @@ import {
   MAX_TEAMS,
 } from '@/lib/dal/admin/tournaments'
 import { TournamentRankingsModal } from '@/components/admin/tournament-rankings-modal'
+import { eliteForgeColors } from '@/lib/theme/elite-forge'
 
-const BRAND = { emerald: '#00CEC8', orange: '#FF8C00' } as const
+const BRAND = { emerald: eliteForgeColors.emerald, orange: eliteForgeColors.orange } as const
 
 type Tab = 'config' | 'teams' | 'standings' | 'matches'
 

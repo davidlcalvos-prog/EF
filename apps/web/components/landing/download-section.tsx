@@ -51,7 +51,7 @@ export function DownloadSection() {
                 className="mx-auto h-40 w-40 rounded-lg bg-foreground"
                 style={{
                   backgroundImage:
-                    'repeating-conic-gradient(oklch(0.16 0.03 270) 0% 25%, oklch(0.97 0.01 270) 0% 50%)',
+                    'repeating-conic-gradient(var(--secondary) 0% 25%, var(--foreground) 0% 50%)',
                   backgroundSize: '16px 16px',
                 }}
                 aria-label="Código QR de descarga"

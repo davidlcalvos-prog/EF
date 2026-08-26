@@ -7,6 +7,7 @@ import {
   RadarChart,
   ResponsiveContainer,
 } from 'recharts'
+import { eliteForgeColors } from '@/lib/theme/elite-forge'
 
 type StatData = { stat: string; value: number }
 
@@ -20,15 +21,15 @@ export function StatsRadar({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <RadarChart data={data} outerRadius="72%">
-        <PolarGrid stroke="oklch(0.4 0.05 285)" />
+        <PolarGrid stroke={eliteForgeColors.carbonBorder} />
         <PolarAngleAxis
           dataKey="stat"
-          tick={{ fill: 'oklch(0.75 0.03 285)', fontSize: 11 }}
+          tick={{ fill: eliteForgeColors.muted, fontSize: 11 }}
         />
         <Radar
           dataKey="value"
-          stroke="oklch(0.86 0.24 145)"
-          fill="oklch(0.86 0.24 145)"
+          stroke={eliteForgeColors.emerald}
+          fill={eliteForgeColors.emerald}
           fillOpacity={0.4}
           strokeWidth={2}
         />

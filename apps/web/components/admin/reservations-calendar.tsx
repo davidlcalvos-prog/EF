@@ -15,6 +15,7 @@ import {
   type CalendarReservation,
 } from '@/lib/dal/admin/mock-reservations'
 import { AddReservationModal, ReservationFormModal } from '@/components/admin/add-reservation-modal'
+import { eliteForgeColors } from '@/lib/theme/elite-forge'
 
 const PHONE_RESERVATIONS_KEY = 'ef-admin-phone-reservations'
 const EDITED_RESERVATIONS_KEY = 'ef-admin-edited-reservations'
@@ -32,11 +33,13 @@ const VIEWS: { id: CalendarView; label: string }[] = [
 ]
 
 const BRAND = {
-  emerald: '#00CEC8',
-  orange: '#FF8C00',
-  gray: '#8A8A8A',
-  grayBg: '#5A5A5A',
-  white: '#FFFFFF',
+  emerald: eliteForgeColors.emerald,
+  orange: eliteForgeColors.orange,
+  gray: eliteForgeColors.muted,
+  grayBg: eliteForgeColors.carbonBorder,
+  white: eliteForgeColors.white,
+  onEmerald: eliteForgeColors.onEmerald,
+  onOrange: eliteForgeColors.onOrange,
 } as const
 
 function startOfDay(date: Date) {
@@ -87,13 +90,13 @@ function statusChipStyle(status: ReservationStatus): CSSProperties {
       return {
         backgroundColor: BRAND.emerald,
         borderColor: BRAND.emerald,
-        color: '#0b2e2c',
+        color: BRAND.onEmerald,
       }
     case 'cancelled':
       return {
         backgroundColor: BRAND.orange,
         borderColor: BRAND.orange,
-        color: '#2a1500',
+        color: BRAND.onOrange,
       }
     case 'pending':
       return {
@@ -745,7 +748,7 @@ export function ReservationsCalendar({
                         backgroundColor:
                           isSelected || isToday ? BRAND.emerald : 'transparent',
                         color:
-                          isSelected || isToday ? '#0b2e2c' : BRAND.white,
+                          isSelected || isToday ? BRAND.onEmerald : BRAND.white,
                       }}
                     >
                       {day.getDate()}
@@ -801,9 +804,9 @@ export function ReservationsCalendar({
                     className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold sm:h-9 sm:w-9"
                     style={{
                       color: !inMonth
-                        ? '#666'
+                        ? BRAND.gray
                         : isSelected || isToday
-                          ? '#0b2e2c'
+                          ? BRAND.onEmerald
                           : BRAND.white,
                       backgroundColor:
                         isSelected || isToday ? BRAND.emerald : 'transparent',

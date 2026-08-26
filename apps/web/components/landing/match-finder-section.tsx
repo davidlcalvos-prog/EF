@@ -12,11 +12,17 @@ export function MatchFinderSection() {
             className="absolute inset-0 opacity-40"
             style={{
               backgroundImage:
-                'linear-gradient(oklch(0.4 0.05 285) 1px, transparent 1px), linear-gradient(90deg, oklch(0.4 0.05 285) 1px, transparent 1px)',
+                'linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)',
               backgroundSize: '32px 32px',
             }}
           />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,oklch(0.86_0.24_145_/_0.12),transparent_60%)]" />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'radial-gradient(circle at center, color-mix(in srgb, var(--primary) 12%, transparent), transparent 60%)',
+            }}
+          />
           {/* Pins */}
           {[
             { top: '30%', left: '35%' },

@@ -15,14 +15,15 @@ import {
   loadVenueExtras,
   totalCourts,
 } from '@/lib/dal/admin/venue-extras'
+import { eliteForgeColors } from '@/lib/theme/elite-forge'
 
 const PHONE_KEY = 'ef-admin-phone-reservations'
 const EDITS_KEY = 'ef-admin-edited-reservations'
 
 const BRAND = {
-  emerald: '#00CEC8',
-  orange: '#FF8C00',
-  gray: '#8A8A8A',
+  emerald: eliteForgeColors.emerald,
+  orange: eliteForgeColors.orange,
+  gray: eliteForgeColors.muted,
 } as const
 
 export function OwnerSummaryDashboard({
@@ -92,6 +93,7 @@ export function OwnerSummaryDashboard({
       <AdminPageHeader
         title={`Hola, ${firstName}`}
         subtitle="Opera tus canchas: inventario, ocupación en tiempo real y reservas."
+        breadcrumbs={[{ label: 'Resumen' }]}
       />
 
       <section className="mb-6 space-y-4">
