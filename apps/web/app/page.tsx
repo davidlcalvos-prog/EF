@@ -11,7 +11,9 @@ import { FinalCta, LandingFooter } from '@/components/landing/final-cta'
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen">
+    // isolate: stacking context propio para que el fondo con z negativo quede
+    // por encima del bg del body y debajo del contenido.
+    <main className="isolate min-h-screen">
       <LandingBackground />
       <LandingNav />
       <Hero />

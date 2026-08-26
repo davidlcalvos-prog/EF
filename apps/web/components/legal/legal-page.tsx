@@ -11,7 +11,7 @@ export function LegalPlaceholderPage({ title }: { title: string }) {
   })
 
   return (
-    <main className="min-h-screen">
+    <main className="isolate min-h-screen">
       <LandingBackground />
       <LandingNav />
       <div className="mx-auto max-w-3xl px-4 pb-20 pt-32 sm:px-6">
