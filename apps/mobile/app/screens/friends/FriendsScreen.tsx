@@ -15,7 +15,11 @@ import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
 import type { AppStackScreenProps } from "@/navigators/navigationTypes"
 import { GroupAvatar } from "@/screens/groups/components/GroupAvatar"
-import { MemberProfileModal } from "@/screens/groups/components/MemberProfileModal"
+import {
+  MemberProfileModal,
+  type MemberProfilePreview,
+  type MemberProfileSource,
+} from "@/screens/groups/components/MemberProfileModal"
 import {
   api,
   type FriendSuggestionApiDto,
@@ -144,7 +148,11 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
   const { friends, incoming, outgoing, loading, error, reload, accept, remove } = useFriends()
   const [tab, setTab] = useState<FriendsTab>("friends")
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [profileUserId, setProfileUserId] = useState<string | null>(null)
+  const [profileTarget, setProfileTarget] = useState<{
+    userId: string
+    source: MemberProfileSource
+    preview: MemberProfilePreview
+  } | null>(null)
   const [refreshing, setRefreshing] = useState(false)
 
   // Búsqueda de jugadores (Fase 10.1) — con debounce; mientras hay texto,
@@ -470,7 +478,7 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
               {results.map((row) => (
                 <Pressable
                   key={row.user.id}
-                  onPress={() => setProfileUserId(row.user.id)}
+                  onPress={() => setProfileTarget({ userId: row.user.id, source: "search", preview: row.user })}
                   accessibilityRole="button"
                 >
                   <XStack
@@ -574,7 +582,7 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
                 suggestions.map((suggestion) => (
                   <Pressable
                     key={suggestion.user.id}
-                    onPress={() => setProfileUserId(suggestion.user.id)}
+                    onPress={() => setProfileTarget({ userId: suggestion.user.id, source: "suggestions", preview: suggestion.user })}
                     accessibilityRole="button"
                   >
                     <XStack
@@ -662,7 +670,7 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
                   <FriendRow
                     key={friendship.id}
                     friendship={friendship}
-                    onPress={() => setProfileUserId(friendship.user.id)}
+                    onPress={() => setProfileTarget({ userId: friendship.user.id, source: "friends", preview: friendship.user })}
                   />
                 ))
               )
@@ -681,7 +689,7 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
                       <FriendRow
                         key={friendship.id}
                         friendship={friendship}
-                        onPress={() => setProfileUserId(friendship.user.id)}
+                        onPress={() => setProfileTarget({ userId: friendship.user.id, source: "friends", preview: friendship.user })}
                       >
                         <XStack gap={8}>
                           <ActionButton
@@ -709,7 +717,7 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
                       <FriendRow
                         key={friendship.id}
                         friendship={friendship}
-                        onPress={() => setProfileUserId(friendship.user.id)}
+                        onPress={() => setProfileTarget({ userId: friendship.user.id, source: "friends", preview: friendship.user })}
                       >
                         <ActionButton
                           label={translate("friendsScreen:cancelRequest")}
@@ -727,13 +735,15 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
         )}
       </YStack>
 
-      {profileUserId ? (
+      {profileTarget ? (
         <MemberProfileModal
           visible
-          userId={profileUserId}
+          userId={profileTarget.userId}
+          source={profileTarget.source}
+          preview={profileTarget.preview}
           onClose={() => {
-            setProfileUserId(null)
-            // La ficha permite eliminar la amistad — refrescamos al volver.
+            setProfileTarget(null)
+            // La ficha permite gestionar la amistad — refrescamos al volver.
             reload()
           }}
         />

@@ -203,6 +203,7 @@ const ar: Translations = {
     friendRemoveConfirmMessage: "هل تريد إزالة {{name}} من أصدقائك؟",
     friendRemoveConfirm: "إزالة",
     friendActionError: "تعذر إتمام الإجراء. حاول مجددًا.",
+    statsLocked: "أضف {{name}} كصديق لرؤية إحصائياته",
     memberProfileError: "تعذر تحميل بطاقة هذا اللاعب. حاول مرة أخرى.",
     memberNoStats: "لم يكمل هذا اللاعب أي اختبار بعد.",
   },

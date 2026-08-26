@@ -203,6 +203,7 @@ const hi: Translations = {
     friendRemoveConfirmMessage: "क्या {{name}} को अपने दोस्तों से हटाना है?",
     friendRemoveConfirm: "हटाएँ",
     friendActionError: "कार्रवाई पूरी नहीं हो सकी। फिर से कोशिश करें।",
+    statsLocked: "{{name}} के आँकड़े देखने के लिए उन्हें दोस्त के रूप में जोड़ें",
     memberProfileError: "इस खिलाड़ी का कार्ड लोड नहीं हो सका। फिर से कोशिश करें।",
     memberNoStats: "इस खिलाड़ी ने अभी तक कोई टेस्ट पूरा नहीं किया है।",
   },

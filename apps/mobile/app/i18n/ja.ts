@@ -204,6 +204,7 @@ const ja: Translations = {
     friendRemoveConfirmMessage: "{{name}}をフレンドから削除しますか？",
     friendRemoveConfirm: "削除",
     friendActionError: "操作を完了できませんでした。もう一度お試しください。",
+    statsLocked: "{{name}}をフレンドに追加すると統計が見られます",
     memberProfileError: "この選手のカードを読み込めませんでした。もう一度お試しください。",
     memberNoStats: "この選手はまだテストを完了していません。",
   },

@@ -203,6 +203,7 @@ const en = {
     friendRemoveConfirmMessage: "Remove {{name}} from your friends?",
     friendRemoveConfirm: "Remove",
     friendActionError: "The action could not be completed. Try again.",
+    statsLocked: "Add {{name}} as a friend to see their stats",
     memberProfileError: "Couldn't load this player's card. Try again.",
     memberNoStats: "This player hasn't completed any test yet.",
   },

@@ -313,6 +313,7 @@ export function TournamentRankingsScreen({
           visible={profileUserId != null}
           onClose={() => setProfileUserId(null)}
           userId={profileUserId}
+          source="rankings"
         />
       ) : null}
     </YStack>

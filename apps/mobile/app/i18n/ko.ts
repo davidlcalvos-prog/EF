@@ -203,6 +203,7 @@ const ko: Translations = {
     friendRemoveConfirmMessage: "{{name}}님을 친구에서 삭제할까요?",
     friendRemoveConfirm: "삭제",
     friendActionError: "작업을 완료하지 못했습니다. 다시 시도하세요.",
+    statsLocked: "{{name}}님을 친구로 추가하면 통계를 볼 수 있습니다",
     memberProfileError: "이 선수의 카드를 불러올 수 없습니다. 다시 시도해 주세요.",
     memberNoStats: "이 선수는 아직 테스트를 완료하지 않았습니다.",
   },

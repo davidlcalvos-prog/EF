@@ -206,6 +206,7 @@ const es: Translations = {
     friendRemoveConfirmMessage: "¿Quitar a {{name}} de tus amigos?",
     friendRemoveConfirm: "Eliminar",
     friendActionError: "No se pudo completar la acción. Intenta de nuevo.",
+    statsLocked: "Agregá a {{name}} como amigo para ver sus estadísticas",
     memberProfileError: "No se pudo cargar la ficha de este jugador. Intenta de nuevo.",
     memberNoStats: "Este jugador todavía no completó ningún test.",
   },
