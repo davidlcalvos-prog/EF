@@ -20,7 +20,8 @@ const cards = [
 
 export function TournamentsSection() {
   return (
-    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+    <section className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6">
+      <div aria-hidden className="ef-glow-orange absolute -right-48 top-1/3 h-[26rem] w-[34rem]" />
       <div className="text-center">
         <h2 className="font-heading text-3xl font-bold italic uppercase tracking-tight text-foreground text-balance sm:text-4xl">
           Organización de torneos y equipos

@@ -39,7 +39,8 @@ const progress = [
 
 export function CommunitySection() {
   return (
-    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+    <section className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6">
+      <div aria-hidden className="ef-glow-emerald absolute -left-48 bottom-0 h-[24rem] w-[32rem]" />
       <div className="text-center">
         <h2 className="font-heading text-3xl font-bold italic uppercase tracking-tight text-foreground text-balance sm:text-4xl">
           Feed social de la comunidad

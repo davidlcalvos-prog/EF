@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button'
 
 export function CourtsSection() {
   return (
-    <section id="canchas" className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+    <section id="canchas" className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6">
+      <div aria-hidden className="ef-glow-orange absolute left-1/2 -top-20 h-[22rem] w-[40rem] -translate-x-1/2" />
       <h2 className="font-heading text-3xl font-bold italic uppercase tracking-tight text-foreground text-balance sm:text-4xl">
         Gestión y reservas de canchas
       </h2>

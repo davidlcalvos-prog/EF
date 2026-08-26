@@ -17,11 +17,15 @@ const radarData = [
 
 export function PerformanceSection() {
   return (
-    <section id="rendimiento" className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
-      <div className="grid items-center gap-12 lg:grid-cols-2">
+    <section id="rendimiento" className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6">
+      <div
+        aria-hidden
+        className="ef-glow-orange absolute -left-40 top-10 h-[28rem] w-[36rem]"
+      />
+      <div className="relative grid items-center gap-12 lg:grid-cols-2">
         {/* Stats card */}
         <div className="order-2 lg:order-1">
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-xl">
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_20px_70px_-20px] shadow-orange/25">
             <div className="flex items-center gap-3 border-b border-border pb-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 font-heading font-bold text-primary">
                 JP

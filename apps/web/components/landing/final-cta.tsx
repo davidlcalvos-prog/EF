@@ -4,8 +4,16 @@ import { Logo } from '@/components/logo'
 
 export function FinalCta() {
   return (
-    <section className="border-y border-border bg-secondary/20">
-      <div className="mx-auto max-w-3xl px-4 py-20 text-center sm:px-6">
+    <section className="relative overflow-hidden border-y border-border bg-secondary/20">
+      <div
+        aria-hidden
+        className="ef-glow-orange absolute left-1/2 top-1/2 h-[30rem] w-[60rem] -translate-x-1/2 -translate-y-1/2"
+      />
+      <div
+        aria-hidden
+        className="ef-glow-emerald absolute -left-40 -top-24 h-72 w-[28rem]"
+      />
+      <div className="relative mx-auto max-w-3xl px-4 py-20 text-center sm:px-6">
         <h2 className="font-heading text-3xl font-bold italic uppercase tracking-tight text-foreground text-balance sm:text-5xl">
           ¿Listo para forjar tu legado?
         </h2>

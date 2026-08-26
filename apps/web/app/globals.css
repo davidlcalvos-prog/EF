@@ -112,6 +112,23 @@
     text-transform: uppercase;
     letter-spacing: 0.01em;
   }
+  /* Glows decorativos de la landing (capas absolutas detrás del contenido). */
+  .ef-glow-orange {
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse at center,
+      color-mix(in srgb, var(--color-orange) 18%, transparent),
+      transparent 70%
+    );
+  }
+  .ef-glow-emerald {
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse at center,
+      color-mix(in srgb, var(--color-emerald) 12%, transparent),
+      transparent 70%
+    );
+  }
   /* Color de marca de terceros (botón de login con Facebook). */
   .btn-facebook {
     background-color: #1877f2;

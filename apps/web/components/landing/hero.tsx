@@ -14,8 +14,9 @@ export function Hero() {
           priority
           className="object-cover object-center"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/70 via-background/40 to-background" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/55 via-background/25 to-background" />
         <div className="absolute inset-0 bg-gradient-to-r from-background/80 to-transparent" />
+        <div aria-hidden className="ef-glow-orange absolute -bottom-40 left-1/4 h-96 w-[60rem] -translate-x-1/2" />
       </div>
 
       <div className="relative mx-auto flex min-h-[88vh] max-w-7xl flex-col justify-center px-4 py-24 sm:px-6">

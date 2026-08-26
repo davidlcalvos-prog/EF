@@ -2,8 +2,16 @@ import { Apple, Play } from 'lucide-react'
 
 export function DownloadSection() {
   return (
-    <section id="descarga" className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
-      <div className="rounded-3xl border border-border bg-card p-8 sm:p-12">
+    <section id="descarga" className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6">
+      <div
+        aria-hidden
+        className="ef-glow-orange absolute -right-32 bottom-0 h-[24rem] w-[32rem]"
+      />
+      <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-8 shadow-[0_0_90px_-30px] shadow-orange/40 sm:p-12">
+        <div
+          aria-hidden
+          className="ef-glow-orange absolute -right-24 -top-24 h-72 w-96"
+        />
         <div className="grid items-center gap-10 lg:grid-cols-2">
           <div>
             <h2 className="font-heading text-3xl font-bold italic uppercase tracking-tight text-card-foreground text-balance sm:text-4xl">
