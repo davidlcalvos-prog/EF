@@ -22,6 +22,8 @@ import type {
   GroupSearchResultApiDto,
   GroupSummaryApiDto,
   MatchApiDto,
+  MatchGuestApplicationApiDto,
+  MatchGuestRequestApiDto,
   MatchSummaryApiDto,
   MatchTypeApi,
   MyReservationApiDto,
@@ -75,6 +77,17 @@ export type {
   PublicVenueApiDto,
   MyReservationApiDto,
   PublicMemberProfileApiDto,
+} from "./types"
+export type {
+  MatchGuestRequestStatusApi,
+  MatchGuestApplicationStatusApi,
+  MatchGuestRequestApiDto,
+  MatchGuestApplicationApiDto,
+} from "./types"
+export {
+  MIN_GUEST_REQUEST_RADIUS_KM,
+  MAX_GUEST_REQUEST_RADIUS_KM,
+  DEFAULT_GUEST_REQUEST_RADIUS_KM,
 } from "./types"
 export type {
   TournamentCourtSizeApi,
@@ -302,6 +315,8 @@ export class Api {
           city: string | null
           department: string | null
           municipalityCode: string | null
+          /** Fase 11: opt-in de push de vacantes de comodín cerca de su zona. */
+          notifyNearbyGuestRequests: boolean
         }
       }
     | GeneralApiProblem
@@ -314,6 +329,7 @@ export class Api {
       city: string | null
       department: string | null
       municipalityCode: string | null
+      notifyNearbyGuestRequests: boolean
     }>(`users/${userId}`)
 
     if (!response.ok) {
@@ -328,6 +344,20 @@ export class Api {
   /** Sube el avatar de perfil en base64 (400 si supera el límite de tamaño). */
   async updateProfileAvatar(avatarBase64: string): Promise<{ kind: "ok" } | GeneralApiProblem> {
     const response = await this.apisauce.patch("profile", { avatarBase64 })
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    return { kind: "ok" }
+  }
+
+  /** Opt-in de push de vacantes de comodín cerca de la zona guardada (Fase 11). */
+  async updateNotifyNearbyGuestRequests(
+    value: boolean,
+  ): Promise<{ kind: "ok" } | GeneralApiProblem> {
+    const response = await this.apisauce.patch("profile", { notifyNearbyGuestRequests: value })
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)
@@ -992,6 +1022,155 @@ export class Api {
     }
     if (!response.data) return { kind: "bad-data" }
     return { kind: "ok", match: response.data.match, warnings: response.data.warnings }
+  }
+
+  // ── Comodín (Fase 11) ─────────────────────────────────────────────────
+
+  /** Solo líder/vice de un partido internal `scheduled` con cupo libre (409 si no). */
+  async openGuestRequest(
+    matchId: string,
+    payload: { requestedPosition?: PlayerPositionId; radiusKm?: number },
+  ): Promise<{ kind: "ok"; request: MatchGuestRequestApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<MatchGuestRequestApiDto>(
+      `matches/${matchId}/guest-requests`,
+      payload,
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", request: response.data }
+  }
+
+  /** Cancela la vacante abierta del partido — rechaza en cascada las postulaciones pendientes. */
+  async cancelGuestRequest(matchId: string): Promise<{ kind: "ok" } | GeneralApiProblem> {
+    const response = await this.apisauce.delete(`matches/${matchId}/guest-requests/current`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    return { kind: "ok" }
+  }
+
+  /**
+   * La solicitud más reciente del partido, sin importar su estado — 404 si
+   * nunca se abrió ninguna. `status !== 'open'` (filled/cancelled/expired)
+   * significa que ya se puede abrir una nueva.
+   */
+  async getGuestRequestForMatch(
+    matchId: string,
+  ): Promise<{ kind: "ok"; request: MatchGuestRequestApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.get<MatchGuestRequestApiDto>(
+      `matches/${matchId}/guest-requests/current`,
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", request: response.data }
+  }
+
+  /** [] si el usuario no tiene zona cargada — mobile invita a cargarla desde el perfil. */
+  async listNearbyGuestRequests(): Promise<
+    { kind: "ok"; requests: MatchGuestRequestApiDto[] } | GeneralApiProblem
+  > {
+    const response = await this.apisauce.get<MatchGuestRequestApiDto[]>("guest-requests/nearby")
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", requests: response.data }
+  }
+
+  /** Cualquier usuario puede postularse, sin importar su posición (409 si ya se postuló). */
+  async applyToGuestRequest(
+    requestId: string,
+  ): Promise<{ kind: "ok"; request: MatchGuestRequestApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<MatchGuestRequestApiDto>(
+      `guest-requests/${requestId}/applications`,
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", request: response.data }
+  }
+
+  /** Solo el propio postulante puede retirarla, y solo si sigue pending (403/409 si no). */
+  async withdrawGuestApplication(
+    applicationId: string,
+  ): Promise<{ kind: "ok" } | GeneralApiProblem> {
+    const response = await this.apisauce.delete(`guest-requests/applications/${applicationId}`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    return { kind: "ok" }
+  }
+
+  /** Solo líder/vice del partido — nunca stats ni coordenadas de los postulantes. */
+  async listGuestApplications(
+    requestId: string,
+  ): Promise<{ kind: "ok"; applications: MatchGuestApplicationApiDto[] } | GeneralApiProblem> {
+    const response = await this.apisauce.get<MatchGuestApplicationApiDto[]>(
+      `guest-requests/${requestId}/applications`,
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", applications: response.data }
+  }
+
+  /**
+   * 409 si el cupo ya se llenó (carrera con otro accept o un join regular) —
+   * el backend serializa con el mismo lock de Fase 8.2 sobre el partido.
+   */
+  async acceptGuestApplication(
+    applicationId: string,
+  ): Promise<{ kind: "ok"; application: MatchGuestApplicationApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<MatchGuestApplicationApiDto>(
+      `guest-requests/applications/${applicationId}/accept`,
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", application: response.data }
+  }
+
+  /** Solo líder/vice del partido, y solo si la postulación sigue pending. */
+  async rejectGuestApplication(applicationId: string): Promise<{ kind: "ok" } | GeneralApiProblem> {
+    const response = await this.apisauce.post(`guest-requests/applications/${applicationId}/reject`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    return { kind: "ok" }
   }
 
   /** Lista pública de canchas — cualquier usuario autenticado, sin roles especiales. */

@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
 import { useAuth } from "@/context/AuthContext"
+import type { PlayerPositionId } from "@/data/suggestPlayerPosition"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
 import type { AppStackScreenProps } from "@/navigators/navigationTypes"
@@ -12,8 +13,11 @@ import type { GeneralApiProblem } from "@/services/api/apiProblem"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 import { formatDate } from "@/utils/formatDate"
 
+import { GuestApplicantsModal } from "./components/GuestApplicantsModal"
+import { GuestRequestModal } from "./components/GuestRequestModal"
 import { statusLabel, typeLabel } from "./components/MatchCard"
 import { useMatchDetail } from "./useMatchDetail"
+import { useMatchGuestRequest } from "./useMatchGuestRequest"
 
 const AVATAR_PALETTE = ["#00CEC8", "#FF8C00", "#7B68EE", "#2ECC71", "#E74C3C"]
 
@@ -132,9 +136,23 @@ function ParticipantRow({ participant }: { participant: MatchParticipantApiDto }
         </Text>
       </XStack>
       <YStack flex={1}>
-        <Text color="#FFFFFF" fontWeight="700" fontSize={14} numberOfLines={1}>
-          {participant.name}
-        </Text>
+        <XStack alignItems="center" gap={6}>
+          <Text color="#FFFFFF" fontWeight="700" fontSize={14} numberOfLines={1}>
+            {participant.name}
+          </Text>
+          {participant.isGuest ? (
+            <XStack
+              backgroundColor="rgba(255,140,0,0.15)"
+              borderRadius={6}
+              paddingHorizontal={6}
+              paddingVertical={1}
+            >
+              <Text color={eliteForgeColors.orange} fontSize={10} fontWeight="700">
+                {translate("matchesScreen:guestBadge")}
+              </Text>
+            </XStack>
+          ) : null}
+        </XStack>
         <Text color="rgba(255,255,255,0.5)" fontSize={12} numberOfLines={1}>
           {participant.email}
         </Text>
@@ -164,6 +182,13 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
   const [isOriginMember, setIsOriginMember] = useState(false)
   const [isOpponentMember, setIsOpponentMember] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [guestModalVisible, setGuestModalVisible] = useState(false)
+  const [applicantsModalVisible, setApplicantsModalVisible] = useState(false)
+
+  // Comodín (Fase 11) — solo partidos internal; el rol de líder/vice ya lo
+  // valida el backend en cada acción, acá solo decide qué mostrar.
+  const canManageGuestRequest = isOriginLeader && match?.type === "internal"
+  const guestRequest = useMatchGuestRequest(matchId, canManageGuestRequest)
 
   const checkGroupMembership = useCallback(
     async (groupId: string) => {
@@ -426,6 +451,61 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
     navigation.navigate("Reservations", { matchId: match.id })
   }, [match, navigation])
 
+  const handleSubmitGuestRequest = useCallback(
+    async (payload: { requestedPosition?: PlayerPositionId; radiusKm?: number }) => {
+      const result = await guestRequest.open(payload)
+      return result.kind === "ok"
+    },
+    [guestRequest],
+  )
+
+  const handleCancelGuestRequest = useCallback(() => {
+    Alert.alert(
+      translate("matchesScreen:guestCancelConfirmTitle"),
+      translate("matchesScreen:guestCancelConfirmMessage"),
+      [
+        { text: translate("feedScreen:composeCancel"), style: "cancel" },
+        {
+          text: translate("matchesScreen:guestCancelConfirm"),
+          style: "destructive",
+          onPress: async () => {
+            setBusy(true)
+            const result = await guestRequest.cancel()
+            setBusy(false)
+            if (result.kind !== "ok") {
+              Alert.alert(translate("matchesScreen:actionError"), describeProblem(result))
+            }
+          },
+        },
+      ],
+    )
+  }, [guestRequest])
+
+  const handleAcceptApplicant = useCallback(
+    async (applicationId: string) => {
+      const result = await guestRequest.accept(applicationId)
+      if (result.kind === "ok") {
+        await refresh()
+        return true
+      }
+      Alert.alert(translate("matchesScreen:actionError"), describeProblem(result))
+      return false
+    },
+    [guestRequest, refresh],
+  )
+
+  const handleRejectApplicant = useCallback(
+    async (applicationId: string) => {
+      const result = await guestRequest.reject(applicationId)
+      if (result.kind !== "ok") {
+        Alert.alert(translate("matchesScreen:actionError"), describeProblem(result))
+        return false
+      }
+      return true
+    },
+    [guestRequest],
+  )
+
   return (
     <YStack flex={1} backgroundColor={eliteForgeColors.carbon}>
       <StatusBar barStyle="light-content" backgroundColor={eliteForgeColors.carbon} />
@@ -646,6 +726,77 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
               </YStack>
             ) : null}
 
+            {guestRequest.request && guestRequest.request.status === "open" ? (
+              <YStack
+                backgroundColor="rgba(0,206,200,0.08)"
+                borderRadius={12}
+                borderWidth={1}
+                borderColor={eliteForgeColors.emerald}
+                padding={14}
+                gap={8}
+                marginBottom={16}
+              >
+                <XStack alignItems="center" gap={8}>
+                  <Ionicons name="megaphone-outline" size={18} color={eliteForgeColors.emerald} />
+                  <Text color={eliteForgeColors.emerald} fontWeight="800" fontSize={13} flex={1}>
+                    {translate("matchesScreen:guestOpenBannerTitle")}
+                  </Text>
+                </XStack>
+                <Text color="rgba(255,255,255,0.7)" fontSize={13}>
+                  {translate("matchesScreen:guestOpenBannerBody", {
+                    position: guestRequest.request.requestedPosition
+                      ? translate(
+                          `profileScreen:position_${guestRequest.request.requestedPosition}` as never,
+                        )
+                      : translate("matchesScreen:guestAnyPosition"),
+                    radius: guestRequest.request.radiusKm,
+                  })}
+                </Text>
+                {canManageGuestRequest ? (
+                  <XStack gap={8}>
+                    <Pressable
+                      onPress={() => setApplicantsModalVisible(true)}
+                      accessibilityRole="button"
+                      style={{ flex: 1 }}
+                    >
+                      <XStack
+                        backgroundColor={eliteForgeColors.emerald}
+                        borderRadius={10}
+                        paddingVertical={10}
+                        alignItems="center"
+                        justifyContent="center"
+                      >
+                        <Text color="#1a1a1a" fontWeight="800" fontSize={13}>
+                          {translate("matchesScreen:guestViewApplicants", {
+                            count: guestRequest.request.applicationsCount,
+                          })}
+                        </Text>
+                      </XStack>
+                    </Pressable>
+                    <Pressable
+                      onPress={handleCancelGuestRequest}
+                      disabled={busy}
+                      accessibilityRole="button"
+                    >
+                      <XStack
+                        width={40}
+                        height={40}
+                        borderRadius={10}
+                        backgroundColor="rgba(231,76,60,0.12)"
+                        borderWidth={1}
+                        borderColor="#E74C3C"
+                        alignItems="center"
+                        justifyContent="center"
+                        opacity={busy ? 0.6 : 1}
+                      >
+                        <Ionicons name="close" size={18} color="#E74C3C" />
+                      </XStack>
+                    </Pressable>
+                  </XStack>
+                ) : null}
+              </YStack>
+            ) : null}
+
             {!isVs ? (
               <Text color="rgba(255,255,255,0.5)" fontSize={13} marginBottom={8}>
                 {translate("matchesScreen:participantsTitle")}
@@ -849,6 +1000,34 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
                 </Pressable>
               ) : null}
 
+              {canManageGuestRequest &&
+              match.status === "scheduled" &&
+              hasCapacity &&
+              !guestRequest.isOpen ? (
+                <Pressable
+                  onPress={() => setGuestModalVisible(true)}
+                  disabled={busy}
+                  accessibilityRole="button"
+                >
+                  <XStack
+                    backgroundColor={eliteForgeColors.carbonInput}
+                    borderRadius={12}
+                    borderWidth={1}
+                    borderColor={eliteForgeColors.orange}
+                    paddingVertical={14}
+                    alignItems="center"
+                    justifyContent="center"
+                    gap={8}
+                    opacity={busy ? 0.6 : 1}
+                  >
+                    <Ionicons name="person-add-outline" size={18} color={eliteForgeColors.orange} />
+                    <Text color={eliteForgeColors.orange} fontWeight="800" fontSize={15}>
+                      {translate("matchesScreen:guestOpenButton")}
+                    </Text>
+                  </XStack>
+                </Pressable>
+              ) : null}
+
               {match.status === "scheduled" && canManageStatus ? (
                 <Pressable onPress={handleMarkPlayed} disabled={busy} accessibilityRole="button">
                   <XStack
@@ -891,6 +1070,19 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
           </ScrollView>
         )}
       </YStack>
+
+      <GuestRequestModal
+        visible={guestModalVisible}
+        onClose={() => setGuestModalVisible(false)}
+        onSubmit={handleSubmitGuestRequest}
+      />
+      <GuestApplicantsModal
+        visible={applicantsModalVisible}
+        onClose={() => setApplicantsModalVisible(false)}
+        applications={guestRequest.applications}
+        onAccept={handleAcceptApplicant}
+        onReject={handleRejectApplicant}
+      />
     </YStack>
   )
 }

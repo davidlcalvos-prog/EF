@@ -33,7 +33,10 @@ import { navigate, useNavigationPersistence } from "./navigators/navigationUtili
 import { ThemeProvider } from "./theme/context"
 import { customFontsToLoad } from "./theme/typography"
 import { loadDateFnsLocale } from "./utils/formatDate"
-import { addNotificationTapListener } from "./utils/pushNotifications"
+import {
+  addGuestRequestNearbyTapListener,
+  addNotificationTapListener,
+} from "./utils/pushNotifications"
 import * as storage from "./utils/storage"
 
 export const NAVIGATION_PERSISTENCE_KEY = "NAVIGATION_STATE"
@@ -84,7 +87,13 @@ export function App() {
     const subscription = addNotificationTapListener((matchId) => {
       navigate("MatchDetail", { matchId })
     })
-    return () => subscription.remove()
+    const nearbySubscription = addGuestRequestNearbyTapListener(() => {
+      navigate("NearbyGuestRequests", undefined)
+    })
+    return () => {
+      subscription.remove()
+      nearbySubscription.remove()
+    }
   }, [])
 
   // Before we show the app, we have to wait for our state to be ready.

@@ -12,7 +12,7 @@ import { useFocusEffect } from "@react-navigation/native"
 import { Text, XStack, YStack } from "tamagui"
 
 import { MunicipalityPicker, type MunicipalityValue } from "@/components/MunicipalityPicker"
-import { Button, Input } from "@/components/ui"
+import { Button, Input, Toggle } from "@/components/ui"
 import { useAuth } from "@/context/AuthContext"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
@@ -43,6 +43,10 @@ export function ProfileEditScreen({ navigation }: AppStackScreenProps<"ProfileEd
   // Mi zona (Fase L.0) — vive en el backend, no en el perfil local MMKV.
   const [municipality, setMunicipality] = useState<MunicipalityValue | null>(null)
   const [municipalityDirty, setMunicipalityDirty] = useState(false)
+  // Opt-in de push de comodín cerca (Fase 11) — igual que la zona, vive en el
+  // backend; a diferencia de ella, se guarda al toque (no espera a "Guardar perfil").
+  const [notifyNearbyGuestRequests, setNotifyNearbyGuestRequests] = useState(false)
+  const [notifyBusy, setNotifyBusy] = useState(false)
   useEffect(() => {
     if (!authUserId) return
     let cancelled = false
@@ -52,11 +56,22 @@ export function ProfileEditScreen({ navigation }: AppStackScreenProps<"ProfileEd
       if (municipalityCode && city && department) {
         setMunicipality({ code: municipalityCode, name: city, department })
       }
+      setNotifyNearbyGuestRequests(result.profile.notifyNearbyGuestRequests)
     })
     return () => {
       cancelled = true
     }
   }, [authUserId])
+
+  const handleToggleNotifyNearby = useCallback(async (value: boolean) => {
+    setNotifyNearbyGuestRequests(value)
+    setNotifyBusy(true)
+    const result = await api.updateNotifyNearbyGuestRequests(value)
+    setNotifyBusy(false)
+    if (result.kind !== "ok") {
+      setNotifyNearbyGuestRequests(!value)
+    }
+  }, [])
 
   useFocusEffect(
     useCallback(() => {
@@ -194,6 +209,13 @@ export function ProfileEditScreen({ navigation }: AppStackScreenProps<"ProfileEd
                     setMunicipality(value)
                     setMunicipalityDirty(true)
                   }}
+                />
+                <Toggle
+                  label={translate("profileScreen:notifyNearbyGuestRequestsTitle")}
+                  description={translate("profileScreen:notifyNearbyGuestRequestsHint")}
+                  checked={notifyNearbyGuestRequests}
+                  disabled={notifyBusy}
+                  onCheckedChange={handleToggleNotifyNearby}
                 />
               </YStack>
 

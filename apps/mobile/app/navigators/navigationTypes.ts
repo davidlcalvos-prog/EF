@@ -30,6 +30,7 @@ export type AppStackParamList = {
   Friends: undefined
   Matches: { groupId?: string } | undefined
   MatchDetail: { matchId: string }
+  NearbyGuestRequests: undefined
   Reservations: { matchId?: string } | undefined
   ReservationDetail: { reservationId: string }
   Tournaments: undefined

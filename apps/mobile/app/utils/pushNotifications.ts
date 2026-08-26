@@ -76,11 +76,24 @@ export async function unregisterPushToken(bearerToken: string): Promise<void> {
 
 /**
  * Escucha el tap en una notificación push y navega al match correspondiente
- * (deep link para el aviso de 30 minutos, que reusa MatchDetailScreen).
+ * (deep link para el aviso de 30 minutos, y para comodín: nuevo postulante o
+ * aceptado — ambos ya viajan con matchId, ver match-guest-requests.service.ts).
  */
 export function addNotificationTapListener(onMatchTap: (matchId: string) => void) {
   return Notifications.addNotificationResponseReceivedListener((response) => {
     const matchId = response.notification.request.content.data?.matchId
     if (typeof matchId === "string") onMatchTap(matchId)
+  })
+}
+
+/**
+ * Deep link para el aviso "se busca comodín cerca tuyo" (Fase 11) — el
+ * candidato no es miembro del grupo, así que no puede abrir MatchDetailScreen;
+ * lo manda a la lista "Cerca de mí" en su lugar.
+ */
+export function addGuestRequestNearbyTapListener(onTap: () => void) {
+  return Notifications.addNotificationResponseReceivedListener((response) => {
+    const type = response.notification.request.content.data?.type
+    if (type === "match_guest_request") onTap()
   })
 }

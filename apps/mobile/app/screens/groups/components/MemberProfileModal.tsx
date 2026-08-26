@@ -15,7 +15,14 @@ import { eliteForgeColors } from "@/theme/eliteForgeColors"
 import { GroupAvatar } from "./GroupAvatar"
 
 /** Desde dónde se abrió la ficha — decide si se muestran las estadísticas. */
-export type MemberProfileSource = "group" | "friends" | "search" | "suggestions" | "rankings"
+export type MemberProfileSource =
+  | "group"
+  | "friends"
+  | "search"
+  | "suggestions"
+  | "rankings"
+  /** Fase 11: postulante a comodín — mismo candado que search/suggestions salvo amistad aceptada. */
+  | "guest_application"
 
 /** Datos que ya trae la fila que abre la ficha, para el modo limitado. */
 export interface MemberProfilePreview {
