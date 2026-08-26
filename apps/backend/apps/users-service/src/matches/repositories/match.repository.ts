@@ -14,8 +14,35 @@ import {
   MatchStatus as PrismaMatchStatus,
   MatchTeam as PrismaMatchTeam,
   MatchType as PrismaMatchType,
+  Prisma,
 } from '@prisma/client';
 import type { RandomizerPlayer } from '../team-randomizer';
+
+/**
+ * Fase 8.2: lockea la fila del partido para serializar accesos concurrentes
+ * al roster. Exportado para reutilizarlo tal cual desde el flujo de comodín
+ * (Fase 11), que necesita intercalar chequeos propios (request/application
+ * siguen vigentes) entre el lock y el insert.
+ */
+export async function lockMatchRow(
+  tx: Prisma.TransactionClient,
+  matchId: string,
+): Promise<void> {
+  await tx.$executeRaw`SELECT id FROM matches WHERE id = ${matchId}::uuid FOR UPDATE`;
+}
+
+/** Fase 8.2: cuenta + umbral, siempre llamado con el lock de arriba ya tomado. */
+export async function assertRosterHasCapacity(
+  tx: Prisma.TransactionClient,
+  matchId: string,
+  maxPlayers: number,
+): Promise<void> {
+  const count = await tx.matchParticipant.count({ where: { matchId } });
+  if (count >= maxPlayers) {
+    // Mismo mensaje/código que siempre — mobile mapea este 409.
+    throw new ConflictException('Match already reached its player limit');
+  }
+}
 
 export type AlertFlagField = 'alertSent6h' | 'alertSent3h' | 'alertSent1h' | 'alertSent30m';
 
@@ -95,6 +122,10 @@ export class MatchRepository {
     status: MatchStatus;
     maxPlayers: number;
     createdBy: string;
+    /** Fase 11: campos extra que necesita el comodín, sin una segunda query. */
+    scheduledAt: Date | null;
+    latitude: number | null;
+    longitude: number | null;
   } | null> {
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },
@@ -106,6 +137,9 @@ export class MatchRepository {
         status: true,
         maxPlayers: true,
         createdBy: true,
+        scheduledAt: true,
+        latitude: true,
+        longitude: true,
       },
     });
     if (!match) return null;
@@ -137,14 +171,8 @@ export class MatchRepository {
    */
   async addParticipant(matchId: string, userId: string, maxPlayers: number): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT id FROM matches WHERE id = ${matchId}::uuid FOR UPDATE`;
-
-      const count = await tx.matchParticipant.count({ where: { matchId } });
-      if (count >= maxPlayers) {
-        // Mismo mensaje/código que devolvía matches.service.ts — mobile mapea este 409.
-        throw new ConflictException('Match already reached its player limit');
-      }
-
+      await lockMatchRow(tx, matchId);
+      await assertRosterHasCapacity(tx, matchId, maxPlayers);
       await tx.matchParticipant.create({ data: { matchId, userId } });
     });
   }
@@ -222,6 +250,7 @@ export class MatchRepository {
       confirmedAt: p.confirmedAt.toISOString(),
       team: (p.team as MatchTeam | null) ?? null,
       side: (p.side as MatchSide | null) ?? null,
+      isGuest: p.isGuest,
     }));
 
     const originSideCount = participants.filter((p) => p.side === 'origin').length;

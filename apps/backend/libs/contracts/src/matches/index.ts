@@ -35,6 +35,8 @@ export interface MatchParticipantDto {
   team: MatchTeam | null;
   /** solo en partidos vs; null en internal. */
   side: MatchSide | null;
+  /** Fase 11: true si entró como comodín aceptado, en vez de ser miembro del grupo. */
+  isGuest: boolean;
 }
 
 export interface MatchDto {

@@ -7,6 +7,7 @@ import { GroupFriendshipsModule } from './group-friendships/group-friendships.mo
 import { UserFriendshipsModule } from './user-friendships/user-friendships.module';
 import { GroupsModule } from './groups/groups.module';
 import { MatchesModule } from './matches/matches.module';
+import { MatchGuestRequestsModule } from './matches/guest-requests/match-guest-requests.module';
 import { FeedModule } from './feed/feed.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ProfileStatsModule } from './profile-stats/profile-stats.module';
@@ -30,6 +31,7 @@ import { UsersModule } from './users/users.module';
     GroupFriendshipsModule,
     UserFriendshipsModule,
     MatchesModule,
+    MatchGuestRequestsModule,
     FeedModule,
     PushTokensModule,
     NotificationsModule,
