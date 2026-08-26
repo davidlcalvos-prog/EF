@@ -116,7 +116,7 @@ export function OwnerSummaryDashboard({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl ef-card p-5">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
               Canchas totales
             </p>
@@ -128,7 +128,7 @@ export function OwnerSummaryDashboard({
               {extras.courts11}×11vs11
             </p>
           </div>
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl ef-card p-5">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
               Ocupadas ahora
             </p>
@@ -142,7 +142,7 @@ export function OwnerSummaryDashboard({
               Con reserva activa en este momento
             </p>
           </div>
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl ef-card p-5">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
               Libres ahora
             </p>
@@ -195,7 +195,7 @@ export function OwnerSummaryDashboard({
       </section>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="rounded-2xl ef-card p-5">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
             Complejos
           </p>
@@ -217,7 +217,7 @@ export function OwnerSummaryDashboard({
             Esperan tu confirmación
           </p>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="rounded-2xl ef-card p-5">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
             Confirmadas
           </p>
@@ -231,7 +231,7 @@ export function OwnerSummaryDashboard({
       </div>
 
       {venues[0] && (
-        <div className="mt-6 rounded-2xl border border-border bg-card/80 p-5">
+        <div className="mt-6 rounded-2xl ef-card/80 p-5">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
             Cancha principal
           </p>

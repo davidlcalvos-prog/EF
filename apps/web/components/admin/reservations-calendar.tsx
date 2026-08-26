@@ -190,7 +190,7 @@ function ReservationModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl"
+        className="w-full max-w-md rounded-2xl ef-card p-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-start justify-between gap-3">
@@ -327,7 +327,7 @@ function DayTimeline({
   onOpen: (id: string) => void
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+    <div className="overflow-hidden rounded-2xl ef-card">
       <div className="border-b border-border px-4 py-3">
         <p className="font-heading text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           {day.toLocaleDateString('es', {
@@ -614,7 +614,7 @@ export function ReservationsCalendar({
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex w-full rounded-xl border border-border bg-card p-1 sm:w-auto">
+            <div className="inline-flex w-full rounded-xl ef-card p-1 sm:w-auto">
               {VIEWS.map((item) => (
                 <button
                   key={item.id}
@@ -722,7 +722,7 @@ export function ReservationsCalendar({
       {(view === 'week' || view === 'day') && (
         <>
           {view === 'week' && (
-            <div className="grid grid-cols-7 gap-1 rounded-2xl border border-border bg-card p-2 sm:gap-2 sm:p-3">
+            <div className="grid grid-cols-7 gap-1 rounded-2xl ef-card p-2 sm:gap-2 sm:p-3">
               {weekDays.map((day) => {
                 const isSelected = sameDay(day, anchor)
                 const isToday = sameDay(day, new Date())
@@ -773,7 +773,7 @@ export function ReservationsCalendar({
       )}
 
       {view === 'month' && (
-        <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-2xl border border-border bg-card p-3 sm:p-5">
+        <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-2xl ef-card p-3 sm:p-5">
           <div className="grid grid-cols-7 gap-1 pb-2">
             {['do.', 'lu.', 'ma.', 'mi.', 'ju.', 'vi.', 'sá.'].map((label) => (
               <div

@@ -16,7 +16,7 @@ export function PortalHeader({
   const roleLabel = isAdmin ? 'Administrador' : 'Dueño de cancha'
 
   return (
-    <header className="flex items-center justify-between gap-4 border-b border-border bg-background px-4 py-3 sm:px-8">
+    <header className="flex items-center justify-between gap-4 border-b border-white/10 bg-black/20 px-4 py-3 backdrop-blur-xl sm:px-8">
       <div className="min-w-0">
         {isAdmin ? (
           <p className="truncate font-heading text-sm font-semibold uppercase tracking-wide text-foreground">

@@ -1,10 +1,13 @@
 import Link from 'next/link'
 import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
+import { LandingBackground } from '@/components/landing/landing-background'
 
 export default function NotFound() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4 text-center">
+    <main className="relative min-h-screen">
+      <LandingBackground />
+      <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-4 text-center">
       <Logo />
       <p className="mt-8 font-heading text-6xl font-bold italic text-primary">
         404
@@ -16,10 +19,13 @@ export default function NotFound() {
         El enlace puede estar roto o la página fue movida.
       </p>
       <div className="mt-8 flex gap-3">
-        <Button render={<Link href="/" />}>Ir al inicio</Button>
+        <Button render={<Link href="/" />} className="ef-cta">
+          Ir al inicio
+        </Button>
         <Button render={<Link href="/admin" />} variant="outline">
           Portal de dueños
         </Button>
+      </div>
       </div>
     </main>
   )

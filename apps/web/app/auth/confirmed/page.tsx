@@ -18,7 +18,7 @@ export default function ConfirmedPage() {
       <div className="mt-8 flex flex-col gap-3">
         <Button
           render={<Link href="/#descarga" />}
-          className="font-heading font-semibold uppercase tracking-wide"
+          className="ef-cta font-heading font-semibold uppercase tracking-wide"
         >
           Descargar app
         </Button>

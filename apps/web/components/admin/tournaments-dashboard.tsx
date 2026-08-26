@@ -189,7 +189,7 @@ export function TournamentsDashboard({
       )}
 
       {creating && (
-        <section className="mb-8 space-y-4 rounded-2xl border border-border bg-card p-5">
+        <section className="mb-8 space-y-4 rounded-2xl ef-card p-5">
           <h2 className="font-heading text-lg font-bold uppercase italic tracking-tight">
             Nuevo {isEliteForge ? 'campeonato' : 'torneo'}
           </h2>
@@ -390,7 +390,7 @@ export function TournamentsDashboard({
               <button
                 type="button"
                 onClick={() => setSelectedId(item.id)}
-                className="flex w-full items-center justify-between gap-4 rounded-2xl border border-border bg-card p-5 text-left transition hover:border-primary/40"
+                className="flex w-full items-center justify-between gap-4 rounded-2xl ef-card p-5 text-left transition hover:border-primary/40"
               >
                 <div>
                   <p className="font-heading text-lg font-bold uppercase italic tracking-tight">

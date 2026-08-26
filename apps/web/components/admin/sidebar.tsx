@@ -144,7 +144,7 @@ export function AdminSidebar({
 
   return (
     <>
-      <div className="sticky top-0 z-40 border-b border-border bg-sidebar lg:hidden">
+      <div className="sticky top-0 z-40 border-b border-white/10 bg-black/30 backdrop-blur-xl lg:hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <Link href="/admin" className="inline-flex items-center">
             <Logo className="[&_img]:h-9" />
@@ -160,7 +160,7 @@ export function AdminSidebar({
         </nav>
       </div>
 
-      <aside className="hidden h-screen w-64 shrink-0 flex-col border-r border-border bg-sidebar p-4 lg:flex">
+      <aside className="hidden h-screen w-64 shrink-0 flex-col border-r border-white/10 bg-black/30 p-4 backdrop-blur-xl lg:flex">
         <div className="px-2 py-2">
           <Link href="/admin" className="inline-flex items-center">
             <Logo />
