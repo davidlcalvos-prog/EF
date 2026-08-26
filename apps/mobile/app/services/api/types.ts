@@ -208,6 +208,19 @@ export interface FriendshipStatusApiDto {
   friendshipId: string | null
 }
 
+/** Resultado de GET /friendships/search — nunca incluye el email. */
+export interface PlayerSearchResultApiDto {
+  user: UserFriendshipApiDto["user"]
+  friendship: FriendshipStatusApiDto
+}
+
+export interface FriendSuggestionApiDto {
+  user: UserFriendshipApiDto["user"]
+  reason: "mutual_friends" | "same_group" | "friend_group"
+  mutualFriends: number
+  groupName: string | null
+}
+
 /** Item de GET /groups/search — nunca incluye la lista de miembros. */
 export interface GroupSearchResultApiDto {
   id: string

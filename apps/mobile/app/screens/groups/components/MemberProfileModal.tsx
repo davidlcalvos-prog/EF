@@ -18,10 +18,23 @@ import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
 import { GroupAvatar } from "./GroupAvatar"
 
+/** Desde dónde se abrió la ficha — decide si se muestran las estadísticas. */
+export type MemberProfileSource = "group" | "friends" | "search" | "suggestions" | "rankings"
+
+/** Datos que ya trae la fila que abre la ficha, para el modo limitado. */
+export interface MemberProfilePreview {
+  displayName: string
+  alias: string | null
+  favoritePosition: string | null
+  avatarBase64: string | null
+}
+
 export interface MemberProfileModalProps {
   visible: boolean
   onClose: () => void
   userId: string
+  source: MemberProfileSource
+  preview?: MemberProfilePreview
 }
 
 function FriendshipButton({
@@ -67,40 +80,44 @@ function FriendshipButton({
 }
 
 /**
- * Ficha de solo lectura de un compañero de grupo: foto, nombre, posición y
- * su radar de stats. Sin acciones — el backend nunca expone lo psicológico
- * ni los tests crudos de otro usuario.
+ * Ficha de solo lectura de un jugador. Regla de producto (David): las
+ * estadísticas se ven solo desde el contexto de un grupo compartido
+ * (source group/rankings) o cuando la amistad está aceptada; desde
+ * Búsqueda/Sugerencias/Amigos-pendientes la ficha es limitada (candado) y
+ * no se llama a getPublicMemberProfile hasta que la amistad sea accepted.
  */
-export function MemberProfileModal({ visible, onClose, userId }: MemberProfileModalProps) {
+export function MemberProfileModal({
+  visible,
+  onClose,
+  userId,
+  source,
+  preview,
+}: MemberProfileModalProps) {
   const { insets } = useResponsiveLayout()
   const { authUserId } = useAuth()
   const [profile, setProfile] = useState<PublicMemberProfileApiDto | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(false)
+  const [forbidden, setForbidden] = useState(false)
   const [friendship, setFriendship] = useState<FriendshipStatusApiDto | null>(null)
   const [friendshipError, setFriendshipError] = useState(false)
   const [friendshipBusy, setFriendshipBusy] = useState(false)
 
   const isOwnProfile = userId === authUserId
 
+  const canShowStats =
+    source === "group" || source === "rankings" || friendship?.status === "accepted"
+
+  // Reset + estado de amistad al abrir o cambiar de usuario.
   useEffect(() => {
     if (!visible) return
     let cancelled = false
     setProfile(null)
     setError(false)
-    setLoading(true)
+    setForbidden(false)
+    setLoading(false)
     setFriendship(null)
     setFriendshipError(false)
-
-    api.getPublicMemberProfile(userId).then((result) => {
-      if (cancelled) return
-      setLoading(false)
-      if (result.kind === "ok") {
-        setProfile(result.profile)
-      } else {
-        setError(true)
-      }
-    })
 
     if (!isOwnProfile) {
       api.getFriendshipStatus(userId).then((result) => {
@@ -117,6 +134,29 @@ export function MemberProfileModal({ visible, onClose, userId }: MemberProfileMo
       cancelled = true
     }
   }, [visible, userId, isOwnProfile])
+
+  // Stats solo cuando corresponde — incluye pasar a accepted con el modal
+  // abierto (aceptación desde acá): recién ahí se carga el radar.
+  useEffect(() => {
+    if (!visible || !canShowStats || profile || loading || error || forbidden) return
+    let cancelled = false
+    setLoading(true)
+    api.getPublicMemberProfile(userId).then((result) => {
+      if (cancelled) return
+      setLoading(false)
+      if (result.kind === "ok") {
+        setProfile(result.profile)
+      } else if (result.kind === "forbidden") {
+        // Caso raro (dejó de compartir grupo): candado en vez de error.
+        setForbidden(true)
+      } else {
+        setError(true)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [visible, canShowStats, userId, profile, loading, error, forbidden])
 
   const runFriendshipAction = useCallback(
     async (action: () => Promise<{ kind: string }>, next: () => void) => {
@@ -163,11 +203,18 @@ export function MemberProfileModal({ visible, onClose, userId }: MemberProfileMo
     )
   }, [friendship, runFriendshipAction])
 
+  // Datos de cabecera: del perfil completo si está, si no del preview de la fila.
+  const headerName = profile?.name ?? preview?.displayName ?? null
+  const headerAvatar = profile?.avatarBase64 ?? preview?.avatarBase64 ?? null
+  const headerPosition = profile?.favoritePosition ?? preview?.favoritePosition ?? null
+  const headerAlias = preview?.alias ?? null
+  const showMain = headerName != null
+
   const handleRemoveWithConfirm = useCallback(() => {
     Alert.alert(
       translate("groupsScreen:friendRemoveConfirmTitle"),
       translate("groupsScreen:friendRemoveConfirmMessage", {
-        name: profile?.name ?? "",
+        name: headerName ?? "",
       }),
       [
         { text: translate("feedScreen:composeCancel"), style: "cancel" },
@@ -178,7 +225,7 @@ export function MemberProfileModal({ visible, onClose, userId }: MemberProfileMo
         },
       ],
     )
-  }, [handleRemove, profile])
+  }, [handleRemove, headerName])
 
   const radarData: RadarAxis[] = STAT_ORDER.map((key) => ({
     key,
@@ -187,8 +234,8 @@ export function MemberProfileModal({ visible, onClose, userId }: MemberProfileMo
     hasResult: (profile?.stats?.[key] ?? 0) > 0,
   }))
 
-  const positionLabel = profile?.favoritePosition
-    ? getPositionLabel(profile.favoritePosition)
+  const positionLabel = headerPosition
+    ? getPositionLabel(headerPosition as Parameters<typeof getPositionLabel>[0])
     : translate("profileScreen:defaultPosition")
 
   return (
@@ -257,30 +304,39 @@ export function MemberProfileModal({ visible, onClose, userId }: MemberProfileMo
             <XStack width={20} />
           </XStack>
 
-          {loading ? (
+          {!showMain && loading ? (
             <YStack paddingVertical={64} alignItems="center">
               <ActivityIndicator color={eliteForgeColors.emerald} />
             </YStack>
-          ) : error || !profile ? (
+          ) : !showMain && (error || forbidden) ? (
             <YStack paddingVertical={64} alignItems="center" paddingHorizontal={24}>
               <Text color="rgba(255,255,255,0.6)" fontSize={14} textAlign="center">
                 {translate("groupsScreen:memberProfileError")}
               </Text>
+            </YStack>
+          ) : !showMain ? (
+            <YStack paddingVertical={64} alignItems="center">
+              <ActivityIndicator color={eliteForgeColors.emerald} />
             </YStack>
           ) : (
             <YStack paddingHorizontal={16} paddingTop={16} gap={16}>
               {/* Foto pequeña arriba a la izquierda, nombre y posición al lado (layout pedido por David). */}
               <XStack alignItems="center" gap={14}>
                 <GroupAvatar
-                  seed={profile.userId}
-                  name={profile.name}
-                  photoBase64={profile.avatarBase64}
+                  seed={userId}
+                  name={headerName ?? ""}
+                  photoBase64={headerAvatar}
                   size={56}
                 />
                 <YStack flex={1} gap={4}>
                   <Text color="#FFFFFF" fontWeight="800" fontSize={18} numberOfLines={1}>
-                    {profile.name}
+                    {headerName}
                   </Text>
+                  {headerAlias ? (
+                    <Text color="rgba(255,255,255,0.5)" fontSize={12} numberOfLines={1}>
+                      @{headerAlias}
+                    </Text>
+                  ) : null}
                   <XStack
                     alignSelf="flex-start"
                     paddingHorizontal={10}
@@ -374,13 +430,47 @@ export function MemberProfileModal({ visible, onClose, userId }: MemberProfileMo
                 </YStack>
               ) : null}
 
-              {!profile.stats ? (
-                <Text color="rgba(255,255,255,0.45)" fontSize={12} textAlign="center">
-                  {translate("groupsScreen:memberNoStats")}
+              {/* Zona de estadísticas: radar solo con contexto de grupo o
+                  amistad aceptada; si no, candado. */}
+              {canShowStats && profile ? (
+                <>
+                  {!profile.stats ? (
+                    <Text color="rgba(255,255,255,0.45)" fontSize={12} textAlign="center">
+                      {translate("groupsScreen:memberNoStats")}
+                    </Text>
+                  ) : null}
+                  <StatsRadarChart data={radarData} />
+                </>
+              ) : canShowStats && loading ? (
+                <YStack paddingVertical={32} alignItems="center">
+                  <ActivityIndicator color={eliteForgeColors.emerald} />
+                </YStack>
+              ) : canShowStats && error ? (
+                <Text color="rgba(255,255,255,0.5)" fontSize={13} textAlign="center">
+                  {translate("groupsScreen:memberProfileError")}
                 </Text>
-              ) : null}
-
-              <StatsRadarChart data={radarData} />
+              ) : (
+                <YStack
+                  alignItems="center"
+                  gap={10}
+                  paddingVertical={28}
+                  paddingHorizontal={20}
+                  borderRadius={14}
+                  backgroundColor={eliteForgeColors.carbonInput}
+                  borderWidth={1}
+                  borderColor={eliteForgeColors.carbonBorder}
+                >
+                  <Ionicons name="lock-closed-outline" size={26} color="rgba(255,255,255,0.45)" />
+                  <Text
+                    color="rgba(255,255,255,0.55)"
+                    fontSize={13}
+                    textAlign="center"
+                    lineHeight={18}
+                  >
+                    {translate("groupsScreen:statsLocked", { name: headerName ?? "" })}
+                  </Text>
+                </YStack>
+              )}
             </YStack>
           )}
         </View>

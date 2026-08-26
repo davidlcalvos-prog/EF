@@ -414,6 +414,7 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
           visible
           onClose={() => setSelectedMemberId(null)}
           userId={selectedMemberId}
+          source="group"
         />
       ) : null}
     </YStack>

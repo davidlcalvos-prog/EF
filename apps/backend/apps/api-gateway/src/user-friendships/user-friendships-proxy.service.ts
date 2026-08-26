@@ -3,7 +3,9 @@ import { ClientProxy } from '@nestjs/microservices';
 import { catchError, firstValueFrom, throwError } from 'rxjs';
 import { MESSAGE_PATTERNS, SERVICE_NAMES, toHttpException } from '@ef/common';
 import {
+  FriendSuggestionDto,
   FriendshipStatusDto,
+  PlayerSearchResultDto,
   UserFriendshipDto,
   UserFriendshipFilter,
 } from '@ef/contracts';
@@ -50,6 +52,20 @@ export class UserFriendshipsProxyService {
       friendshipId,
       requesterId,
     });
+  }
+
+  search(requesterId: string, query: string): Promise<PlayerSearchResultDto[]> {
+    return this.send<PlayerSearchResultDto[]>(MESSAGE_PATTERNS.USER_FRIENDSHIPS.SEARCH, {
+      requesterId,
+      query,
+    });
+  }
+
+  suggestions(requesterId: string): Promise<FriendSuggestionDto[]> {
+    return this.send<FriendSuggestionDto[]>(
+      MESSAGE_PATTERNS.USER_FRIENDSHIPS.SUGGESTIONS,
+      { requesterId },
+    );
   }
 
   private send<T>(pattern: string, payload: unknown): Promise<T> {

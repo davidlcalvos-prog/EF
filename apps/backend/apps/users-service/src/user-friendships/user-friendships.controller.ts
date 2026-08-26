@@ -2,9 +2,11 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { MESSAGE_PATTERNS } from '@ef/common';
 import {
+  FriendSuggestionsPayload,
   GetFriendshipStatusPayload,
   ListUserFriendshipsPayload,
   RequestUserFriendshipPayload,
+  SearchPlayersPayload,
   UserFriendshipActionPayload,
 } from '@ef/contracts';
 import { UserFriendshipsService } from './user-friendships.service';
@@ -36,5 +38,15 @@ export class UserFriendshipsController {
   @MessagePattern(MESSAGE_PATTERNS.USER_FRIENDSHIPS.REMOVE)
   remove(@Payload() data: UserFriendshipActionPayload) {
     return this.userFriendshipsService.remove(data);
+  }
+
+  @MessagePattern(MESSAGE_PATTERNS.USER_FRIENDSHIPS.SEARCH)
+  search(@Payload() data: SearchPlayersPayload) {
+    return this.userFriendshipsService.search(data);
+  }
+
+  @MessagePattern(MESSAGE_PATTERNS.USER_FRIENDSHIPS.SUGGESTIONS)
+  suggestions(@Payload() data: FriendSuggestionsPayload) {
+    return this.userFriendshipsService.suggestions(data);
   }
 }
