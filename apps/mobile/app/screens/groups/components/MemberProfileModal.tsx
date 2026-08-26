@@ -1,14 +1,19 @@
-import { useEffect, useState } from "react"
-import { ActivityIndicator, Modal, Pressable, View } from "react-native"
+import { useCallback, useEffect, useState } from "react"
+import { ActivityIndicator, Alert, Modal, Pressable, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
+import { useAuth } from "@/context/AuthContext"
 import { STAT_ORDER } from "@/data/mockPlayerProfile"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
 import { getPositionLabel } from "@/screens/profile/components/ProfileHeader"
 import { StatsRadarChart, type RadarAxis } from "@/screens/profile/components/StatsRadarChart"
-import { api, type PublicMemberProfileApiDto } from "@/services/api"
+import {
+  api,
+  type FriendshipStatusApiDto,
+  type PublicMemberProfileApiDto,
+} from "@/services/api"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
 import { GroupAvatar } from "./GroupAvatar"
@@ -19,6 +24,48 @@ export interface MemberProfileModalProps {
   userId: string
 }
 
+function FriendshipButton({
+  label,
+  icon,
+  variant,
+  disabled,
+  onPress,
+}: {
+  label: string
+  icon: keyof typeof Ionicons.glyphMap
+  variant: "primary" | "neutral" | "danger"
+  disabled?: boolean
+  onPress: () => void
+}) {
+  const background =
+    variant === "primary" ? eliteForgeColors.emerald : eliteForgeColors.carbonInput
+  const border = variant === "danger" ? "#E74C3C" : eliteForgeColors.carbonBorder
+  const color =
+    variant === "primary" ? "#1a1a1a" : variant === "danger" ? "#E74C3C" : "rgba(255,255,255,0.8)"
+
+  return (
+    <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button">
+      <XStack
+        alignItems="center"
+        justifyContent="center"
+        gap={6}
+        backgroundColor={variant === "primary" ? background : eliteForgeColors.carbonInput}
+        borderWidth={1}
+        borderColor={variant === "primary" ? eliteForgeColors.emerald : border}
+        borderRadius={12}
+        paddingHorizontal={14}
+        paddingVertical={10}
+        opacity={disabled && variant !== "neutral" ? 0.6 : 1}
+      >
+        <Ionicons name={icon} size={16} color={color} />
+        <Text color={color} fontWeight="800" fontSize={13}>
+          {label}
+        </Text>
+      </XStack>
+    </Pressable>
+  )
+}
+
 /**
  * Ficha de solo lectura de un compañero de grupo: foto, nombre, posición y
  * su radar de stats. Sin acciones — el backend nunca expone lo psicológico
@@ -26,9 +73,15 @@ export interface MemberProfileModalProps {
  */
 export function MemberProfileModal({ visible, onClose, userId }: MemberProfileModalProps) {
   const { insets } = useResponsiveLayout()
+  const { authUserId } = useAuth()
   const [profile, setProfile] = useState<PublicMemberProfileApiDto | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(false)
+  const [friendship, setFriendship] = useState<FriendshipStatusApiDto | null>(null)
+  const [friendshipError, setFriendshipError] = useState(false)
+  const [friendshipBusy, setFriendshipBusy] = useState(false)
+
+  const isOwnProfile = userId === authUserId
 
   useEffect(() => {
     if (!visible) return
@@ -36,6 +89,8 @@ export function MemberProfileModal({ visible, onClose, userId }: MemberProfileMo
     setProfile(null)
     setError(false)
     setLoading(true)
+    setFriendship(null)
+    setFriendshipError(false)
 
     api.getPublicMemberProfile(userId).then((result) => {
       if (cancelled) return
@@ -47,10 +102,83 @@ export function MemberProfileModal({ visible, onClose, userId }: MemberProfileMo
       }
     })
 
+    if (!isOwnProfile) {
+      api.getFriendshipStatus(userId).then((result) => {
+        if (cancelled) return
+        if (result.kind === "ok") {
+          setFriendship(result.status)
+        } else {
+          setFriendshipError(true)
+        }
+      })
+    }
+
     return () => {
       cancelled = true
     }
-  }, [visible, userId])
+  }, [visible, userId, isOwnProfile])
+
+  const runFriendshipAction = useCallback(
+    async (action: () => Promise<{ kind: string }>, next: () => void) => {
+      setFriendshipBusy(true)
+      setFriendshipError(false)
+      const result = await action()
+      setFriendshipBusy(false)
+      if (result.kind === "ok") {
+        next()
+      } else {
+        setFriendshipError(true)
+      }
+    },
+    [],
+  )
+
+  const handleAddFriend = useCallback(() => {
+    runFriendshipAction(
+      () => api.requestFriendship(userId),
+      () => {
+        // Si el otro ya me había solicitado, el backend acepta directamente.
+        api.getFriendshipStatus(userId).then((result) => {
+          if (result.kind === "ok") setFriendship(result.status)
+        })
+      },
+    )
+  }, [runFriendshipAction, userId])
+
+  const handleAccept = useCallback(() => {
+    if (!friendship?.friendshipId) return
+    const friendshipId = friendship.friendshipId
+    runFriendshipAction(
+      () => api.acceptFriendship(friendshipId),
+      () => setFriendship({ status: "accepted", friendshipId }),
+    )
+  }, [friendship, runFriendshipAction])
+
+  const handleRemove = useCallback(() => {
+    if (!friendship?.friendshipId) return
+    const friendshipId = friendship.friendshipId
+    runFriendshipAction(
+      () => api.removeFriendship(friendshipId),
+      () => setFriendship({ status: "none", friendshipId: null }),
+    )
+  }, [friendship, runFriendshipAction])
+
+  const handleRemoveWithConfirm = useCallback(() => {
+    Alert.alert(
+      translate("groupsScreen:friendRemoveConfirmTitle"),
+      translate("groupsScreen:friendRemoveConfirmMessage", {
+        name: profile?.name ?? "",
+      }),
+      [
+        { text: translate("feedScreen:composeCancel"), style: "cancel" },
+        {
+          text: translate("groupsScreen:friendRemoveConfirm"),
+          style: "destructive",
+          onPress: handleRemove,
+        },
+      ],
+    )
+  }, [handleRemove, profile])
 
   const radarData: RadarAxis[] = STAT_ORDER.map((key) => ({
     key,
@@ -168,6 +296,83 @@ export function MemberProfileModal({ visible, onClose, userId }: MemberProfileMo
                   </XStack>
                 </YStack>
               </XStack>
+
+              {/* Amistad (Fase 10) — oculto para el propio perfil. */}
+              {!isOwnProfile && friendship ? (
+                <YStack gap={8}>
+                  {friendship.status === "none" ? (
+                    <FriendshipButton
+                      label={translate("groupsScreen:friendAdd")}
+                      icon="person-add-outline"
+                      variant="primary"
+                      disabled={friendshipBusy}
+                      onPress={handleAddFriend}
+                    />
+                  ) : friendship.status === "pending_sent" ? (
+                    <XStack gap={8}>
+                      <YStack flex={1}>
+                        <FriendshipButton
+                          label={translate("groupsScreen:friendRequestSent")}
+                          icon="time-outline"
+                          variant="neutral"
+                          disabled
+                          onPress={() => {}}
+                        />
+                      </YStack>
+                      <FriendshipButton
+                        label={translate("groupsScreen:friendCancelRequest")}
+                        icon="close-outline"
+                        variant="danger"
+                        disabled={friendshipBusy}
+                        onPress={handleRemove}
+                      />
+                    </XStack>
+                  ) : friendship.status === "pending_received" ? (
+                    <XStack gap={8}>
+                      <YStack flex={1}>
+                        <FriendshipButton
+                          label={translate("groupsScreen:friendAcceptRequest")}
+                          icon="checkmark-outline"
+                          variant="primary"
+                          disabled={friendshipBusy}
+                          onPress={handleAccept}
+                        />
+                      </YStack>
+                      <FriendshipButton
+                        label={translate("groupsScreen:friendRejectRequest")}
+                        icon="close-outline"
+                        variant="danger"
+                        disabled={friendshipBusy}
+                        onPress={handleRemove}
+                      />
+                    </XStack>
+                  ) : (
+                    <XStack gap={8}>
+                      <YStack flex={1}>
+                        <FriendshipButton
+                          label={translate("groupsScreen:friendAlready")}
+                          icon="checkmark-circle"
+                          variant="neutral"
+                          disabled
+                          onPress={() => {}}
+                        />
+                      </YStack>
+                      <FriendshipButton
+                        label={translate("groupsScreen:friendRemove")}
+                        icon="person-remove-outline"
+                        variant="danger"
+                        disabled={friendshipBusy}
+                        onPress={handleRemoveWithConfirm}
+                      />
+                    </XStack>
+                  )}
+                  {friendshipError ? (
+                    <Text color="#E74C3C" fontSize={12} textAlign="center">
+                      {translate("groupsScreen:friendActionError")}
+                    </Text>
+                  ) : null}
+                </YStack>
+              ) : null}
 
               {!profile.stats ? (
                 <Text color="rgba(255,255,255,0.45)" fontSize={12} textAlign="center">

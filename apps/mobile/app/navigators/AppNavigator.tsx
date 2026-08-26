@@ -14,6 +14,7 @@ import { RegisterScreen } from "@/screens/auth/RegisterScreen"
 import { ErrorBoundary } from "@/screens/ErrorScreen/ErrorBoundary"
 import { FeedScreen } from "@/screens/feed/FeedScreen"
 import { GroupDetailScreen } from "@/screens/groups/GroupDetailScreen"
+import { FriendsScreen } from "@/screens/friends/FriendsScreen"
 import { GroupFriendsScreen } from "@/screens/groups/GroupFriendsScreen"
 import { GroupsScreen } from "@/screens/groups/GroupsScreen"
 import { MatchDetailScreen } from "@/screens/matches/MatchDetailScreen"
@@ -67,6 +68,7 @@ const AppStack = () => {
           <Stack.Screen name="Groups" component={GroupsScreen} />
           <Stack.Screen name="GroupDetail" component={GroupDetailScreen} />
           <Stack.Screen name="GroupFriends" component={GroupFriendsScreen} />
+          <Stack.Screen name="Friends" component={FriendsScreen} />
           <Stack.Screen name="Matches" component={MatchesScreen} />
           <Stack.Screen name="MatchDetail" component={MatchDetailScreen} />
           <Stack.Screen name="Reservations" component={ReservationsScreen} />

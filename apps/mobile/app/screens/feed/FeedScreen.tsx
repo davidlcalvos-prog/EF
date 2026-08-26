@@ -66,6 +66,10 @@ export function FeedScreen(_props: AppStackScreenProps<"Feed">) {
         navigation.navigate("Groups")
         return
       }
+      if (id === "friends") {
+        navigation.navigate("Friends")
+        return
+      }
       if (id === "matches") {
         navigation.navigate("Matches")
         return
@@ -163,13 +167,40 @@ export function FeedScreen(_props: AppStackScreenProps<"Feed">) {
       )
     }
     return (
-      <YStack paddingVertical={48} alignItems="center">
-        <Text color="rgba(255,255,255,0.5)" fontSize={14}>
-          {translate("feedScreen:emptyFeed")}
+      <YStack paddingVertical={48} alignItems="center" gap={16} paddingHorizontal={24}>
+        <Text color="rgba(255,255,255,0.5)" fontSize={14} textAlign="center">
+          {translate("feedScreen:emptyNetworkFeed")}
         </Text>
+        <XStack gap={10}>
+          <Pressable onPress={() => navigation.navigate("Friends")} accessibilityRole="button">
+            <XStack
+              backgroundColor={eliteForgeColors.emerald}
+              borderRadius={12}
+              paddingHorizontal={16}
+              paddingVertical={10}
+            >
+              <Text color="#1a1a1a" fontWeight="700" fontSize={13}>
+                {translate("feedScreen:emptyFindFriends")}
+              </Text>
+            </XStack>
+          </Pressable>
+          <Pressable onPress={() => navigation.navigate("Groups")} accessibilityRole="button">
+            <XStack
+              borderWidth={1}
+              borderColor={eliteForgeColors.emerald}
+              borderRadius={12}
+              paddingHorizontal={16}
+              paddingVertical={10}
+            >
+              <Text color={eliteForgeColors.emerald} fontWeight="700" fontSize={13}>
+                {translate("feedScreen:emptyViewGroups")}
+              </Text>
+            </XStack>
+          </Pressable>
+        </XStack>
       </YStack>
     )
-  }, [loading, error, refresh])
+  }, [loading, error, refresh, navigation])
 
   return (
     <YStack flex={1} backgroundColor={eliteForgeColors.carbon}>

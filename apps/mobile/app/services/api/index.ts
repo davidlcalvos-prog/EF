@@ -33,6 +33,9 @@ import type {
   PublicMemberProfileApiDto,
   PublicVenueApiDto,
   TournamentApiDto,
+  UserFriendshipApiDto,
+  UserFriendshipFilterApi,
+  FriendshipStatusApiDto,
 } from "@/services/api/types"
 import { loadString } from "@/utils/storage"
 
@@ -82,6 +85,12 @@ export type {
   TournamentApiDto,
 } from "./types"
 export type { RankingEntryApiDto, TournamentRankingsApiResponse } from "./types"
+export type {
+  UserFriendshipApiDto,
+  UserFriendshipFilterApi,
+  UserFriendshipStatusApi,
+  FriendshipStatusApiDto,
+} from "./types"
 
 /**
  * Configuring the apisauce instance.
@@ -585,6 +594,85 @@ export class Api {
   /** Cualquiera de los dos grupos puede terminar la amistad (creator/admin, 403 si no). */
   async removeGroupFriendship(friendshipId: string): Promise<{ kind: "ok" } | GeneralApiProblem> {
     const response = await this.apisauce.delete(`group-friendships/${friendshipId}`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    return { kind: "ok" }
+  }
+
+  /** Amistades del usuario autenticado (Fase 10), según el filtro. */
+  async listFriendships(
+    filter: UserFriendshipFilterApi,
+  ): Promise<{ kind: "ok"; friendships: UserFriendshipApiDto[] } | GeneralApiProblem> {
+    const response = await this.apisauce.get<UserFriendshipApiDto[]>("friendships", { filter })
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", friendships: response.data }
+  }
+
+  /** Estado de relación con otro usuario, para la ficha pública. */
+  async getFriendshipStatus(
+    userId: string,
+  ): Promise<{ kind: "ok"; status: FriendshipStatusApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.get<FriendshipStatusApiDto>(
+      `friendships/status/${userId}`,
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", status: response.data }
+  }
+
+  /**
+   * Solicita amistad. 409 si ya existe (en cualquier dirección/estado);
+   * si el otro ya me había solicitado, el backend la acepta directamente.
+   */
+  async requestFriendship(
+    userId: string,
+  ): Promise<{ kind: "ok"; friendship: UserFriendshipApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<UserFriendshipApiDto>("friendships", { userId })
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", friendship: response.data }
+  }
+
+  /** Solo el destinatario puede aceptar (403 si no, 409 si no está pendiente). */
+  async acceptFriendship(
+    friendshipId: string,
+  ): Promise<{ kind: "ok"; friendship: UserFriendshipApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<UserFriendshipApiDto>(
+      `friendships/${friendshipId}/accept`,
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", friendship: response.data }
+  }
+
+  /** Rechaza, cancela o elimina — cualquiera de las dos partes, en cualquier estado. */
+  async removeFriendship(friendshipId: string): Promise<{ kind: "ok" } | GeneralApiProblem> {
+    const response = await this.apisauce.delete(`friendships/${friendshipId}`)
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)

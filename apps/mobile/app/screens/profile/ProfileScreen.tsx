@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Alert, Pressable, ScrollView, StatusBar } from "react-native"
 import { useFocusEffect } from "@react-navigation/native"
 import { Text, YStack } from "tamagui"
@@ -130,6 +130,10 @@ export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
         navigation.navigate("Groups")
         return
       }
+      if (id === "friends") {
+        navigation.navigate("Friends")
+        return
+      }
       if (id === "matches") {
         navigation.navigate("Matches")
         return
@@ -138,6 +142,18 @@ export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
     },
     [navigation],
   )
+
+  // Conteo de amigos para "Mis amigos (N)" — best-effort, sin bloquear la UI.
+  const [friendsCount, setFriendsCount] = useState<number | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    api.listFriendships("accepted").then((result) => {
+      if (!cancelled && result.kind === "ok") setFriendsCount(result.friendships.length)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const openTest = useCallback(
     (testId: PhysicalTestId) => {
@@ -315,6 +331,17 @@ export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
             </YStack>
 
             <ProfileQuickLinkCard id="groups" onPress={() => handleQuickLink("groups")} />
+            <ProfileQuickLinkCard
+              id="friends"
+              onPress={() => handleQuickLink("friends")}
+              titleOverride={
+                friendsCount != null
+                  ? translate("friendsScreen:quickAccessTitleWithCount", {
+                      count: friendsCount,
+                    })
+                  : undefined
+              }
+            />
             <ProfileQuickLinkCard id="matches" onPress={() => handleQuickLink("matches")} />
             <ProfileQuickLinkCard
               id="reservations"
