@@ -69,8 +69,52 @@ export class FeedRepository {
       include: { ...authorInclude, _count: { select: { likes: true, comments: true } } },
     });
     if (!post) return null;
+    // Un post fuera de mi red se comporta como inexistente (404), para que
+    // un enlace directo no saltee el filtro del feed.
+    if (post.authorId !== requesterId) {
+      const visible = await this.visibleAuthorIds(requesterId);
+      if (!visible.has(post.authorId)) return null;
+    }
     const likedByMe = await this.hasLiked(postId, requesterId);
     return this.toPostDto(post, likedByMe);
+  }
+
+  /**
+   * Red del usuario (Fase 10): él mismo, sus amigos aceptados y los miembros
+   * de todos sus grupos. Dos consultas simples a propósito — el volumen es
+   * chico y prima la claridad.
+   */
+  private async visibleAuthorIds(requesterId: string): Promise<Set<string>> {
+    const [friendRows, myMemberships] = await Promise.all([
+      this.prisma.userFriendship.findMany({
+        where: {
+          status: 'accepted',
+          OR: [{ requesterId }, { addresseeId: requesterId }],
+        },
+        select: { requesterId: true, addresseeId: true },
+      }),
+      this.prisma.groupMembership.findMany({
+        where: { userId: requesterId },
+        select: { groupId: true },
+      }),
+    ]);
+
+    const ids = new Set<string>([requesterId]);
+    for (const row of friendRows) {
+      ids.add(row.requesterId === requesterId ? row.addresseeId : row.requesterId);
+    }
+
+    if (myMemberships.length > 0) {
+      const groupMembers = await this.prisma.groupMembership.findMany({
+        where: { groupId: { in: myMemberships.map((m) => m.groupId) } },
+        select: { userId: true },
+      });
+      for (const member of groupMembers) {
+        ids.add(member.userId);
+      }
+    }
+
+    return ids;
   }
 
   async hasLiked(postId: string, userId: string): Promise<boolean> {
@@ -86,7 +130,9 @@ export class FeedRepository {
     page: number,
     pageSize: number,
   ): Promise<PostDto[]> {
+    const visible = await this.visibleAuthorIds(requesterId);
     const posts = await this.prisma.post.findMany({
+      where: { authorId: { in: [...visible] } },
       include: { ...authorInclude, _count: { select: { likes: true, comments: true } } },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * pageSize,

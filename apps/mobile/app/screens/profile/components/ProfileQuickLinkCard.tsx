@@ -7,7 +7,7 @@ import { useInteractiveMotion } from "@/hooks/useInteractiveMotion"
 import { translate } from "@/i18n/translate"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
-export type ProfileQuickLinkId = "groups" | "matches" | "reservations"
+export type ProfileQuickLinkId = "groups" | "friends" | "matches" | "reservations"
 
 const LINK_META: Record<
   ProfileQuickLinkId,
@@ -17,6 +17,11 @@ const LINK_META: Record<
     icon: "people-outline",
     titleKey: "feedDrawer:groups",
     subtitleKey: "groupsScreen:title",
+  },
+  friends: {
+    icon: "person-add-outline",
+    titleKey: "feedDrawer:friends",
+    subtitleKey: "friendsScreen:quickAccessSubtitle",
   },
   matches: {
     icon: "football-outline",
@@ -33,9 +38,11 @@ const LINK_META: Record<
 export interface ProfileQuickLinkCardProps {
   id: ProfileQuickLinkId
   onPress: () => void
+  /** Reemplaza el título de LINK_META (p. ej. "Mis amigos (3)"). */
+  titleOverride?: string
 }
 
-export function ProfileQuickLinkCard({ id, onPress }: ProfileQuickLinkCardProps) {
+export function ProfileQuickLinkCard({ id, onPress, titleOverride }: ProfileQuickLinkCardProps) {
   const motion = useInteractiveMotion("button")
   const meta = LINK_META[id]
 
@@ -70,7 +77,7 @@ export function ProfileQuickLinkCard({ id, onPress }: ProfileQuickLinkCardProps)
 
           <YStack flex={1} gap={2}>
             <Text color={eliteForgeColors.white} fontWeight="700" fontSize={15}>
-              {translate(meta.titleKey as never)}
+              {titleOverride ?? translate(meta.titleKey as never)}
             </Text>
             <Text color="rgba(255,255,255,0.45)" fontSize={12}>
               {translate(meta.subtitleKey as never)}

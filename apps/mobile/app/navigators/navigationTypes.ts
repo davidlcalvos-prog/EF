@@ -27,6 +27,7 @@ export type AppStackParamList = {
   Groups: undefined
   GroupDetail: { groupId: string }
   GroupFriends: { groupId: string }
+  Friends: undefined
   Matches: { groupId?: string } | undefined
   MatchDetail: { matchId: string }
   Reservations: { matchId?: string } | undefined

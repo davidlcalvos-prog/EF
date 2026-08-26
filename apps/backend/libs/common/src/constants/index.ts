@@ -54,6 +54,13 @@ export const MESSAGE_PATTERNS = {
     ACCEPT: 'group_friendships.accept',
     REMOVE: 'group_friendships.remove',
   },
+  USER_FRIENDSHIPS: {
+    LIST: 'user_friendships.list',
+    GET_STATUS: 'user_friendships.get_status',
+    REQUEST: 'user_friendships.request',
+    ACCEPT: 'user_friendships.accept',
+    REMOVE: 'user_friendships.remove',
+  },
   MATCHES: {
     CREATE: 'matches.create',
     GET_DETAIL: 'matches.get_detail',

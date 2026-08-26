@@ -11,7 +11,13 @@ import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
 import { FeedAvatar } from "./FeedAvatar"
 
-export type FeedDrawerItemId = "profile" | "groups" | "matches" | "tournaments" | "reservations"
+export type FeedDrawerItemId =
+  | "profile"
+  | "groups"
+  | "friends"
+  | "matches"
+  | "tournaments"
+  | "reservations"
 
 export interface FeedDrawerProps {
   onClose: () => void
@@ -26,6 +32,7 @@ const MENU_ITEMS: {
 }[] = [
   { id: "profile", icon: "person-outline", labelKey: "feedDrawer:profile" },
   { id: "groups", icon: "people-outline", labelKey: "feedDrawer:groups" },
+  { id: "friends", icon: "people-outline", labelKey: "feedDrawer:friends" },
   { id: "matches", icon: "football-outline", labelKey: "feedDrawer:matches" },
   { id: "tournaments", icon: "trophy-outline", labelKey: "feedDrawer:tournaments" },
   { id: "reservations", icon: "calendar-outline", labelKey: "feedDrawer:reservations" },

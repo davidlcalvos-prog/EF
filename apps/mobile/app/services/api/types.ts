@@ -182,6 +182,32 @@ export interface GroupFriendshipApiDto {
   updatedAt: string
 }
 
+/** Forma real de los datos de Amistad entre jugadores (Fase 10) — calcada de libs/contracts/src/user-friendships/index.ts del backend. */
+export type UserFriendshipStatusApi = "pending" | "accepted"
+
+export type UserFriendshipFilterApi = "accepted" | "pending_received" | "pending_sent"
+
+export interface UserFriendshipApiDto {
+  id: string
+  status: UserFriendshipStatusApi
+  /** true si el usuario autenticado fue quien envió la solicitud */
+  requestedByMe: boolean
+  /** el otro usuario */
+  user: {
+    id: string
+    displayName: string
+    alias: string | null
+    favoritePosition: string | null
+    avatarBase64: string | null
+  }
+  createdAt: string
+}
+
+export interface FriendshipStatusApiDto {
+  status: "none" | "pending_sent" | "pending_received" | "accepted"
+  friendshipId: string | null
+}
+
 /** Item de GET /groups/search — nunca incluye la lista de miembros. */
 export interface GroupSearchResultApiDto {
   id: string
