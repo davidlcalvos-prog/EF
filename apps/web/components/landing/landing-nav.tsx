@@ -35,6 +35,12 @@ export function LandingNav() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
+          <Link
+            href="/admin/login"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Soy dueño de cancha
+          </Link>
           <Button
             render={<Link href="/auth/sign-up" />}
             variant="ghost"
@@ -72,6 +78,13 @@ export function LandingNav() {
                 {link.label}
               </a>
             ))}
+            <Link
+              href="/admin/login"
+              onClick={() => setOpen(false)}
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Soy dueño de cancha
+            </Link>
             <div className="flex flex-col gap-2 pt-2">
               <Button
                 render={<Link href="/auth/sign-up" />}

@@ -25,14 +25,71 @@ export function FinalCta() {
   )
 }
 
+const footerColumns = [
+  {
+    title: 'Jugadores',
+    links: [
+      { label: 'Descargar', href: '#descarga' },
+      { label: 'Prueba inicial', href: '/auth/sign-up' },
+    ],
+  },
+  {
+    title: 'Canchas',
+    links: [{ label: 'Portal de dueños', href: '/admin/login' }],
+  },
+  {
+    title: 'Legal',
+    links: [
+      { label: 'Términos de uso', href: '/legal/terminos' },
+      { label: 'Privacidad', href: '/legal/privacidad' },
+    ],
+  },
+]
+
 export function LandingFooter() {
   return (
-    <footer className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-      <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-        <Link href="/" className="inline-flex items-center">
-          <Logo />
-        </Link>
-        <p className="text-xs text-muted-foreground">
+    <footer className="border-t border-border">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <Link href="/" className="inline-flex items-center">
+              <Logo />
+            </Link>
+            <p className="mt-3 max-w-xs text-sm text-muted-foreground">
+              Del amateur al pro: rendimiento, torneos y canchas en un solo
+              lugar.
+            </p>
+          </div>
+          {footerColumns.map((column) => (
+            <div key={column.title}>
+              <p className="font-heading text-xs font-semibold uppercase tracking-widest text-foreground">
+                {column.title}
+              </p>
+              <ul className="mt-3 space-y-2">
+                {column.links.map((link) => (
+                  <li key={link.href}>
+                    {link.href.startsWith('#') ? (
+                      <a
+                        href={link.href}
+                        className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {link.label}
+                      </a>
+                    ) : (
+                      <Link
+                        href={link.href}
+                        className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {link.label}
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <p className="mt-10 border-t border-border pt-6 text-xs text-muted-foreground">
           © {new Date().getFullYear()} Elite Forge. Todos los derechos
           reservados.
           {process.env.NEXT_PUBLIC_BUILD_ID && (
