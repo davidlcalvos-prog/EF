@@ -7,7 +7,7 @@ export function MatchFinderSection() {
     <section id="buscador" className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
       <div className="grid items-center gap-10 lg:grid-cols-2">
         {/* Map visual */}
-        <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="ef-card relative aspect-[4/3] overflow-hidden rounded-2xl">
           <div
             className="absolute inset-0 opacity-40"
             style={{
@@ -64,7 +64,7 @@ export function MatchFinderSection() {
           <Button
             render={<Link href="/auth/sign-up" />}
             size="lg"
-            className="mt-6 h-12 px-6 font-heading font-semibold uppercase tracking-wide"
+            className="ef-cta mt-6 h-12 px-6 font-heading font-semibold uppercase tracking-wide"
           >
             <Search className="mr-1 h-5 w-5" />
             Explorar Mapa

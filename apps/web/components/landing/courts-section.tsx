@@ -14,9 +14,9 @@ export function CourtsSection() {
       </p>
 
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-card p-7">
-          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15">
-            <LayoutDashboard className="h-6 w-6 text-primary" />
+        <div className="ef-card ef-card-hover rounded-2xl p-7">
+          <span className="ef-chip h-12 w-12">
+            <LayoutDashboard className="h-6 w-6" />
           </span>
           <h3 className="mt-5 font-heading text-xl font-semibold uppercase tracking-wide text-card-foreground">
             Gestión de Canchas para Dueños
@@ -34,9 +34,9 @@ export function CourtsSection() {
           </Button>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-7">
-          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15">
-            <CalendarCheck className="h-6 w-6 text-primary" />
+        <div className="ef-card ef-card-orange ef-card-hover rounded-2xl p-7">
+          <span className="ef-chip ef-chip-orange h-12 w-12">
+            <CalendarCheck className="h-6 w-6" />
           </span>
           <h3 className="mt-5 font-heading text-xl font-semibold uppercase tracking-wide text-card-foreground">
             Reservas Online para Jugadores
@@ -48,7 +48,7 @@ export function CourtsSection() {
           </p>
           <Button
             render={<Link href="/auth/sign-up" />}
-            className="mt-5 font-heading font-semibold uppercase tracking-wide"
+            className="ef-cta mt-5 font-heading font-semibold uppercase tracking-wide"
           >
             Reservar Ahora <ArrowRight className="ml-1 h-4 w-4" />
           </Button>

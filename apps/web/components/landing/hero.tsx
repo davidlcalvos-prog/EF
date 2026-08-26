@@ -28,7 +28,7 @@ export function Hero() {
           <Button
             render={<Link href="/auth/sign-up" />}
             size="lg"
-            className="h-12 px-8 font-heading text-base font-semibold uppercase tracking-wide"
+            className="ef-cta h-12 px-8 font-heading text-base font-semibold uppercase tracking-wide"
           >
             Prueba inicial
             <ArrowRight className="ml-1 h-5 w-5" />

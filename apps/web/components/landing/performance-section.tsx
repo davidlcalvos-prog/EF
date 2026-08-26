@@ -25,9 +25,9 @@ export function PerformanceSection() {
       <div className="relative grid items-center gap-12 lg:grid-cols-2">
         {/* Stats card */}
         <div className="order-2 lg:order-1">
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_20px_70px_-20px] shadow-emerald/20">
-            <div className="flex items-center gap-3 border-b border-border pb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 font-heading font-bold text-primary">
+          <div className="ef-card rounded-2xl p-5 shadow-[0_20px_70px_-20px] shadow-emerald/20">
+            <div className="flex items-center gap-3 border-b border-white/10 pb-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 font-heading font-bold text-primary ring-1 ring-primary/40">
                 JP
               </div>
               <div>
@@ -40,14 +40,14 @@ export function PerformanceSection() {
               </div>
             </div>
 
-            <div className="mt-4 rounded-xl bg-secondary/40 p-4">
+            <div className="mt-4 rounded-xl bg-black/25 p-4 ring-1 ring-white/5">
               <p className="mb-2 text-center font-heading text-sm font-semibold uppercase tracking-wide text-primary">
                 Estadísticas
               </p>
               <StatsRadar data={radarData} />
             </div>
 
-            <div className="mt-4 flex items-center justify-between rounded-xl bg-secondary/40 px-4 py-3">
+            <div className="mt-4 flex items-center justify-between rounded-xl bg-black/25 px-4 py-3 ring-1 ring-white/5">
               <div>
                 <p className="text-xs text-muted-foreground">Posición Ranking</p>
                 <p className="font-heading text-lg font-bold text-card-foreground">
@@ -76,10 +76,12 @@ export function PerformanceSection() {
           </p>
 
           <ul className="mt-6 space-y-3">
-            {features.map((f) => (
+            {features.map((f, i) => (
               <li key={f.label} className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15">
-                  <f.icon className="h-5 w-5 text-primary" />
+                <span
+                  className={`ef-chip h-9 w-9 ${i === 1 ? 'ef-chip-orange' : ''}`}
+                >
+                  <f.icon className="h-5 w-5" />
                 </span>
                 <span className="text-sm font-medium text-foreground">
                   {f.label}

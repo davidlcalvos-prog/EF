@@ -24,7 +24,7 @@ export function FinalCta() {
         <Button
           render={<Link href="/auth/sign-up" />}
           size="lg"
-          className="mt-8 h-13 px-10 font-heading text-base font-semibold uppercase tracking-wide"
+          className="ef-cta mt-8 h-13 px-10 font-heading text-base font-semibold uppercase tracking-wide"
         >
           Crea tu cuenta gratis
         </Button>

@@ -7,7 +7,7 @@ export function DownloadSection() {
         aria-hidden
         className="ef-glow-orange absolute -right-32 bottom-0 h-[24rem] w-[32rem]"
       />
-      <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-8 shadow-[0_0_90px_-30px] shadow-orange/25 sm:p-12">
+      <div className="ef-card ef-card-orange relative overflow-hidden rounded-3xl p-8 shadow-[0_0_90px_-30px] shadow-orange/25 sm:p-12">
         <div
           aria-hidden
           className="ef-glow-orange absolute -right-24 -top-24 h-72 w-96"
@@ -24,7 +24,7 @@ export function DownloadSection() {
             <div className="mt-6 flex flex-wrap gap-3">
               <a
                 href="#"
-                className="flex items-center gap-3 rounded-xl border border-border bg-secondary/40 px-5 py-3 transition-colors hover:border-primary/50"
+                className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/25 px-5 py-3 transition-colors hover:border-primary/50 hover:bg-black/40"
               >
                 <Apple className="h-7 w-7 text-foreground" />
                 <span className="leading-tight">
@@ -38,7 +38,7 @@ export function DownloadSection() {
               </a>
               <a
                 href="#"
-                className="flex items-center gap-3 rounded-xl border border-border bg-secondary/40 px-5 py-3 transition-colors hover:border-primary/50"
+                className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/25 px-5 py-3 transition-colors hover:border-primary/50 hover:bg-black/40"
               >
                 <Play className="h-7 w-7 text-foreground" />
                 <span className="leading-tight">
@@ -54,7 +54,7 @@ export function DownloadSection() {
           </div>
 
           <div className="flex justify-center lg:justify-end">
-            <div className="rounded-2xl border border-border bg-secondary/40 p-6 text-center">
+            <div className="rounded-2xl border border-white/10 bg-black/25 p-6 text-center ring-1 ring-orange/20">
               <div
                 className="mx-auto h-40 w-40 rounded-lg bg-foreground"
                 style={{

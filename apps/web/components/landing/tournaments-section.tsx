@@ -32,13 +32,13 @@ export function TournamentsSection() {
       </div>
 
       <div className="mt-12 grid gap-6 md:grid-cols-3">
-        {cards.map((card) => (
+        {cards.map((card, i) => (
           <div
             key={card.title}
-            className="rounded-2xl border border-border bg-card p-6 transition-colors hover:border-primary/50"
+            className={`ef-card ef-card-hover rounded-2xl p-6 ${i === 1 ? 'ef-card-orange' : ''}`}
           >
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15">
-              <card.icon className="h-6 w-6 text-primary" />
+            <span className={`ef-chip h-12 w-12 ${i === 1 ? 'ef-chip-orange' : ''}`}>
+              <card.icon className="h-6 w-6" />
             </span>
             <h3 className="mt-4 font-heading text-lg font-semibold uppercase tracking-wide text-card-foreground">
               {card.title}
