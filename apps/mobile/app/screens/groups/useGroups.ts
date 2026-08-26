@@ -35,11 +35,12 @@ export function useGroups() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const createGroup = useCallback(async (name: string): Promise<GroupDetailApiDto | null> => {
+  const createGroup = useCallback(
+    async (name: string, municipalityCode?: string): Promise<GroupDetailApiDto | null> => {
     const trimmed = name.trim()
     if (!trimmed) return null
 
-    const result = await api.createGroup(trimmed)
+    const result = await api.createGroup(trimmed, municipalityCode)
     if (result.kind !== "ok") return null
 
     setGroups((prev) => [
@@ -50,6 +51,8 @@ export function useGroups() {
         creatorId: result.group.creatorId,
         role: "creator",
         memberCount: result.group.members.length,
+        city: result.group.city,
+        department: result.group.department,
         createdAt: result.group.createdAt,
       },
       ...prev,

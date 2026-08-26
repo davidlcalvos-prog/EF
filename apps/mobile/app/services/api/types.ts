@@ -80,11 +80,23 @@ export interface ProfileStatsApiResponse {
  * Ficha de OTRO usuario (compañero de grupo) — solo nombre, avatar, posición
  * y el radar de stats. Nada de psicológico ni tests crudos, a propósito.
  */
+/** Municipio de Colombia (Fase L.0) — calcado de libs/common/src/geo del backend. */
+export interface MunicipalityApiDto {
+  code: string
+  name: string
+  department: string
+  lat: number
+  lng: number
+}
+
 export interface PublicMemberProfileApiDto {
   userId: string
   name: string
   avatarBase64: string | null
   favoritePosition: PlayerPositionId | null
+  /** Zona (Fase L.0). Nunca lat/lng de personas. */
+  city: string | null
+  department: string | null
   stats: (PlayerStats & { updatedAt: string }) | null
 }
 
@@ -152,6 +164,8 @@ export interface GroupSummaryApiDto {
   creatorId: string
   role: GroupMemberRoleApi
   memberCount: number
+  city: string | null
+  department: string | null
   createdAt: string
 }
 
@@ -161,6 +175,9 @@ export interface GroupDetailApiDto {
   photoBase64: string | null
   creatorId: string
   members: GroupMemberApiDto[]
+  city: string | null
+  department: string | null
+  municipalityCode: string | null
   createdAt: string
   updatedAt: string
 }
@@ -271,6 +288,11 @@ export interface MatchApiDto {
   opponentSideCount: number
   /** = maxPlayers / 2, solo relevante en vs. */
   sideCapacity: number
+  /** Sede (Fase L.0). */
+  venueId: string | null
+  venueName: string | null
+  venueText: string | null
+  city: string | null
   createdAt: string
   updatedAt: string
 }
@@ -296,6 +318,9 @@ export interface MatchSummaryApiDto {
   status: MatchStatusApi
   scheduledAt: string | null
   participantCount: number
+  venueName: string | null
+  venueText: string | null
+  city: string | null
   createdAt: string
 }
 
@@ -308,6 +333,12 @@ export interface PublicVenueApiDto {
   address: string | null
   pricePerHourCents: number
   availability: Record<string, unknown>
+  /** Ubicación (Fase L.0) — pública para canchas. */
+  municipalityCode: string | null
+  city: string | null
+  department: string | null
+  latitude: number | null
+  longitude: number | null
 }
 
 export interface MyReservationApiDto {

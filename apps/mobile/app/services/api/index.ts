@@ -38,6 +38,7 @@ import type {
   FriendshipStatusApiDto,
   PlayerSearchResultApiDto,
   FriendSuggestionApiDto,
+  MunicipalityApiDto,
 } from "@/services/api/types"
 import { loadString } from "@/utils/storage"
 
@@ -95,6 +96,7 @@ export type {
   PlayerSearchResultApiDto,
   FriendSuggestionApiDto,
 } from "./types"
+export type { MunicipalityApiDto } from "./types"
 
 /**
  * Configuring the apisauce instance.
@@ -250,6 +252,77 @@ export class Api {
       return { kind: "unknown", temporary: true }
     }
     return { kind: "ok" }
+  }
+
+  /** Busca municipios de Colombia por prefijo (Fase L.0) — dato estático del gateway. */
+  async searchMunicipalities(
+    q: string,
+    limit = 10,
+  ): Promise<{ kind: "ok"; municipalities: MunicipalityApiDto[] } | GeneralApiProblem> {
+    const response = await this.apisauce.get<MunicipalityApiDto[]>("geo/municipalities", {
+      q,
+      limit,
+    })
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", municipalities: response.data }
+  }
+
+  /**
+   * Guarda la zona del perfil (Fase L.0); null la limpia. El backend resuelve
+   * ciudad/departamento/coordenadas — el cliente solo manda el código DANE.
+   */
+  async updateProfileMunicipality(
+    municipalityCode: string | null,
+  ): Promise<{ kind: "ok" } | GeneralApiProblem> {
+    const response = await this.apisauce.patch("profile", { municipalityCode })
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    return { kind: "ok" }
+  }
+
+  /** Perfil propio (GET /users/:id) — incluye la zona; nunca lat/lng. */
+  async getMyProfile(userId: string): Promise<
+    | {
+        kind: "ok"
+        profile: {
+          id: string
+          email: string
+          name: string
+          avatarBase64: string | null
+          city: string | null
+          department: string | null
+          municipalityCode: string | null
+        }
+      }
+    | GeneralApiProblem
+  > {
+    const response = await this.apisauce.get<{
+      id: string
+      email: string
+      name: string
+      avatarBase64: string | null
+      city: string | null
+      department: string | null
+      municipalityCode: string | null
+    }>(`users/${userId}`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", profile: response.data }
   }
 
   /** Sube el avatar de perfil en base64 (400 si supera el límite de tamaño). */
@@ -409,11 +482,15 @@ export class Api {
     return { kind: "ok", groups: response.data }
   }
 
-  /** Crea un grupo nuevo — el usuario autenticado queda como creador. */
+  /** Crea un grupo nuevo — el usuario autenticado queda como creador. Sin municipalityCode, hereda la zona del creador (server-side). */
   async createGroup(
     name: string,
+    municipalityCode?: string,
   ): Promise<{ kind: "ok"; group: GroupDetailApiDto } | GeneralApiProblem> {
-    const response = await this.apisauce.post<GroupDetailApiDto>("groups", { name })
+    const response = await this.apisauce.post<GroupDetailApiDto>("groups", {
+      name,
+      ...(municipalityCode ? { municipalityCode } : {}),
+    })
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)
@@ -445,7 +522,13 @@ export class Api {
    */
   async updateGroup(
     groupId: string,
-    payload: { name: string; photoBase64?: string; removePhoto?: boolean },
+    payload: {
+      name: string
+      photoBase64?: string
+      removePhoto?: boolean
+      /** Fase L.0: código DANE de la zona del grupo; null la limpia. */
+      municipalityCode?: string | null
+    },
   ): Promise<{ kind: "ok"; group: GroupDetailApiDto } | GeneralApiProblem> {
     const response = await this.apisauce.patch<GroupDetailApiDto>(`groups/${groupId}`, payload)
 
@@ -734,6 +817,10 @@ export class Api {
     format: string
     maxPlayers: number
     scheduledAt?: string
+    /** Sede (Fase L.0): una cancha de la app… */
+    venueId?: string
+    /** …o texto libre. */
+    venueText?: string
   }): Promise<{ kind: "ok"; match: MatchApiDto } | GeneralApiProblem> {
     const response = await this.apisauce.post<MatchApiDto>("matches", payload)
 
@@ -912,8 +999,13 @@ export class Api {
   }
 
   /** Lista pública de canchas — cualquier usuario autenticado, sin roles especiales. */
-  async listVenues(): Promise<{ kind: "ok"; venues: PublicVenueApiDto[] } | GeneralApiProblem> {
-    const response = await this.apisauce.get<PublicVenueApiDto[]>("venues")
+  async listVenues(
+    municipalityCode?: string,
+  ): Promise<{ kind: "ok"; venues: PublicVenueApiDto[] } | GeneralApiProblem> {
+    const response = await this.apisauce.get<PublicVenueApiDto[]>(
+      "venues",
+      municipalityCode ? { municipalityCode } : undefined,
+    )
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)

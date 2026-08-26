@@ -282,6 +282,16 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
               {translate("groupsScreen:memberCount", { count: group.members.length })}
             </Text>
 
+            {group.city ? (
+              <XStack alignItems="center" justifyContent="center" gap={4} marginTop={-8}>
+                <Ionicons name="location-outline" size={13} color={eliteForgeColors.emerald} />
+                <Text color="rgba(255,255,255,0.5)" fontSize={12}>
+                  {group.city}
+                  {group.department ? `, ${group.department}` : ""}
+                </Text>
+              </XStack>
+            ) : null}
+
             <Pressable
               onPress={() => navigation.navigate("Matches", { groupId })}
               accessibilityRole="button"

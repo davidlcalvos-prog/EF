@@ -78,6 +78,7 @@ export function useGroupDetail(groupId: string) {
       name: string
       photoBase64?: string
       removePhoto?: boolean
+      municipalityCode?: string | null
     }): Promise<GroupResult> => {
       const result = await api.updateGroup(groupId, payload)
       if (result.kind === "ok") setGroup(result.group)

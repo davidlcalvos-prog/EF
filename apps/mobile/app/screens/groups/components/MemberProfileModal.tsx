@@ -350,6 +350,18 @@ export function MemberProfileModal({
                       {positionLabel}
                     </Text>
                   </XStack>
+                  {profile?.city && profile?.department ? (
+                    <XStack alignItems="center" gap={4}>
+                      <Ionicons
+                        name="location-outline"
+                        size={12}
+                        color={eliteForgeColors.emerald}
+                      />
+                      <Text color="rgba(255,255,255,0.55)" fontSize={11} numberOfLines={1}>
+                        {profile.city}, {profile.department}
+                      </Text>
+                    </XStack>
+                  ) : null}
                 </YStack>
               </XStack>
 

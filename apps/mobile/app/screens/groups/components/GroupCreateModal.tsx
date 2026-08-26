@@ -1,17 +1,20 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ActivityIndicator, Keyboard, Modal, Pressable, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
+import { MunicipalityPicker, type MunicipalityValue } from "@/components/MunicipalityPicker"
 import { TextField } from "@/components/TextField"
+import { useAuth } from "@/context/AuthContext"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
+import { api } from "@/services/api"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
 export interface GroupCreateModalProps {
   visible: boolean
   onClose: () => void
-  onCreate: (name: string) => Promise<boolean>
+  onCreate: (name: string, municipalityCode?: string) => Promise<boolean>
 }
 
 const MIN_LENGTH = 2
@@ -19,9 +22,28 @@ const MAX_LENGTH = 80
 
 export function GroupCreateModal({ visible, onClose, onCreate }: GroupCreateModalProps) {
   const { insets } = useResponsiveLayout()
+  const { authUserId } = useAuth()
   const [name, setName] = useState("")
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState(false)
+
+  // Zona del grupo (Fase L.0) — precargada con la del usuario si la tiene.
+  const [municipality, setMunicipality] = useState<MunicipalityValue | null>(null)
+  useEffect(() => {
+    if (!visible || !authUserId || municipality) return
+    let cancelled = false
+    api.getMyProfile(authUserId).then((result) => {
+      if (cancelled || result.kind !== "ok") return
+      const { municipalityCode, city, department } = result.profile
+      if (municipalityCode && city && department) {
+        setMunicipality({ code: municipalityCode, name: city, department })
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, authUserId])
 
   const trimmedLength = name.trim().length
   const isValid = trimmedLength >= MIN_LENGTH && trimmedLength <= MAX_LENGTH
@@ -38,7 +60,7 @@ export function GroupCreateModal({ visible, onClose, onCreate }: GroupCreateModa
     if (!isValid || creating) return
     setError(false)
     setCreating(true)
-    const success = await onCreate(name.trim())
+    const success = await onCreate(name.trim(), municipality?.code)
     setCreating(false)
 
     if (!success) {
@@ -168,6 +190,13 @@ export function GroupCreateModal({ visible, onClose, onCreate }: GroupCreateModa
                 {translate("groupsScreen:createLengthError")}
               </Text>
             ) : null}
+
+            <YStack gap={6} marginTop={4}>
+              <Text color="rgba(255,255,255,0.75)" fontSize={12} fontWeight="700">
+                {translate("groupsScreen:zoneTitle")}
+              </Text>
+              <MunicipalityPicker value={municipality} onChange={setMunicipality} />
+            </YStack>
           </YStack>
         </View>
       </View>

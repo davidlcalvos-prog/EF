@@ -3,6 +3,7 @@ import { ActivityIndicator, Keyboard, Modal, Pressable, View } from "react-nativ
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
+import { MunicipalityPicker, type MunicipalityValue } from "@/components/MunicipalityPicker"
 import { TextField } from "@/components/TextField"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
@@ -21,6 +22,7 @@ export interface GroupEditModalProps {
     name: string
     photoBase64?: string
     removePhoto?: boolean
+    municipalityCode?: string | null
   }) => Promise<{ kind: "ok"; group: GroupDetailApiDto } | GeneralApiProblem>
 }
 
@@ -45,6 +47,14 @@ export function GroupEditModal({ visible, onClose, group, onSave }: GroupEditMod
   const [saving, setSaving] = useState(false)
   const [errorText, setErrorText] = useState<string | null>(null)
 
+  // Zona del grupo (Fase L.0) — precargada con la actual del grupo.
+  const initialMunicipality: MunicipalityValue | null =
+    group.municipalityCode && group.city && group.department
+      ? { code: group.municipalityCode, name: group.city, department: group.department }
+      : null
+  const [municipality, setMunicipality] = useState<MunicipalityValue | null>(initialMunicipality)
+  const [municipalityDirty, setMunicipalityDirty] = useState(false)
+
   const previewPhoto = removePhoto ? null : (newPhotoBase64 ?? group.photoBase64)
   const isValid = name.trim().length >= 2 && name.trim().length <= 80
 
@@ -53,6 +63,8 @@ export function GroupEditModal({ visible, onClose, group, onSave }: GroupEditMod
     setNewPhotoBase64(undefined)
     setRemovePhoto(false)
     setErrorText(null)
+    setMunicipality(initialMunicipality)
+    setMunicipalityDirty(false)
   }
 
   const handleClose = () => {
@@ -89,6 +101,7 @@ export function GroupEditModal({ visible, onClose, group, onSave }: GroupEditMod
       name: name.trim(),
       ...(removePhoto ? { removePhoto: true } : {}),
       ...(!removePhoto && newPhotoBase64 !== undefined ? { photoBase64: newPhotoBase64 } : {}),
+      ...(municipalityDirty ? { municipalityCode: municipality?.code ?? null } : {}),
     })
     setSaving(false)
 
@@ -243,6 +256,19 @@ export function GroupEditModal({ visible, onClose, group, onSave }: GroupEditMod
                   paddingVertical: 10,
                 }}
                 style={{ color: "#FFFFFF", fontSize: 15 }}
+              />
+            </YStack>
+
+            <YStack gap={6}>
+              <Text color="rgba(255,255,255,0.75)" fontSize={12} fontWeight="700">
+                {translate("groupsScreen:zoneTitle")}
+              </Text>
+              <MunicipalityPicker
+                value={municipality}
+                onChange={(value) => {
+                  setMunicipality(value)
+                  setMunicipalityDirty(true)
+                }}
               />
             </YStack>
 

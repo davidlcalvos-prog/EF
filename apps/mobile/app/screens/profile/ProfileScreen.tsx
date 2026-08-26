@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Alert, Pressable, ScrollView, StatusBar } from "react-native"
+import { Ionicons } from "@expo/vector-icons"
 import { useFocusEffect } from "@react-navigation/native"
-import { Text, YStack } from "tamagui"
+import { Text, XStack, YStack } from "tamagui"
 
 import { useAuth } from "@/context/AuthContext"
 import {
@@ -60,7 +61,7 @@ function getUserColor(seed: string) {
 }
 
 export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
-  const { authEmail, authToken } = useAuth()
+  const { authEmail, authToken, authUserId } = useAuth()
   const userKey = authEmail ?? "guest"
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
   const {
@@ -155,6 +156,23 @@ export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
     }
   }, [])
 
+  // Mi zona (Fase L.0) — "Pereira, Risaralda" bajo la cabecera, best-effort.
+  const [myZone, setMyZone] = useState<string | null>(null)
+  useFocusEffect(
+    useCallback(() => {
+      if (!authUserId) return
+      let cancelled = false
+      api.getMyProfile(authUserId).then((result) => {
+        if (cancelled || result.kind !== "ok") return
+        const { city, department } = result.profile
+        setMyZone(city && department ? `${city}, ${department}` : null)
+      })
+      return () => {
+        cancelled = true
+      }
+    }, [authUserId]),
+  )
+
   const openTest = useCallback(
     (testId: PhysicalTestId) => {
       navigation.navigate("PhysicalTestSession", { testId })
@@ -220,6 +238,15 @@ export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
             onEditProfile={handleEditProfile}
             onEditAvatar={handlePickAvatar}
           />
+
+          {myZone ? (
+            <XStack alignItems="center" gap={6} alignSelf="center" marginTop={-8}>
+              <Ionicons name="location-outline" size={14} color={eliteForgeColors.emerald} />
+              <Text color="rgba(255,255,255,0.65)" fontSize={13}>
+                {myZone}
+              </Text>
+            </XStack>
+          ) : null}
 
           <ProfilePersonalCard age={profile.age} bio={profile.bio} />
 
