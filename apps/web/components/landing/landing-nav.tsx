@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Menu, X } from 'lucide-react'
 import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
@@ -14,9 +14,26 @@ const navLinks = [
 
 export function LandingNav() {
   const [open, setOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Transparente sobre el hero; vidrio oscuro con blur al scrollear (o con el
+  // menú móvil abierto) para integrarse con el fondo de la landing.
+  const surface =
+    scrolled || open
+      ? 'border-b border-white/10 bg-black/30 backdrop-blur-xl'
+      : 'border-b border-transparent bg-transparent'
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-md">
+    <header
+      className={`fixed inset-x-0 top-0 z-50 transition-[background-color,border-color] duration-300 ${surface}`}
+    >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         <Link href="/" className="inline-flex items-center">
           <Logo />
@@ -66,7 +83,7 @@ export function LandingNav() {
       </div>
 
       {open && (
-        <div className="border-t border-border/60 bg-background px-4 py-4 md:hidden">
+        <div className="border-t border-white/10 bg-black/60 px-4 py-4 backdrop-blur-xl md:hidden">
           <nav className="flex flex-col gap-4">
             {navLinks.map((link) => (
               <a
