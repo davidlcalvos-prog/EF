@@ -60,6 +60,8 @@ export const MESSAGE_PATTERNS = {
     REQUEST: 'user_friendships.request',
     ACCEPT: 'user_friendships.accept',
     REMOVE: 'user_friendships.remove',
+    SEARCH: 'user_friendships.search',
+    SUGGESTIONS: 'user_friendships.suggestions',
   },
   MATCHES: {
     CREATE: 'matches.create',

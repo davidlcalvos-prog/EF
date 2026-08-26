@@ -39,6 +39,17 @@ export class UserFriendshipsProxyController {
     return this.friendshipsProxy.list(user.sub, resolved);
   }
 
+  /** Antes que las rutas con :id para que 'search'/'suggestions' no matcheen como parámetro. */
+  @Get('search')
+  search(@CurrentUser() user: AuthTokenPayload, @Query('q') q?: string) {
+    return this.friendshipsProxy.search(user.sub, q ?? '');
+  }
+
+  @Get('suggestions')
+  suggestions(@CurrentUser() user: AuthTokenPayload) {
+    return this.friendshipsProxy.suggestions(user.sub);
+  }
+
   @Get('status/:userId')
   getStatus(@Param('userId') userId: string, @CurrentUser() user: AuthTokenPayload) {
     return this.friendshipsProxy.getStatus(user.sub, userId);

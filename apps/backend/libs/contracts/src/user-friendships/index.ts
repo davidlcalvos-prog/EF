@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsUUID } from 'class-validator';
+import { IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export type UserFriendshipStatus = 'pending' | 'accepted';
 
@@ -71,6 +71,33 @@ export class UserFriendshipActionPayload {
   @IsUUID()
   friendshipId!: string;
 
+  @IsUUID()
+  requesterId!: string;
+}
+
+/** Resultado de búsqueda de jugadores (Fase 10.1). Nunca incluye el email. */
+export interface PlayerSearchResultDto {
+  user: UserFriendshipDto['user'];
+  friendship: FriendshipStatusDto;
+}
+
+export interface FriendSuggestionDto {
+  user: UserFriendshipDto['user'];
+  /** por qué se sugiere: "3 amigos en común", "Compañero en Los Halcones"… */
+  reason: 'mutual_friends' | 'same_group' | 'friend_group';
+  mutualFriends: number;
+  groupName: string | null;
+}
+
+export class SearchPlayersPayload {
+  @IsUUID()
+  requesterId!: string;
+
+  @IsString()
+  query!: string;
+}
+
+export class FriendSuggestionsPayload {
   @IsUUID()
   requesterId!: string;
 }
