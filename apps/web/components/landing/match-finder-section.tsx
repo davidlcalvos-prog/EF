@@ -3,22 +3,40 @@ import { MapPin, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 /**
- * Silueta simplificada de Colombia (viewBox 400x500), trazada a partir de
- * puntos geográficos reales (Guajira, frontera con Venezuela/Brasil, trapecio
- * amazónico, costa Pacífica, golfo de Urabá y costa Caribe).
+ * Silueta de Colombia (viewBox 360x500), proyección equirectangular
+ * x=(lon+79.5)·28, y=(12.8−lat)·28, trazada con puntos de frontera reales:
+ * Guajira (Punta Gallinas/Espada), serranía de Perijá, Catatumbo, Arauca,
+ * Puerto Carreño y el Orinoco, Piedra del Cocuy, frontera con Brasil,
+ * trapecio amazónico (Leticia), Putumayo, frontera con Ecuador, costa
+ * Pacífica, Darién/Cabo Tiburón, golfo de Urabá y costa Caribe.
  */
 const COLOMBIA_PATH =
-  'M228 4 L237 22 L210 42 L189 92 L177 132 L276 157 L297 182 L351 179 ' +
-  'L357 224 L369 319 L282 305 L276 358 L279 470 L255 459 L171 392 ' +
-  'L87 342 L9 314 L45 241 L54 179 L72 129 L54 109 L111 67 L132 45 ' +
-  'L150 36 L186 31 Z'
+  'M219 10 L236 20 L229 28 L206 48 L195 70 L185 94 L199 113 L197 133 ' +
+  'L209 153 L244 160 L281 186 L336 185 L326 217 L340 251 L330 279 ' +
+  'L347 301 L353 323 L325 332 L288 342 L270 342 L267 372 L277 398 ' +
+  'L267 477 L251 466 L213 426 L165 395 L132 364 L87 347 L56 336 ' +
+  'L18 318 L21 302 L45 274 L60 251 L59 210 L54 204 L60 168 L45 160 ' +
+  'L64 134 L60 116 L73 133 L77 118 L87 111 L112 67 L130 49 L148 43 ' +
+  'L185 35 Z'
 
-/** Ciudades (coordenadas del viewBox 400x500 → % del contenedor del mapa). */
-const CITY_PINS = [
-  { name: 'Bogotá', left: '38.3%', top: '44.8%', main: true },
-  { name: 'Medellín', left: '27%', top: '35.8%' },
-  { name: 'Cali', left: '20.3%', top: '51.6%' },
-  { name: 'Barranquilla', left: '33%', top: '9%' },
+/**
+ * Ciudades con su lon/lat proyectada al viewBox 360x500 (→ % del contenedor).
+ * labelSide evita que las etiquetas cercanas se pisen entre sí.
+ */
+const CITY_PINS: {
+  name: string
+  left: string
+  top: string
+  main?: boolean
+  labelSide: 'left' | 'right'
+}[] = [
+  { name: 'Bogotá', left: '42.2%', top: '45.9%', main: true, labelSide: 'right' },
+  { name: 'Medellín', left: '30.6%', top: '36.7%', labelSide: 'left' },
+  { name: 'Cali', left: '23.1%', top: '52.4%', labelSide: 'left' },
+  { name: 'Barranquilla', left: '36.5%', top: '10.1%', labelSide: 'right' },
+  { name: 'Cartagena', left: '31.1%', top: '13.5%', labelSide: 'left' },
+  { name: 'Bucaramanga', left: '49.6%', top: '31.7%', labelSide: 'right' },
+  { name: 'Pereira', left: '29.6%', top: '44.7%', labelSide: 'left' },
 ]
 
 export function MatchFinderSection() {
@@ -46,9 +64,9 @@ export function MatchFinderSection() {
               conserva la proporción del viewBox para que los % de los pines
               coincidan con las coordenadas del path. */}
           <div className="absolute inset-0 flex items-center justify-center p-6">
-            <div className="relative aspect-[4/5] max-h-full">
+            <div className="relative aspect-[360/500] max-h-full">
               <svg
-                viewBox="0 0 400 500"
+                viewBox="0 0 360 500"
                 className="h-full w-full"
                 aria-label="Mapa de Colombia con partidos disponibles"
               >
@@ -75,9 +93,12 @@ export function MatchFinderSection() {
                   key={pin.name}
                   className="absolute -translate-x-1/2 -translate-y-full"
                   style={{ top: pin.top, left: pin.left }}
-                  title={pin.name}
                 >
-                  <span className="relative flex h-8 w-8 items-center justify-center">
+                  <span
+                    className={`relative flex items-center justify-center ${
+                      pin.main ? 'h-8 w-8' : 'h-5 w-5'
+                    }`}
+                  >
                     {pin.main && (
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/40" />
                     )}
@@ -85,9 +106,21 @@ export function MatchFinderSection() {
                       className={
                         pin.main
                           ? 'relative h-8 w-8 fill-primary/30 text-primary'
-                          : 'relative h-6 w-6 text-primary/70'
+                          : 'relative h-5 w-5 text-primary/70'
                       }
                     />
+                    <span
+                      className={`absolute top-1/2 -translate-y-1/2 whitespace-nowrap font-heading text-[10px] font-semibold uppercase tracking-wide ${
+                        pin.main ? 'text-foreground' : 'text-foreground/75'
+                      } ${
+                        pin.labelSide === 'right'
+                          ? 'left-full ml-1.5'
+                          : 'right-full mr-1.5'
+                      }`}
+                      style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}
+                    >
+                      {pin.name}
+                    </span>
                   </span>
                 </div>
               ))}
