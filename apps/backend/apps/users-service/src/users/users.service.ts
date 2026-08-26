@@ -34,6 +34,7 @@ export class UsersService {
       city: profile.city,
       department: profile.department,
       municipalityCode: profile.municipalityCode,
+      notifyNearbyGuestRequests: profile.notifyNearbyGuestRequests,
       createdAt: profile.createdAt,
     };
   }
@@ -72,6 +73,12 @@ export class UsersService {
           longitude: municipality.lng,
         });
       }
+    }
+    if (dto.notifyNearbyGuestRequests !== undefined) {
+      await this.profileRepository.updateNotificationPreference(
+        id,
+        dto.notifyNearbyGuestRequests,
+      );
     }
     if (dto.removeAvatar) {
       await this.profileRepository.updateAvatar(id, null);

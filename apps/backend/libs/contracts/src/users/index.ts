@@ -28,6 +28,8 @@ export interface UserProfile {
   city: string | null;
   department: string | null;
   municipalityCode: string | null;
+  /** Fase 11: opt-in de push de vacantes de comodín cerca de su zona. */
+  notifyNearbyGuestRequests: boolean;
   createdAt: Date;
 }
 
@@ -63,6 +65,11 @@ export class UpdateProfileDto {
   @ValidateIf((dto: UpdateProfileDto) => dto.municipalityCode !== null)
   @Matches(/^\d{5}$/, { message: 'municipalityCode must be a 5-digit DANE code' })
   municipalityCode?: string | null;
+
+  /** Fase 11: opt-in de push de vacantes de comodín cerca de su zona. */
+  @IsOptional()
+  @IsBoolean()
+  notifyNearbyGuestRequests?: boolean;
 }
 
 export class UpdatePreferencesDto {

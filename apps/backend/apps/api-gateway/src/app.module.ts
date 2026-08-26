@@ -13,6 +13,7 @@ import { UserFriendshipsProxyModule } from './user-friendships/user-friendships-
 import { GeoModule } from './geo/geo.module';
 import { GroupsProxyModule } from './groups/groups-proxy.module';
 import { MatchesProxyModule } from './matches/matches-proxy.module';
+import { MatchGuestRequestsProxyModule } from './match-guest-requests/match-guest-requests-proxy.module';
 import { ReservationsProxyModule } from './reservations/reservations-proxy.module';
 import { FeedProxyModule } from './feed/feed-proxy.module';
 import { PushTokensProxyModule } from './push-tokens/push-tokens-proxy.module';
@@ -45,6 +46,7 @@ import { HealthController } from './health/health.controller';
     UserFriendshipsProxyModule,
     GeoModule,
     MatchesProxyModule,
+    MatchGuestRequestsProxyModule,
     ReservationsProxyModule,
     FeedProxyModule,
     PushTokensProxyModule,

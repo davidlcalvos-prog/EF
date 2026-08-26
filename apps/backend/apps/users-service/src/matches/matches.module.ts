@@ -11,5 +11,7 @@ import { VsMatchAlertsService } from './vs-match-alerts.service';
   imports: [GroupsModule, GroupFriendshipsModule, NotificationsModule],
   controllers: [MatchesController],
   providers: [MatchesService, MatchRepository, VsMatchAlertsService],
+  // MatchRepository: la usa MatchGuestRequestsModule (Fase 11) para countParticipants/isParticipant.
+  exports: [MatchRepository],
 })
 export class MatchesModule {}

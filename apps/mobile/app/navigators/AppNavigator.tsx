@@ -19,6 +19,7 @@ import { GroupFriendsScreen } from "@/screens/groups/GroupFriendsScreen"
 import { GroupsScreen } from "@/screens/groups/GroupsScreen"
 import { MatchDetailScreen } from "@/screens/matches/MatchDetailScreen"
 import { MatchesScreen } from "@/screens/matches/MatchesScreen"
+import { NearbyGuestRequestsScreen } from "@/screens/matches/NearbyGuestRequestsScreen"
 import { PhysicalTestSessionScreen } from "@/screens/profile/PhysicalTestSessionScreen"
 import { ProfileEditScreen } from "@/screens/profile/ProfileEditScreen"
 import { ProfileScreen } from "@/screens/profile/ProfileScreen"
@@ -71,6 +72,7 @@ const AppStack = () => {
           <Stack.Screen name="Friends" component={FriendsScreen} />
           <Stack.Screen name="Matches" component={MatchesScreen} />
           <Stack.Screen name="MatchDetail" component={MatchDetailScreen} />
+          <Stack.Screen name="NearbyGuestRequests" component={NearbyGuestRequestsScreen} />
           <Stack.Screen name="Reservations" component={ReservationsScreen} />
           <Stack.Screen name="ReservationDetail" component={ReservationDetailScreen} />
           <Stack.Screen name="Tournaments" component={TournamentsScreen} />

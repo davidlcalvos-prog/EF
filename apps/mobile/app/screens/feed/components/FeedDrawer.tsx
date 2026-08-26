@@ -12,7 +12,13 @@ import { eliteForgeColors } from "@/theme/eliteForgeColors"
 import { FeedAvatar } from "./FeedAvatar"
 
 export type FeedDrawerItemId =
-  "profile" | "groups" | "friends" | "matches" | "tournaments" | "reservations"
+  | "profile"
+  | "groups"
+  | "friends"
+  | "matches"
+  | "nearbyGuestRequests"
+  | "tournaments"
+  | "reservations"
 
 export interface FeedDrawerProps {
   onClose: () => void
@@ -29,6 +35,11 @@ const MENU_ITEMS: {
   { id: "groups", icon: "people-outline", labelKey: "feedDrawer:groups" },
   { id: "friends", icon: "people-outline", labelKey: "feedDrawer:friends" },
   { id: "matches", icon: "football-outline", labelKey: "feedDrawer:matches" },
+  {
+    id: "nearbyGuestRequests",
+    icon: "megaphone-outline",
+    labelKey: "feedDrawer:nearbyGuestRequests",
+  },
   { id: "tournaments", icon: "trophy-outline", labelKey: "feedDrawer:tournaments" },
   { id: "reservations", icon: "calendar-outline", labelKey: "feedDrawer:reservations" },
 ]
@@ -158,9 +169,11 @@ export function FeedDrawer({ onClose, onItemPress, onLogout }: FeedDrawerProps) 
                     ? translate("groupsScreen:title")
                     : item.id === "matches"
                       ? translate("matchesScreen:title")
-                      : item.id === "tournaments"
-                        ? translate("tournamentsScreen:title")
-                        : translate("reservationsScreen:title")
+                      : item.id === "nearbyGuestRequests"
+                        ? translate("matchesScreen:guestNearbyTitle")
+                        : item.id === "tournaments"
+                          ? translate("tournamentsScreen:title")
+                          : translate("reservationsScreen:title")
               }
               onPress={() => onItemPress(item.id)}
             />

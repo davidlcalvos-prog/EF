@@ -40,6 +40,8 @@ model User {
   groupMemberships        GroupMembership[]
   createdMatches          Match[]              @relation("MatchCreator")
   matchParticipations     MatchParticipant[]
+  openedGuestRequests     MatchGuestRequest[]     @relation("MatchGuestRequestRequester")
+  guestApplications       MatchGuestApplication[] @relation("MatchGuestApplicationUser")
   posts                   Post[]               @relation("PostAuthor")
   postLikes               PostLike[]           @relation("PostLikeUser")
   postComments            PostComment[]        @relation("PostCommentAuthor")
@@ -105,6 +107,10 @@ model Profile {
   latitude          Float?
   longitude         Float?
   locationUpdatedAt DateTime?
+
+  /// Fase 11: opt-in para recibir push de vacantes de comodín cerca de su
+  /// zona. Solo controla el push — listNearby() no depende de esto.
+  notifyNearbyGuestRequests Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -558,6 +564,9 @@ model Match {
   latitude  Float?
   longitude Float?
 
+  /// Vacantes de comodín publicadas para este partido (Fase 11).
+  guestRequests MatchGuestRequest[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -590,10 +599,66 @@ model MatchParticipant {
   team        MatchTeam?
   /// solo se usa en partidos `vs`; null en partidos `internal`.
   side        MatchSide?
+  /// Fase 11: true si entró como comodín (MatchGuestApplication aceptada) en
+  /// vez de ser miembro del grupo. Solo aplica a partidos internal.
+  isGuest     Boolean    @default(false)
 
   @@unique([matchId, userId])
   @@index([userId])
   @@map("match_participants")
+}
+
+/**
+ * Vacante de comodín publicada por el líder/vice de un partido `internal`
+ * `scheduled` al que le falta gente (Fase 11). Solo una `open` por partido a
+ * la vez (validado en el servicio, no con un constraint — cancelled/filled
+ * conviven en el historial).
+ */
+model MatchGuestRequest {
+  id          String                  @id @default(uuid()) @db.Uuid
+  matchId     String                  @db.Uuid
+  match       Match                   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  requestedBy String                  @db.Uuid
+  requester   User                    @relation("MatchGuestRequestRequester", fields: [requestedBy], references: [id], onDelete: Cascade)
+  /// Una de PlayerPositionId, o null = cualquier posición.
+  requestedPosition String?
+  radiusKm    Int                     @default(15)
+  status      MatchGuestRequestStatus @default(open)
+  /// scheduledAt del partido, o now()+6h si el partido no tiene hora.
+  expiresAt   DateTime
+  createdAt   DateTime                @default(now())
+
+  applications MatchGuestApplication[]
+
+  @@index([matchId])
+  @@map("match_guest_requests")
+}
+
+enum MatchGuestRequestStatus {
+  open
+  filled
+  expired
+  cancelled
+}
+
+model MatchGuestApplication {
+  id        String                       @id @default(uuid()) @db.Uuid
+  requestId String                       @db.Uuid
+  request   MatchGuestRequest            @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  userId    String                       @db.Uuid
+  user      User                         @relation("MatchGuestApplicationUser", fields: [userId], references: [id], onDelete: Cascade)
+  status    MatchGuestApplicationStatus  @default(pending)
+  createdAt DateTime                     @default(now())
+
+  @@unique([requestId, userId])
+  @@map("match_guest_applications")
+}
+
+enum MatchGuestApplicationStatus {
+  pending
+  accepted
+  rejected
+  withdrawn
 }
 
 /**

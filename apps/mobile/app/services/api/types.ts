@@ -264,6 +264,8 @@ export interface MatchParticipantApiDto {
   team: MatchTeamApi | null
   /** solo en partidos vs; null en internal. */
   side: MatchSideApi | null
+  /** Fase 11: true si entró como comodín aceptado, en vez de ser miembro del grupo. */
+  isGuest: boolean
 }
 
 export interface MatchApiDto {
@@ -321,6 +323,43 @@ export interface MatchSummaryApiDto {
   venueName: string | null
   venueText: string | null
   city: string | null
+  createdAt: string
+}
+
+/** Forma real de los datos de Comodín (Fase 11) — calcada de libs/contracts/src/match-guest-requests/index.ts del backend. */
+export type MatchGuestRequestStatusApi = "open" | "filled" | "expired" | "cancelled"
+export type MatchGuestApplicationStatusApi = "pending" | "accepted" | "rejected" | "withdrawn"
+
+export const MIN_GUEST_REQUEST_RADIUS_KM = 1
+export const MAX_GUEST_REQUEST_RADIUS_KM = 25
+export const DEFAULT_GUEST_REQUEST_RADIUS_KM = 15
+
+export interface MatchGuestRequestApiDto {
+  id: string
+  matchId: string
+  requestedPosition: PlayerPositionId | null
+  radiusKm: number
+  status: MatchGuestRequestStatusApi
+  expiresAt: string
+  match: {
+    originGroupName: string
+    venueName: string | null
+    city: string | null
+    scheduledAt: string | null
+    format: string
+  }
+  applicationsCount: number
+  /** Estado de la postulación propia, si el usuario que pide el listado tiene una. */
+  myApplicationStatus: "none" | MatchGuestApplicationStatusApi
+  /** Solo presente en el listado "cerca de mí" — distancia calculada server-side. */
+  distanceKm?: number
+}
+
+/** Ficha limitada del postulante — mismo shape que UserFriendshipApiDto["user"], nunca stats ni coordenadas. */
+export interface MatchGuestApplicationApiDto {
+  id: string
+  status: MatchGuestApplicationStatusApi
+  user: UserFriendshipApiDto["user"]
   createdAt: string
 }
 

@@ -75,6 +75,17 @@ export const MESSAGE_PATTERNS = {
     UPDATE_STATUS: 'matches.update_status',
     RANDOMIZE_TEAMS: 'matches.randomize_teams',
   },
+  MATCH_GUEST_REQUESTS: {
+    OPEN: 'match_guest_requests.open',
+    CANCEL: 'match_guest_requests.cancel',
+    LIST_NEARBY: 'match_guest_requests.list_nearby',
+    GET_FOR_MATCH: 'match_guest_requests.get_for_match',
+    APPLY: 'match_guest_requests.apply',
+    WITHDRAW: 'match_guest_requests.withdraw',
+    LIST_APPLICATIONS: 'match_guest_requests.list_applications',
+    ACCEPT: 'match_guest_requests.accept',
+    REJECT: 'match_guest_requests.reject',
+  },
   PUSH_TOKENS: {
     REGISTER: 'push_tokens.register',
     REMOVE: 'push_tokens.remove',

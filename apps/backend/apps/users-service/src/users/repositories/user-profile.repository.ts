@@ -13,6 +13,7 @@ export interface UserProfileRecord {
   city: string | null;
   department: string | null;
   municipalityCode: string | null;
+  notifyNearbyGuestRequests: boolean;
   createdAt: Date;
 }
 
@@ -110,11 +111,42 @@ export class UserProfileRepository {
     });
   }
 
+  /**
+   * Fase 11: coordenadas crudas para el cálculo de distancia server-side del
+   * comodín — nunca se devuelve en un DTO público (esa regla la respeta el
+   * llamador, no este método). Separado de `findById`/`UserProfileRecord`
+   * a propósito, para que agregar campos ahí nunca filtre lat/lng por error.
+   */
+  async findLocation(
+    userId: string,
+  ): Promise<{ latitude: number; longitude: number } | null> {
+    const profile = await this.prisma.profile.findUnique({
+      where: { userId },
+      select: { latitude: true, longitude: true },
+    });
+    if (!profile || profile.latitude == null || profile.longitude == null) {
+      return null;
+    }
+    return { latitude: profile.latitude, longitude: profile.longitude };
+  }
+
+  /** Fase 11: preferencia de push de comodín (no valida ubicación — la UI la gatea). */
+  async updateNotificationPreference(
+    userId: string,
+    notifyNearbyGuestRequests: boolean,
+  ): Promise<void> {
+    await this.prisma.profile.update({
+      where: { userId },
+      data: { notifyNearbyGuestRequests },
+    });
+  }
+
   private toRecord(profile: {
     avatarBase64: string | null;
     city: string | null;
     department: string | null;
     municipalityCode: string | null;
+    notifyNearbyGuestRequests: boolean;
     createdAt: Date;
     user: { id: string; email: string; firstname: string; lastname: string };
   }): UserProfileRecord {
@@ -130,6 +162,7 @@ export class UserProfileRepository {
       city: profile.city,
       department: profile.department,
       municipalityCode: profile.municipalityCode,
+      notifyNearbyGuestRequests: profile.notifyNearbyGuestRequests,
       createdAt: profile.createdAt,
     };
   }
