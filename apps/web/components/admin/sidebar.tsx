@@ -10,107 +10,122 @@ import {
   Trophy,
   ChartNoAxesCombined,
   Medal,
+  type LucideIcon,
 } from 'lucide-react'
 import { Logo } from '@/components/logo'
 import { AdminLogoutButton } from '@/components/admin/logout-button'
 import type { AdminRole } from '@/lib/admin/roles'
 
+interface NavItem {
+  href: string
+  label: string
+  icon: LucideIcon
+  dataNav?: string
+}
+
+interface NavGroup {
+  label: string
+  items: NavItem[]
+}
+
+function courtNavGroups(showCopaEliteForge: boolean): NavGroup[] {
+  return [
+    {
+      label: 'Operación',
+      items: [
+        { href: '/admin', label: 'Resumen', icon: LayoutDashboard },
+        { href: '/admin/reservas', label: 'Reservas', icon: CalendarDays },
+      ],
+    },
+    {
+      label: 'Mi complejo',
+      items: [{ href: '/admin/mi-cancha', label: 'Mi cancha', icon: Building2 }],
+    },
+    {
+      label: 'Competencia',
+      items: [
+        { href: '/admin/torneos', label: 'Torneos', icon: Trophy },
+        ...(showCopaEliteForge
+          ? [
+              {
+                href: '/admin/copa-elite-forge',
+                label: 'Copa Elite Forge',
+                icon: Medal,
+              },
+            ]
+          : []),
+      ],
+    },
+    {
+      label: 'Análisis',
+      items: [
+        {
+          href: '/admin/analiticas',
+          label: 'Analíticas',
+          icon: ChartNoAxesCombined,
+          dataNav: 'analiticas',
+        },
+      ],
+    },
+  ]
+}
+
+const adminNavGroups: NavGroup[] = [
+  {
+    label: 'General',
+    items: [
+      { href: '/admin', label: 'Resumen', icon: LayoutDashboard },
+      { href: '/admin/metricas', label: 'Métricas', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Competencia',
+    items: [
+      {
+        href: '/admin/campeonatos-elite-forge',
+        label: 'Campeonatos Elite Forge',
+        icon: Medal,
+      },
+    ],
+  },
+]
+
+function isActive(pathname: string, href: string) {
+  return href === '/admin' ? pathname === '/admin' : pathname.startsWith(href)
+}
+
 function linkClass(active: boolean, compact?: boolean) {
   const base = compact
     ? 'inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors'
     : 'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors'
-  return active
+  if (!active) {
+    return `${base} text-muted-foreground hover:bg-secondary/60 hover:text-foreground`
+  }
+  // La barra izquierda de 3 px se dibuja con sombra interna para no mover el layout.
+  return compact
     ? `${base} bg-primary/15 text-primary`
-    : `${base} text-muted-foreground hover:bg-secondary/60 hover:text-foreground`
+    : `${base} bg-primary/15 text-primary shadow-[inset_3px_0_0_0_var(--primary)]`
 }
 
-function CourtNav({
+function NavLink({
+  item,
   pathname,
   compact,
-  showCopaEliteForge,
 }: {
+  item: NavItem
   pathname: string
   compact?: boolean
-  showCopaEliteForge: boolean
 }) {
-  const icon = compact ? 'h-4 w-4' : 'h-5 w-5'
-  const is = (href: string) =>
-    href === '/admin' ? pathname === '/admin' : pathname.startsWith(href)
-
+  const Icon = item.icon
   return (
-    <>
-      <Link href="/admin" className={linkClass(is('/admin'), compact)}>
-        <LayoutDashboard className={icon} />
-        Resumen
-      </Link>
-      <Link
-        href="/admin/reservas"
-        className={linkClass(is('/admin/reservas'), compact)}
-      >
-        <CalendarDays className={icon} />
-        Reservas
-      </Link>
-      <Link
-        href="/admin/mi-cancha"
-        className={linkClass(is('/admin/mi-cancha'), compact)}
-      >
-        <Building2 className={icon} />
-        Mi cancha
-      </Link>
-      <Link
-        href="/admin/analiticas"
-        className={linkClass(is('/admin/analiticas'), compact)}
-        data-nav="analiticas"
-      >
-        <ChartNoAxesCombined className={icon} />
-        Analíticas
-      </Link>
-      <Link
-        href="/admin/torneos"
-        className={linkClass(is('/admin/torneos'), compact)}
-      >
-        <Trophy className={icon} />
-        Torneos
-      </Link>
-      {showCopaEliteForge && (
-        <Link
-          href="/admin/copa-elite-forge"
-          className={linkClass(is('/admin/copa-elite-forge'), compact)}
-        >
-          <Medal className={icon} />
-          Copa Elite Forge
-        </Link>
-      )}
-    </>
-  )
-}
-
-function AdminNav({ pathname, compact }: { pathname: string; compact?: boolean }) {
-  const icon = compact ? 'h-4 w-4' : 'h-5 w-5'
-  const is = (href: string) =>
-    href === '/admin' ? pathname === '/admin' : pathname.startsWith(href)
-
-  return (
-    <>
-      <Link href="/admin" className={linkClass(is('/admin'), compact)}>
-        <LayoutDashboard className={icon} />
-        Resumen
-      </Link>
-      <Link
-        href="/admin/metricas"
-        className={linkClass(is('/admin/metricas'), compact)}
-      >
-        <BarChart3 className={icon} />
-        Métricas
-      </Link>
-      <Link
-        href="/admin/campeonatos-elite-forge"
-        className={linkClass(is('/admin/campeonatos-elite-forge'), compact)}
-      >
-        <Medal className={icon} />
-        Campeonatos Elite Forge
-      </Link>
-    </>
+    <Link
+      href={item.href}
+      className={linkClass(isActive(pathname, item.href), compact)}
+      data-nav={item.dataNav}
+    >
+      <Icon className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
+      {item.label}
+    </Link>
   )
 }
 
@@ -124,6 +139,8 @@ export function AdminSidebar({
 }) {
   const pathname = usePathname()
   const isAdmin = role === 'Administrador'
+  const groups = isAdmin ? adminNavGroups : courtNavGroups(showCopaEliteForge)
+  const roleLabel = isAdmin ? 'Administrador' : 'Dueño de cancha'
 
   return (
     <>
@@ -135,10 +152,10 @@ export function AdminSidebar({
           <AdminLogoutButton />
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-3">
-          {isAdmin ? (
-            <AdminNav pathname={pathname} compact />
-          ) : (
-            <CourtNav pathname={pathname} compact showCopaEliteForge={showCopaEliteForge} />
+          {groups.flatMap((group) =>
+            group.items.map((item) => (
+              <NavLink key={item.href} item={item} pathname={pathname} compact />
+            )),
           )}
         </nav>
       </div>
@@ -149,21 +166,24 @@ export function AdminSidebar({
             <Logo />
           </Link>
           <p className="mt-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-primary">
-            Portal Admin
+            {roleLabel}
           </p>
         </div>
 
-        <nav className="mt-6 flex flex-1 flex-col gap-1 overflow-y-auto">
-          {isAdmin ? (
-            <AdminNav pathname={pathname} />
-          ) : (
-            <CourtNav pathname={pathname} showCopaEliteForge={showCopaEliteForge} />
-          )}
+        <nav className="mt-4 flex flex-1 flex-col overflow-y-auto">
+          {groups.map((group) => (
+            <div key={group.label} className="mb-4">
+              <p className="mb-1 px-3 text-[10px] uppercase tracking-widest text-muted-foreground">
+                {group.label}
+              </p>
+              <div className="flex flex-col gap-1">
+                {group.items.map((item) => (
+                  <NavLink key={item.href} item={item} pathname={pathname} />
+                ))}
+              </div>
+            </div>
+          ))}
         </nav>
-
-        <div className="border-t border-border pt-2">
-          <AdminLogoutButton />
-        </div>
       </aside>
     </>
   )

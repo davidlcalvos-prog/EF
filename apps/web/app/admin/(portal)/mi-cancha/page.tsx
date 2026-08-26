@@ -26,6 +26,10 @@ export default async function MiCanchaPage() {
       <AdminPageHeader
         title="Mi cancha"
         subtitle="Configura inventario por tamaño (6/8/11), tarifas y servicios del complejo."
+        breadcrumbs={[
+          { label: 'Resumen', href: '/admin' },
+          { label: 'Mi cancha' },
+        ]}
       />
 
       {loadError && (

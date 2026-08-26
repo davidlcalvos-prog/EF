@@ -21,6 +21,10 @@ export default async function AdminMetricasPage() {
       <AdminPageHeader
         title="Métricas"
         subtitle="Panel para empresarios e inversores. Conectaremos datos agregados de jugadores y partidos."
+        breadcrumbs={[
+          { label: 'Resumen', href: '/admin' },
+          { label: 'Métricas' },
+        ]}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

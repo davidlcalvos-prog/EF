@@ -65,6 +65,12 @@ export default function AdminLoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
+        <Link
+          href="/"
+          className="mb-6 inline-block text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          ← Volver a Elite Forge
+        </Link>
         <div className="mb-8 text-center">
           <p className="font-heading text-xs font-medium uppercase tracking-[0.3em] text-primary">
             Elite Forge Admin
@@ -117,17 +123,13 @@ export default function AdminLoginPage() {
         </form>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
-          ¿Aún no tienes cuenta?{' '}
-          <Link
-            href="/auth/sign-up"
+          ¿Todavía no tenés cuenta de dueño de cancha? Escribinos a{' '}
+          <a
+            href="mailto:canchas@eliteforge.app"
             className="font-medium text-primary hover:underline"
           >
-            Regístrate
-          </Link>
-          {' · '}
-          <Link href="/" className="font-medium text-primary hover:underline">
-            Volver a la web pública
-          </Link>
+            canchas@eliteforge.app
+          </a>
         </p>
       </div>
     </div>

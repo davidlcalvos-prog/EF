@@ -153,6 +153,12 @@ export function TournamentsDashboard({
             ? 'Torneos oficiales de Elite Forge: los grupos se inscriben con jugadores reales, la cancha se asigna al azar entre las canchas sintéticas registradas.'
             : 'Crea torneos 6/8/11, agenda días/horarios en calendario, registra equipos y rankings.'
         }
+        breadcrumbs={[
+          { label: 'Resumen', href: '/admin' },
+          {
+            label: isEliteForge ? 'Campeonatos Elite Forge' : 'Torneos',
+          },
+        ]}
       />
 
       {loadError && (
