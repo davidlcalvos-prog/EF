@@ -99,6 +99,8 @@ export class ProfileStatsService {
       name: profile.name,
       avatarBase64: profile.avatarBase64,
       favoritePosition: (favoritePosition as PlayerPositionId | null) ?? null,
+      city: profile.city,
+      department: profile.department,
       stats,
     };
   }

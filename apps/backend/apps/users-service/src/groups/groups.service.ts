@@ -18,14 +18,37 @@ import {
   UpdateGroupPayload,
   UpdateMemberRolePayload,
 } from '@ef/contracts';
+import { findMunicipality } from '@ef/common';
 import { GroupRepository } from './repositories/group.repository';
 
 @Injectable()
 export class GroupsService {
   constructor(private readonly groupRepository: GroupRepository) {}
 
-  create(payload: CreateGroupPayload): Promise<GroupDetailDto> {
-    return this.groupRepository.create(payload.creatorId, payload.name);
+  async create(payload: CreateGroupPayload): Promise<GroupDetailDto> {
+    // Fase L.0: zona explícita, o heredada del creador si la tiene.
+    let location = null;
+    if (payload.municipalityCode) {
+      location = this.resolveMunicipality(payload.municipalityCode);
+    } else {
+      location = await this.groupRepository.findCreatorLocation(payload.creatorId);
+    }
+    return this.groupRepository.create(payload.creatorId, payload.name, location);
+  }
+
+  /** Fase L.0: resuelve la zona server-side; nunca coordenadas del cliente. */
+  private resolveMunicipality(code: string) {
+    const municipality = findMunicipality(code);
+    if (!municipality) {
+      throw new BadRequestException(`Unknown municipalityCode ${code}`);
+    }
+    return {
+      municipalityCode: municipality.code,
+      city: municipality.name,
+      department: municipality.department,
+      latitude: municipality.lat,
+      longitude: municipality.lng,
+    };
   }
 
   listMine(userId: string): Promise<GroupSummaryDto[]> {
@@ -122,10 +145,21 @@ export class GroupsService {
       nextPhotoBase64 = photoBase64;
     }
 
-    await this.groupRepository.update(groupId, {
-      name: trimmedName,
-      ...(nextPhotoBase64 !== undefined ? { photoBase64: nextPhotoBase64 } : {}),
-    });
+    const location =
+      payload.municipalityCode === undefined
+        ? undefined
+        : payload.municipalityCode === null
+          ? null
+          : this.resolveMunicipality(payload.municipalityCode);
+
+    await this.groupRepository.update(
+      groupId,
+      {
+        name: trimmedName,
+        ...(nextPhotoBase64 !== undefined ? { photoBase64: nextPhotoBase64 } : {}),
+      },
+      location,
+    );
     return this.groupRepository.findDetail(groupId) as Promise<GroupDetailDto>;
   }
 

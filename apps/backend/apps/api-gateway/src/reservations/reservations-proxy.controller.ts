@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthTokenPayload, CreateReservationDto } from '@ef/contracts';
 import { CurrentUser } from '../auth/decorators';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -15,8 +24,8 @@ export class ReservationsProxyController {
   constructor(private readonly reservationsProxy: ReservationsProxyService) {}
 
   @Get('venues')
-  listVenues() {
-    return this.reservationsProxy.listPublicVenues();
+  listVenues(@Query('municipalityCode') municipalityCode?: string) {
+    return this.reservationsProxy.listPublicVenues(municipalityCode);
   }
 
   @Post('my-reservations')

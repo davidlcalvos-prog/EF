@@ -8,6 +8,7 @@ import {
   Matches,
   MaxLength,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 import { PLAYER_POSITION_IDS, PlayerPositionId } from '../profile-stats';
 
@@ -23,6 +24,10 @@ export interface UserProfile {
   email: string;
   name: string;
   avatarBase64: string | null;
+  /** Zona (Fase L.0). Nunca se exponen lat/lng de personas. */
+  city: string | null;
+  department: string | null;
+  municipalityCode: string | null;
   createdAt: Date;
 }
 
@@ -49,6 +54,15 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsBoolean()
   removeAvatar?: boolean;
+
+  /**
+   * Código DANE del municipio (Fase L.0); null limpia la zona. El servidor
+   * resuelve city/department/lat/lng del dato estático — nunca del cliente.
+   */
+  @IsOptional()
+  @ValidateIf((dto: UpdateProfileDto) => dto.municipalityCode !== null)
+  @Matches(/^\d{5}$/, { message: 'municipalityCode must be a 5-digit DANE code' })
+  municipalityCode?: string | null;
 }
 
 export class UpdatePreferencesDto {

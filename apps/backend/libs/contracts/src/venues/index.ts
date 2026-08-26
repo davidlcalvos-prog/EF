@@ -2,11 +2,15 @@ import {
   IsDateString,
   IsEnum,
   IsInt,
+  IsLatitude,
+  IsLongitude,
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 
 export type ReservationStatusDto = 'pending' | 'confirmed' | 'cancelled';
@@ -18,6 +22,9 @@ export type VenueSurfaceTypeDto =
   | 'dirt_gravel'
   | 'futsal_concrete';
 
+/** Origen de las coordenadas de una cancha (Fase L.0). */
+export type LocationSourceDto = 'municipality' | 'pin';
+
 export interface VenueDto {
   id: string;
   ownerId: string;
@@ -27,6 +34,13 @@ export interface VenueDto {
   availability: Record<string, unknown>;
   /** Null hasta que el owner lo complete desde "Mi cancha" — sin migración de datos existentes. */
   surfaceType: VenueSurfaceTypeDto | null;
+  /** Ubicación (Fase L.0). Una cancha es pública: lat/lng sí se exponen. */
+  municipalityCode: string | null;
+  city: string | null;
+  department: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  locationSource: LocationSourceDto | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -52,6 +66,24 @@ export class UpsertVenueDto {
   @IsOptional()
   @IsEnum(['natural_grass', 'synthetic_grass', 'dirt_gravel', 'futsal_concrete'])
   surfaceType?: VenueSurfaceTypeDto;
+
+  /** Código DANE (Fase L.0); null limpia la ubicación. */
+  @IsOptional()
+  @ValidateIf((dto: UpsertVenueDto) => dto.municipalityCode !== null)
+  @Matches(/^\d{5}$/, { message: 'municipalityCode must be a 5-digit DANE code' })
+  municipalityCode?: string | null;
+
+  /**
+   * Pin preciso del dueño (solo canchas aceptan coordenadas del cliente).
+   * Requiere municipalityCode y debe estar a <50 km del centroide.
+   */
+  @IsOptional()
+  @IsLatitude()
+  latitude?: number;
+
+  @IsOptional()
+  @IsLongitude()
+  longitude?: number;
 }
 
 export interface ReservationDto {
@@ -98,6 +130,19 @@ export interface PublicVenueDto {
   address: string | null;
   pricePerHourCents: number;
   availability: Record<string, unknown>;
+  /** Ubicación (Fase L.0) — pública para canchas. */
+  municipalityCode: string | null;
+  city: string | null;
+  department: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+export class ListPublicVenuesPayload {
+  /** Filtro opcional por municipio (Fase L.0, lo usa la sede de partidos). */
+  @IsOptional()
+  @Matches(/^\d{5}$/)
+  municipalityCode?: string;
 }
 
 export class CreateReservationDto {

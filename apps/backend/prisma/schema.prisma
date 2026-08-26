@@ -97,6 +97,15 @@ model Profile {
    */
   avatarBase64 String? @db.Text
 
+  /// Ubicación (Fase L.0): municipio DANE como unidad base. lat/lng son el
+  /// centroide del municipio, resueltos server-side — nunca del cliente.
+  municipalityCode  String?
+  city              String?
+  department        String?
+  latitude          Float?
+  longitude         Float?
+  locationUpdatedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -187,12 +196,30 @@ model Venue {
   tournaments               Tournament[]
   /// Partidos de Copa Elite Forge (kind=elite_forge) asignados a esta cancha al azar.
   assignedTournamentMatches TournamentMatch[] @relation("TournamentMatchVenue")
+  /// Partidos con sede en esta cancha (Fase L.0).
+  hostedMatches             Match[]           @relation("MatchVenue")
+
+  /// Ubicación (Fase L.0): centroide del municipio, o pin preciso del dueño
+  /// (locationSource=pin, validado a <50 km del centroide).
+  municipalityCode  String?
+  city              String?
+  department        String?
+  latitude          Float?
+  longitude         Float?
+  locationUpdatedAt DateTime?
+  locationSource    LocationSource?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([ownerId])
+  @@index([latitude, longitude])
   @@map("venues")
+}
+
+enum LocationSource {
+  municipality
+  pin
 }
 
 model Reservation {
@@ -381,6 +408,14 @@ model Group {
   creator     User              @relation("GroupCreator", fields: [creatorId], references: [id], onDelete: Cascade)
   members     GroupMembership[]
 
+  /// Ubicación (Fase L.0): centroide del municipio, resuelto server-side.
+  municipalityCode  String?
+  city              String?
+  department        String?
+  latitude          Float?
+  longitude         Float?
+  locationUpdatedAt DateTime?
+
   matchesAsOrigin   Match[] @relation("MatchOriginGroup")
   matchesAsOpponent Match[] @relation("MatchOpponentGroup")
 
@@ -515,11 +550,20 @@ model Match {
   alertSent1h       Boolean            @default(false)
   alertSent30m      Boolean            @default(false)
 
+  /// Sede del partido (Fase L.0): cancha de la app (venueId) o texto libre.
+  /// lat/lng se copian de la cancha, o del originGroup si no hay sede.
+  venueId   String? @db.Uuid
+  venue     Venue?  @relation("MatchVenue", fields: [venueId], references: [id], onDelete: SetNull)
+  venueText String?
+  latitude  Float?
+  longitude Float?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([originGroupId])
   @@index([opponentGroupId])
+  @@index([latitude, longitude])
   @@map("matches")
 }
 

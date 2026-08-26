@@ -10,6 +10,7 @@ import {
   UserPreferences,
   UserProfile,
 } from '@ef/contracts';
+import { findMunicipality } from '@ef/common';
 import { UserProfileRepository } from './repositories/user-profile.repository';
 import { UserPreferencesRepository } from './repositories/user-preferences.repository';
 
@@ -30,6 +31,9 @@ export class UsersService {
       email: profile.email,
       name: profile.name,
       avatarBase64: profile.avatarBase64,
+      city: profile.city,
+      department: profile.department,
+      municipalityCode: profile.municipalityCode,
       createdAt: profile.createdAt,
     };
   }
@@ -49,6 +53,25 @@ export class UsersService {
         id,
         dto.favoritePosition,
       );
+    }
+    if (dto.municipalityCode !== undefined) {
+      if (dto.municipalityCode === null) {
+        await this.profileRepository.updateLocation(id, null);
+      } else {
+        const municipality = findMunicipality(dto.municipalityCode);
+        if (!municipality) {
+          throw new BadRequestException(
+            `Unknown municipalityCode ${dto.municipalityCode}`,
+          );
+        }
+        await this.profileRepository.updateLocation(id, {
+          municipalityCode: municipality.code,
+          city: municipality.name,
+          department: municipality.department,
+          latitude: municipality.lat,
+          longitude: municipality.lng,
+        });
+      }
     }
     if (dto.removeAvatar) {
       await this.profileRepository.updateAvatar(id, null);
