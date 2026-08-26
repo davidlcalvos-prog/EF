@@ -47,6 +47,8 @@ model User {
   ownedTournaments        Tournament[]         @relation("TournamentOwner")
   tournamentRosterEntries TournamentPlayer[]
   preferences             UserPreferences?
+  sentFriendships         UserFriendship[]     @relation("FriendshipRequester")
+  receivedFriendships     UserFriendship[]     @relation("FriendshipAddressee")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -398,6 +400,31 @@ enum GroupRole {
   creator
   admin
   member
+}
+
+/**
+ * Amistad entre jugadores (Fase 10). Direccional en datos (requester →
+ * addressee) pero única lógicamente: el servicio impide que existan a la vez
+ * (A→B) y (B→A) — si B solicita y ya había una pendiente A→B, se acepta esa.
+ */
+model UserFriendship {
+  id          String               @id @default(uuid()) @db.Uuid
+  requesterId String               @db.Uuid
+  requester   User                 @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addresseeId String               @db.Uuid
+  addressee   User                 @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  status      UserFriendshipStatus @default(pending)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+  @@map("user_friendships")
+}
+
+enum UserFriendshipStatus {
+  pending
+  accepted
 }
 
 model GroupMembership {

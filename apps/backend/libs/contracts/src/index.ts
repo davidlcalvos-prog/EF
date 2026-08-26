@@ -1,6 +1,7 @@
 export * from './auth';
 export * from './feed';
 export * from './group-friendships';
+export * from './user-friendships';
 export * from './groups';
 export * from './matches';
 export * from './profile-stats';

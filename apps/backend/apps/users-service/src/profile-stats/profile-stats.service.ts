@@ -17,6 +17,7 @@ import {
   TEST_ID_TO_STAT_KEY,
 } from '@ef/contracts';
 import { GroupRepository } from '../groups/repositories/group.repository';
+import { UserFriendshipsService } from '../user-friendships/user-friendships.service';
 import { UserProfileRepository } from '../users/repositories/user-profile.repository';
 import { PhysicalTestResultRepository } from './repositories/physical-test-result.repository';
 import { PlayerStatsRepository } from './repositories/player-stats.repository';
@@ -30,6 +31,7 @@ export class ProfileStatsService {
     private readonly psychAssessmentRepository: PsychAssessmentRepository,
     private readonly userProfileRepository: UserProfileRepository,
     private readonly groupRepository: GroupRepository,
+    private readonly userFriendshipsService: UserFriendshipsService,
   ) {}
 
   async getMine(userId: string): Promise<ProfileStatsResponseDto> {
@@ -64,14 +66,22 @@ export class ProfileStatsService {
       );
     }
 
+    // Fase 10: la ficha también es visible entre amigos aceptados (la
+    // FriendsScreen abre perfiles de amigos que pueden no compartir grupo).
     const sharesGroup = await this.groupRepository.shareAnyGroup(
       requesterId,
       userId,
     );
     if (!sharesGroup) {
-      throw new ForbiddenException(
-        'You can only view members of your own groups',
+      const areFriends = await this.userFriendshipsService.areFriends(
+        requesterId,
+        userId,
       );
+      if (!areFriends) {
+        throw new ForbiddenException(
+          'You can only view members of your own groups or your friends',
+        );
+      }
     }
 
     const profile = await this.userProfileRepository.findById(userId);
