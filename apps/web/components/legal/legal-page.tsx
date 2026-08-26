@@ -11,19 +11,21 @@ export function LegalPlaceholderPage({ title }: { title: string }) {
   })
 
   return (
-    <main className="isolate min-h-screen">
+    <main className="relative min-h-screen">
       <LandingBackground />
-      <LandingNav />
-      <div className="mx-auto max-w-3xl px-4 pb-20 pt-32 sm:px-6">
-        <h1 className="font-heading text-3xl font-bold italic uppercase tracking-tight text-foreground">
-          {title}
-        </h1>
-        <p className="mt-6 text-muted-foreground">Documento en preparación.</p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Última actualización: {updatedAt}
-        </p>
+      <div className="relative z-10">
+        <LandingNav />
+        <div className="mx-auto max-w-3xl px-4 pb-20 pt-32 sm:px-6">
+          <h1 className="font-heading text-3xl font-bold italic uppercase tracking-tight text-foreground">
+            {title}
+          </h1>
+          <p className="mt-6 text-muted-foreground">Documento en preparación.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Última actualización: {updatedAt}
+          </p>
+        </div>
+        <LandingFooter />
       </div>
-      <LandingFooter />
     </main>
   )
 }

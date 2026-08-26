@@ -4,7 +4,7 @@
  */
 export function LandingBackground() {
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
       {/* img en vez de background-image de CSS: mismo mecanismo que ya
           renderizaba bien cuando el SVG vivía dentro del hero. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}

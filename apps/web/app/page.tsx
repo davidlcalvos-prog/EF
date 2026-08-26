@@ -11,20 +11,22 @@ import { FinalCta, LandingFooter } from '@/components/landing/final-cta'
 
 export default function HomePage() {
   return (
-    // isolate: stacking context propio para que el fondo con z negativo quede
-    // por encima del bg del body y debajo del contenido.
-    <main className="isolate min-h-screen">
+    // Fondo en z-0 y contenido en z-10 explícito: el orden no depende de
+    // ningún stacking context implícito.
+    <main className="relative min-h-screen">
       <LandingBackground />
-      <LandingNav />
-      <Hero />
-      <PerformanceSection />
-      <TournamentsSection />
-      <MatchFinderSection />
-      <CommunitySection />
-      <CourtsSection />
-      <DownloadSection />
-      <FinalCta />
-      <LandingFooter />
+      <div className="relative z-10">
+        <LandingNav />
+        <Hero />
+        <PerformanceSection />
+        <TournamentsSection />
+        <MatchFinderSection />
+        <CommunitySection />
+        <CourtsSection />
+        <DownloadSection />
+        <FinalCta />
+        <LandingFooter />
+      </div>
     </main>
   )
 }
