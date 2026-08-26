@@ -36,6 +36,8 @@ import type {
   UserFriendshipApiDto,
   UserFriendshipFilterApi,
   FriendshipStatusApiDto,
+  PlayerSearchResultApiDto,
+  FriendSuggestionApiDto,
 } from "@/services/api/types"
 import { loadString } from "@/utils/storage"
 
@@ -90,6 +92,8 @@ export type {
   UserFriendshipFilterApi,
   UserFriendshipStatusApi,
   FriendshipStatusApiDto,
+  PlayerSearchResultApiDto,
+  FriendSuggestionApiDto,
 } from "./types"
 
 /**
@@ -668,6 +672,43 @@ export class Api {
     }
     if (!response.data) return { kind: "bad-data" }
     return { kind: "ok", friendship: response.data }
+  }
+
+  /**
+   * Busca jugadores por @alias/nombre (prefijo/contains) o por correo
+   * (solo coincidencia EXACTA — privacidad). Mínimo 3 caracteres.
+   */
+  async searchPlayers(
+    query: string,
+  ): Promise<{ kind: "ok"; results: PlayerSearchResultApiDto[] } | GeneralApiProblem> {
+    const response = await this.apisauce.get<PlayerSearchResultApiDto[]>("friendships/search", {
+      q: query,
+    })
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", results: response.data }
+  }
+
+  /** Sugerencias de amistad: compañeros de grupo, amigos de amigos, grupos amigos. */
+  async listFriendSuggestions(): Promise<
+    { kind: "ok"; suggestions: FriendSuggestionApiDto[] } | GeneralApiProblem
+  > {
+    const response = await this.apisauce.get<FriendSuggestionApiDto[]>(
+      "friendships/suggestions",
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", suggestions: response.data }
   }
 
   /** Rechaza, cancela o elimina — cualquiera de las dos partes, en cualquier estado. */
