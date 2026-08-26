@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
   MinLength,
   ValidateIf,
@@ -30,6 +31,9 @@ export interface GroupSummaryDto {
   creatorId: string;
   role: GroupMemberRole;
   memberCount: number;
+  /** Zona (Fase L.0). Nunca lat/lng de grupos en DTOs. */
+  city: string | null;
+  department: string | null;
   createdAt: string;
 }
 
@@ -39,6 +43,10 @@ export interface GroupDetailDto {
   photoBase64: string | null;
   creatorId: string;
   members: GroupMemberDto[];
+  /** Zona (Fase L.0). Nunca lat/lng de grupos en DTOs. */
+  city: string | null;
+  department: string | null;
+  municipalityCode: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -48,6 +56,11 @@ export class CreateGroupDto {
   @MinLength(2, { message: 'name must be at least 2 characters' })
   @MaxLength(80, { message: 'name must be at most 80 characters' })
   name!: string;
+
+  /** Código DANE (Fase L.0). Sin él, el grupo hereda la zona del creador. */
+  @IsOptional()
+  @Matches(/^\d{5}$/, { message: 'municipalityCode must be a 5-digit DANE code' })
+  municipalityCode?: string;
 }
 
 export class CreateGroupPayload extends CreateGroupDto {
@@ -78,6 +91,12 @@ export class UpdateGroupDto {
   @IsOptional()
   @IsBoolean()
   removePhoto?: boolean;
+
+  /** Código DANE (Fase L.0); null limpia la zona del grupo. */
+  @IsOptional()
+  @ValidateIf((dto: UpdateGroupDto) => dto.municipalityCode !== null)
+  @Matches(/^\d{5}$/, { message: 'municipalityCode must be a 5-digit DANE code' })
+  municipalityCode?: string | null;
 }
 
 export interface UpdateGroupPayload {
@@ -86,6 +105,7 @@ export interface UpdateGroupPayload {
   name: string;
   photoBase64?: string;
   removePhoto?: boolean;
+  municipalityCode?: string | null;
 }
 
 /** Agregar miembro directo (sin invitación) — por userId o por email, uno de los dos. */

@@ -37,6 +37,29 @@ export interface VsMatchAlertCandidate {
 export class MatchRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Fase L.0: existencia + coordenadas de una cancha para usarla de sede. */
+  async findVenueForMatch(venueId: string): Promise<{
+    id: string;
+    latitude: number | null;
+    longitude: number | null;
+  } | null> {
+    return this.prisma.venue.findUnique({
+      where: { id: venueId },
+      select: { id: true, latitude: true, longitude: true },
+    });
+  }
+
+  /** Fase L.0: zona del grupo origen para heredarla en partidos sin sede. */
+  async findGroupLocation(groupId: string): Promise<{
+    latitude: number | null;
+    longitude: number | null;
+  } | null> {
+    return this.prisma.group.findUnique({
+      where: { id: groupId },
+      select: { latitude: true, longitude: true },
+    });
+  }
+
   async create(data: {
     originGroupId: string;
     opponentGroupId?: string;
@@ -46,6 +69,10 @@ export class MatchRepository {
     status: PrismaMatchStatus;
     scheduledAt?: Date;
     createdBy: string;
+    venueId?: string;
+    venueText?: string;
+    latitude?: number;
+    longitude?: number;
   }): Promise<MatchDto> {
     const match = await this.prisma.match.create({
       data: {
@@ -144,7 +171,11 @@ export class MatchRepository {
           { opponentGroupId: { in: groupIds } },
         ],
       },
-      include: { _count: { select: { participants: true } } },
+      include: {
+        _count: { select: { participants: true } },
+        venue: { select: { name: true, city: true } },
+        originGroup: { select: { city: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
     return rows.map((row) => this.toSummaryDto(row));
@@ -153,7 +184,11 @@ export class MatchRepository {
   async listByGroup(groupId: string): Promise<MatchSummaryDto[]> {
     const rows = await this.prisma.match.findMany({
       where: { OR: [{ originGroupId: groupId }, { opponentGroupId: groupId }] },
-      include: { _count: { select: { participants: true } } },
+      include: {
+        _count: { select: { participants: true } },
+        venue: { select: { name: true, city: true } },
+        originGroup: { select: { city: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
     return rows.map((row) => this.toSummaryDto(row));
@@ -163,8 +198,9 @@ export class MatchRepository {
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },
       include: {
-        originGroup: { select: { name: true } },
+        originGroup: { select: { name: true, city: true } },
         opponentGroup: { select: { name: true } },
+        venue: { select: { name: true, city: true } },
         reservation: { select: { id: true } },
         participants: {
           include: {
@@ -210,6 +246,10 @@ export class MatchRepository {
       originSideCount,
       opponentSideCount,
       sideCapacity: match.maxPlayers / 2,
+      venueId: match.venueId,
+      venueName: match.venue?.name ?? null,
+      venueText: match.venueText,
+      city: match.venue?.city ?? match.originGroup.city ?? null,
       createdAt: match.createdAt.toISOString(),
       updatedAt: match.updatedAt.toISOString(),
     };
@@ -379,6 +419,9 @@ export class MatchRepository {
     maxPlayers: number;
     status: string;
     scheduledAt: Date | null;
+    venueText: string | null;
+    venue: { name: string; city: string | null } | null;
+    originGroup: { city: string | null };
     createdAt: Date;
     _count: { participants: number };
   }): MatchSummaryDto {
@@ -392,6 +435,9 @@ export class MatchRepository {
       status: row.status as MatchStatus,
       scheduledAt: row.scheduledAt?.toISOString() ?? null,
       participantCount: row._count.participants,
+      venueName: row.venue?.name ?? null,
+      venueText: row.venueText,
+      city: row.venue?.city ?? row.originGroup.city ?? null,
       createdAt: row.createdAt.toISOString(),
     };
   }

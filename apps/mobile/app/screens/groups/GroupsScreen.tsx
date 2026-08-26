@@ -35,8 +35,8 @@ export function GroupsScreen({ navigation }: AppStackScreenProps<"Groups">) {
   )
 
   const handleCreate = useCallback(
-    async (name: string) => {
-      const created = await createGroup(name)
+    async (name: string, municipalityCode?: string) => {
+      const created = await createGroup(name, municipalityCode)
       return created !== null
     },
     [createGroup],

@@ -195,6 +195,7 @@ const es: Translations = {
     photoTooHeavy: "Esta foto pesa demasiado. Prueba con otra.",
     editGroupInvalid: "Revisa el nombre del grupo o la foto e intenta de nuevo.",
     memberProfileTitle: "Ficha del jugador",
+    zoneTitle: "Zona del grupo",
     friendAdd: "Agregar amigo",
     friendRequestSent: "Solicitud enviada",
     friendCancelRequest: "Cancelar",
@@ -211,6 +212,12 @@ const es: Translations = {
     memberNoStats: "Este jugador todavía no completó ningún test.",
   },
   matchesScreen: {
+    venueLabel: "Sede",
+    venueNone: "Sin sede",
+    venueFromApp: "Cancha de la app",
+    venueFreeText: "Otra cancha",
+    venueEmpty: "No hay canchas registradas todavía.",
+    venueTextPlaceholder: "Nombre o dirección de la cancha",
     title: "Partidos",
     loadError: "No se pudieron cargar los partidos.",
     retry: "Reintentar",
@@ -296,6 +303,15 @@ const es: Translations = {
     incompleteRosterSide: "A {{group}} todavía le faltan {{missing}} jugador(es).",
     maxPlayersOddError: "Para un partido VS, el máximo de jugadores debe ser un número par.",
   },
+  municipalityPicker: {
+    placeholder: "Elegir municipio",
+    clear: "Quitar municipio",
+    title: "Elegir municipio",
+    searchPlaceholder: "Busca tu municipio…",
+    hint: "Escribe al menos 2 letras para buscar.",
+    empty: "No encontramos ese municipio.",
+    error: "No se pudo buscar. Intenta de nuevo.",
+  },
   friendsScreen: {
     title: "Mis amigos",
     tabFriends: "Amigos",
@@ -305,7 +321,8 @@ const es: Translations = {
     accept: "Aceptar",
     reject: "Rechazar",
     cancelRequest: "Cancelar",
-    emptyFriends: "Todavía no tienes amigos. Abre la ficha de un jugador desde tus grupos o rankings y envíale una solicitud.",
+    emptyFriends:
+      "Todavía no tienes amigos. Abre la ficha de un jugador desde tus grupos o rankings y envíale una solicitud.",
     emptyRequests: "No hay solicitudes pendientes.",
     loadError: "No se pudieron cargar tus amistades.",
     retry: "Reintentar",
@@ -326,7 +343,8 @@ const es: Translations = {
     reasonMutual: "{{count}} amigos en común",
     reasonSameGroup: "Compañero en {{group}}",
     reasonFriendGroup: "Del grupo amigo {{group}}",
-    emptySuggestions: "Todavía no tenemos sugerencias. Unite a un grupo o buscá a tus amigos por @alias.",
+    emptySuggestions:
+      "Todavía no tenemos sugerencias. Unite a un grupo o buscá a tus amigos por @alias.",
   },
   groupFriendsScreen: {
     title: "Grupos amigos",
@@ -603,6 +621,8 @@ const es: Translations = {
       "Tu posición favorita es {{favorite}}. Según tests, también sugerimos {{suggested}}.",
     favoritePositionBadge: "Favorita",
     favoritePositionTitle: "Posición favorita",
+    myZoneTitle: "Mi zona",
+    myZoneHint: "Sirve para encontrar partidos y canchas cerca tuyo.",
     favoritePositionHint:
       "Opcional. Reemplaza el badge del perfil. Las sugerencias siguen como referencia.",
     favoritePositionClear: "Quitar posición favorita",

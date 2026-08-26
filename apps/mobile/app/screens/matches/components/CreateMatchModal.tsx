@@ -12,7 +12,12 @@ import { TextField } from "@/components/TextField"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
 import { getOtherGroup } from "@/screens/groups/useGroupFriendships"
-import { api, type GroupSummaryApiDto, type MatchTypeApi } from "@/services/api"
+import {
+  api,
+  type GroupSummaryApiDto,
+  type MatchTypeApi,
+  type PublicVenueApiDto,
+} from "@/services/api"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
 export interface CreateMatchModalProps {
@@ -27,8 +32,12 @@ export interface CreateMatchModalProps {
     format: string
     maxPlayers: number
     scheduledAt?: string
+    venueId?: string
+    venueText?: string
   }) => Promise<boolean>
 }
+
+type VenueOption = "none" | "app" | "text"
 
 const FORMAT_CHIPS = ["5v5", "6v6", "7v7", "8v8", "9v9", "11v11"]
 const FORMAT_REGEX = /^\d{1,2}v\d{1,2}$/
@@ -103,6 +112,27 @@ export function CreateMatchModal({
   const [minute, setMinute] = useState("00")
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState(false)
+
+  // Sede (Fase L.0): cancha de la app o texto libre.
+  const [venueOption, setVenueOption] = useState<VenueOption>("none")
+  const [venueId, setVenueId] = useState("")
+  const [venueText, setVenueText] = useState("")
+  const [venues, setVenues] = useState<PublicVenueApiDto[]>([])
+  const [loadingVenues, setLoadingVenues] = useState(false)
+  useEffect(() => {
+    if (venueOption !== "app" || venues.length > 0) return
+    let cancelled = false
+    setLoadingVenues(true)
+    api.listVenues().then((result) => {
+      if (cancelled) return
+      setLoadingVenues(false)
+      if (result.kind === "ok") setVenues(result.venues)
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [venueOption])
   const [opponentOptions, setOpponentOptions] = useState<
     { id: string; name: string; photoBase64: string | null }[]
   >([])
@@ -201,6 +231,9 @@ export function CreateMatchModal({
     setDateOption("none")
     setHour("19")
     setMinute("00")
+    setVenueOption("none")
+    setVenueId("")
+    setVenueText("")
     setError(false)
   }
 
@@ -222,6 +255,8 @@ export function CreateMatchModal({
       format: format.trim(),
       maxPlayers: maxPlayersNum,
       scheduledAt: scheduledAtIso,
+      venueId: venueOption === "app" && venueId ? venueId : undefined,
+      venueText: venueOption === "text" && venueText.trim() ? venueText.trim() : undefined,
     })
     setCreating(false)
 
@@ -524,6 +559,71 @@ export function CreateMatchModal({
                     style={{ color: "#FFFFFF", fontSize: 15, textAlign: "center" }}
                   />
                 </XStack>
+              ) : null}
+            </YStack>
+
+            <YStack gap={8} marginBottom={8}>
+              <Text color="rgba(255,255,255,0.6)" fontSize={12} fontWeight="700">
+                {translate("matchesScreen:venueLabel")}
+              </Text>
+              <XStack flexWrap="wrap" gap={8}>
+                <Chip
+                  label={translate("matchesScreen:venueNone")}
+                  selected={venueOption === "none"}
+                  onPress={() => setVenueOption("none")}
+                />
+                <Chip
+                  label={translate("matchesScreen:venueFromApp")}
+                  selected={venueOption === "app"}
+                  onPress={() => setVenueOption("app")}
+                />
+                <Chip
+                  label={translate("matchesScreen:venueFreeText")}
+                  selected={venueOption === "text"}
+                  onPress={() => setVenueOption("text")}
+                />
+              </XStack>
+
+              {venueOption === "app" ? (
+                loadingVenues ? (
+                  <XStack paddingVertical={10} justifyContent="center">
+                    <ActivityIndicator color={eliteForgeColors.emerald} />
+                  </XStack>
+                ) : venues.length === 0 ? (
+                  <Text color="rgba(255,255,255,0.45)" fontSize={12}>
+                    {translate("matchesScreen:venueEmpty")}
+                  </Text>
+                ) : (
+                  <XStack flexWrap="wrap" gap={8} marginTop={4}>
+                    {venues.map((venue) => (
+                      <Chip
+                        key={venue.id}
+                        label={venue.city ? `${venue.name} · ${venue.city}` : venue.name}
+                        selected={venueId === venue.id}
+                        onPress={() => setVenueId(venue.id)}
+                      />
+                    ))}
+                  </XStack>
+                )
+              ) : null}
+
+              {venueOption === "text" ? (
+                <TextField
+                  value={venueText}
+                  onChangeText={setVenueText}
+                  placeholder={translate("matchesScreen:venueTextPlaceholder")}
+                  placeholderTextColor="rgba(255,255,255,0.35)"
+                  maxLength={120}
+                  inputWrapperStyle={{
+                    borderWidth: 1,
+                    borderColor: eliteForgeColors.carbonBorder,
+                    borderRadius: 12,
+                    backgroundColor: eliteForgeColors.carbonInput,
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                  }}
+                  style={{ color: "#FFFFFF", fontSize: 15 }}
+                />
               ) : null}
             </YStack>
 

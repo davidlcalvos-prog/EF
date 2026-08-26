@@ -38,8 +38,8 @@ export class VenuesController {
   // --- Lado jugador (Fase 4) ---
 
   @MessagePattern(MESSAGE_PATTERNS.VENUES.LIST_PUBLIC)
-  listPublic() {
-    return this.venuesService.listPublicVenues();
+  listPublic(@Payload() data: { municipalityCode?: string }) {
+    return this.venuesService.listPublicVenues(data?.municipalityCode);
   }
 
   @MessagePattern(MESSAGE_PATTERNS.VENUES.CREATE_RESERVATION)

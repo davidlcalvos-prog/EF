@@ -1,9 +1,11 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { findMunicipality, haversineKm } from '@ef/common';
 import {
   CancelReservationPayload,
   CreateReservationPayload,
@@ -28,8 +30,62 @@ export class VenuesService {
   }
 
   upsertMine(payload: UpsertVenuePayload): Promise<VenueDto> {
-    const { ownerId, ...dto } = payload;
-    return this.venueRepository.upsertForOwner(ownerId, dto);
+    const { ownerId, municipalityCode, latitude, longitude, ...dto } = payload;
+    const location = this.resolveVenueLocation(municipalityCode, latitude, longitude);
+    return this.venueRepository.upsertForOwner(ownerId, dto, location);
+  }
+
+  /**
+   * Fase L.0: única entidad que acepta coordenadas del cliente (el pin del
+   * dueño). Con pin: locationSource=pin, validado a <50 km del centroide del
+   * municipio (evita pines en el océano). Sin pin: centroide + municipality.
+   * undefined = no tocar la ubicación; null = limpiarla.
+   */
+  private resolveVenueLocation(
+    municipalityCode: string | null | undefined,
+    latitude: number | undefined,
+    longitude: number | undefined,
+  ) {
+    if (municipalityCode === undefined) {
+      if (latitude !== undefined || longitude !== undefined) {
+        throw new BadRequestException(
+          'latitude/longitude require a municipalityCode',
+        );
+      }
+      return undefined;
+    }
+    if (municipalityCode === null) {
+      return null;
+    }
+    const municipality = findMunicipality(municipalityCode);
+    if (!municipality) {
+      throw new BadRequestException(
+        `Unknown municipalityCode ${municipalityCode}`,
+      );
+    }
+    const hasPin = latitude !== undefined && longitude !== undefined;
+    if ((latitude !== undefined) !== (longitude !== undefined)) {
+      throw new BadRequestException('latitude and longitude must come together');
+    }
+    if (hasPin) {
+      const distance = haversineKm(
+        { lat: latitude, lng: longitude },
+        { lat: municipality.lat, lng: municipality.lng },
+      );
+      if (distance > 50) {
+        throw new BadRequestException(
+          `The pin is ${Math.round(distance)} km away from ${municipality.name} — move it inside the municipality`,
+        );
+      }
+    }
+    return {
+      municipalityCode: municipality.code,
+      city: municipality.name,
+      department: municipality.department,
+      latitude: hasPin ? latitude : municipality.lat,
+      longitude: hasPin ? longitude : municipality.lng,
+      locationSource: (hasPin ? 'pin' : 'municipality') as 'pin' | 'municipality',
+    };
   }
 
   listReservationsMine(ownerId: string): Promise<ReservationDto[]> {
@@ -48,8 +104,8 @@ export class VenuesService {
 
   // --- Lado jugador (Fase 4) ---
 
-  listPublicVenues(): Promise<PublicVenueDto[]> {
-    return this.venueRepository.listPublic();
+  listPublicVenues(municipalityCode?: string): Promise<PublicVenueDto[]> {
+    return this.venueRepository.listPublic(municipalityCode);
   }
 
   async createReservation(

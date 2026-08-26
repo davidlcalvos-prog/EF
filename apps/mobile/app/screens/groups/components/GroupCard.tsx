@@ -68,6 +68,15 @@ export function GroupCard({ group, onPress }: GroupCardProps) {
               {translate("groupsScreen:memberCount", { count: group.memberCount })}
             </Text>
           </XStack>
+          {group.city ? (
+            <XStack alignItems="center" gap={4}>
+              <Ionicons name="location-outline" size={11} color={eliteForgeColors.emerald} />
+              <Text color="rgba(255,255,255,0.45)" fontSize={11} numberOfLines={1}>
+                {group.city}
+                {group.department ? `, ${group.department}` : ""}
+              </Text>
+            </XStack>
+          ) : null}
         </YStack>
 
         <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.35)" />

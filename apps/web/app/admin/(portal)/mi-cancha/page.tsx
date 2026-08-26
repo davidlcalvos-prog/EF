@@ -45,6 +45,12 @@ export default async function MiCanchaPage() {
                 address: venue.address,
                 price_per_hour_cents: venue.price_per_hour_cents,
                 surface_type: venue.surface_type,
+                municipality_code: venue.municipality_code,
+                city: venue.city,
+                department: venue.department,
+                latitude: venue.latitude,
+                longitude: venue.longitude,
+                location_source: venue.location_source,
               }
             : null
         }

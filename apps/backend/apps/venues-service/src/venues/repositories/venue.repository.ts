@@ -1,7 +1,23 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@ef/database';
 import { MyReservationDto, PublicVenueDto, ReservationDto, VenueDto } from '@ef/contracts';
-import { GroupRole, Prisma, ReservationStatus, VenueSurfaceType } from '@prisma/client';
+import {
+  GroupRole,
+  LocationSource,
+  Prisma,
+  ReservationStatus,
+  VenueSurfaceType,
+} from '@prisma/client';
+
+/** Ubicación resuelta por VenuesService (Fase L.0). */
+export interface VenueLocationData {
+  municipalityCode: string;
+  city: string;
+  department: string;
+  latitude: number;
+  longitude: number;
+  locationSource: 'municipality' | 'pin';
+}
 
 @Injectable()
 export class VenueRepository {
@@ -25,7 +41,23 @@ export class VenueRepository {
       pricePerHourCents?: number;
       surfaceType?: VenueSurfaceType;
     },
+    location?: VenueLocationData | null,
   ): Promise<VenueDto> {
+    const locationData =
+      location === undefined
+        ? {}
+        : location
+          ? { ...location, locationUpdatedAt: new Date() }
+          : {
+              municipalityCode: null,
+              city: null,
+              department: null,
+              latitude: null,
+              longitude: null,
+              locationSource: null,
+              locationUpdatedAt: new Date(),
+            };
+
     if (payload.id) {
       const updated = await this.prisma.venue.update({
         where: { id: payload.id, ownerId },
@@ -34,6 +66,7 @@ export class VenueRepository {
           address: payload.address ?? null,
           pricePerHourCents: payload.pricePerHourCents ?? 0,
           surfaceType: payload.surfaceType,
+          ...locationData,
         },
       });
       return this.toVenueDto(updated);
@@ -46,6 +79,7 @@ export class VenueRepository {
         address: payload.address ?? null,
         pricePerHourCents: payload.pricePerHourCents ?? 0,
         surfaceType: payload.surfaceType,
+        ...locationData,
       },
     });
     return this.toVenueDto(created);
@@ -114,8 +148,11 @@ export class VenueRepository {
 
   // --- Lado jugador (Fase 4) ---
 
-  async listPublic(): Promise<PublicVenueDto[]> {
-    const rows = await this.prisma.venue.findMany({ orderBy: { name: 'asc' } });
+  async listPublic(municipalityCode?: string): Promise<PublicVenueDto[]> {
+    const rows = await this.prisma.venue.findMany({
+      where: municipalityCode ? { municipalityCode } : undefined,
+      orderBy: { name: 'asc' },
+    });
     return rows.map((row) => this.toPublicVenueDto(row));
   }
 
@@ -220,6 +257,11 @@ export class VenueRepository {
     address: string | null;
     pricePerHourCents: number;
     availability: unknown;
+    municipalityCode: string | null;
+    city: string | null;
+    department: string | null;
+    latitude: number | null;
+    longitude: number | null;
   }): PublicVenueDto {
     return {
       id: row.id,
@@ -227,6 +269,11 @@ export class VenueRepository {
       address: row.address,
       pricePerHourCents: row.pricePerHourCents,
       availability: (row.availability as Record<string, unknown>) ?? {},
+      municipalityCode: row.municipalityCode,
+      city: row.city,
+      department: row.department,
+      latitude: row.latitude,
+      longitude: row.longitude,
     };
   }
 
@@ -264,6 +311,12 @@ export class VenueRepository {
     pricePerHourCents: number;
     availability: unknown;
     surfaceType: VenueSurfaceType | null;
+    municipalityCode: string | null;
+    city: string | null;
+    department: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    locationSource: LocationSource | null;
     createdAt: Date;
     updatedAt: Date;
   }): VenueDto {
@@ -275,6 +328,12 @@ export class VenueRepository {
       pricePerHourCents: row.pricePerHourCents,
       availability: (row.availability as Record<string, unknown>) ?? {},
       surfaceType: row.surfaceType,
+      municipalityCode: row.municipalityCode,
+      city: row.city,
+      department: row.department,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      locationSource: row.locationSource,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     };

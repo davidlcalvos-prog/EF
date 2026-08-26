@@ -48,6 +48,8 @@ export function MatchesScreen({ route, navigation }: AppStackScreenProps<"Matche
       format: string
       maxPlayers: number
       scheduledAt?: string
+      venueId?: string
+      venueText?: string
     }) => {
       const result = await api.createMatch(payload)
       if (result.kind !== "ok") return false

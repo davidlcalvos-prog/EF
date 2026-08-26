@@ -39,6 +39,14 @@ export class MatchesService {
     await this.requireGroupExists(originGroupId);
     const requesterRole = await this.requireGroupMembership(originGroupId, requesterId);
 
+    // Fase L.0 — sede: con venueId se copian las coordenadas de la cancha;
+    // sin sede (o con texto libre) se heredan las del grupo origen.
+    const location = await this.resolveMatchLocation(
+      originGroupId,
+      payload.venueId,
+      payload.venueText,
+    );
+
     if (type === 'internal') {
       return this.matchRepository.create({
         originGroupId,
@@ -48,6 +56,7 @@ export class MatchesService {
         status: 'scheduled',
         scheduledAt: payload.scheduledAt ? new Date(payload.scheduledAt) : undefined,
         createdBy: requesterId,
+        ...location,
       });
     }
 
@@ -84,8 +93,39 @@ export class MatchesService {
       status: 'pending_opponent',
       scheduledAt: payload.scheduledAt ? new Date(payload.scheduledAt) : undefined,
       createdBy: requesterId,
+      ...location,
     });
     return this.applyVisibility(match, requesterId);
+  }
+
+  /** Fase L.0: venueId → coords de la cancha (validando que exista); si no → coords del grupo origen. */
+  private async resolveMatchLocation(
+    originGroupId: string,
+    venueId?: string,
+    venueText?: string,
+  ): Promise<{
+    venueId?: string;
+    venueText?: string;
+    latitude?: number;
+    longitude?: number;
+  }> {
+    if (venueId) {
+      const venue = await this.matchRepository.findVenueForMatch(venueId);
+      if (!venue) {
+        throw new BadRequestException(`Venue ${venueId} not found`);
+      }
+      return {
+        venueId,
+        latitude: venue.latitude ?? undefined,
+        longitude: venue.longitude ?? undefined,
+      };
+    }
+    const groupLocation = await this.matchRepository.findGroupLocation(originGroupId);
+    return {
+      venueText: venueText?.trim() || undefined,
+      latitude: groupLocation?.latitude ?? undefined,
+      longitude: groupLocation?.longitude ?? undefined,
+    };
   }
 
   async getDetail(payload: MatchActionPayload): Promise<MatchDto> {

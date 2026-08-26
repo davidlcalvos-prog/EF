@@ -100,6 +100,9 @@ export interface PublicMemberProfileDto {
   name: string;
   avatarBase64: string | null;
   favoritePosition: PlayerPositionId | null;
+  /** Zona (Fase L.0). Nunca lat/lng de personas. */
+  city: string | null;
+  department: string | null;
   stats: PlayerStatsDto | null;
 }
 

@@ -12,12 +12,7 @@ import { eliteForgeColors } from "@/theme/eliteForgeColors"
 import { FeedAvatar } from "./FeedAvatar"
 
 export type FeedDrawerItemId =
-  | "profile"
-  | "groups"
-  | "friends"
-  | "matches"
-  | "tournaments"
-  | "reservations"
+  "profile" | "groups" | "friends" | "matches" | "tournaments" | "reservations"
 
 export interface FeedDrawerProps {
   onClose: () => void

@@ -10,8 +10,10 @@ export class ReservationsProxyService {
     @Inject(SERVICE_NAMES.VENUES) private readonly venuesClient: ClientProxy,
   ) {}
 
-  listPublicVenues(): Promise<PublicVenueDto[]> {
-    return this.send<PublicVenueDto[]>(MESSAGE_PATTERNS.VENUES.LIST_PUBLIC, {});
+  listPublicVenues(municipalityCode?: string): Promise<PublicVenueDto[]> {
+    return this.send<PublicVenueDto[]>(MESSAGE_PATTERNS.VENUES.LIST_PUBLIC, {
+      ...(municipalityCode ? { municipalityCode } : {}),
+    });
   }
 
   createReservation(

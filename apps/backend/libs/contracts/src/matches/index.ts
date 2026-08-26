@@ -7,6 +7,7 @@ import {
   IsUUID,
   Matches as MatchesRegex,
   Max,
+  MaxLength,
   Min,
   ValidateIf,
 } from 'class-validator';
@@ -61,6 +62,11 @@ export interface MatchDto {
   rosterConfirmedAt: string | null;
   originSideCount: number;
   opponentSideCount: number;
+  /** Sede (Fase L.0): cancha de la app o texto libre; city para mostrar zona. */
+  venueId: string | null;
+  venueName: string | null;
+  venueText: string | null;
+  city: string | null;
   /** = maxPlayers / 2, para no obligar al cliente a hacer la cuenta. Solo relevante en vs. */
   sideCapacity: number;
   createdAt: string;
@@ -78,6 +84,10 @@ export interface MatchSummaryDto {
   status: MatchStatus;
   scheduledAt: string | null;
   participantCount: number;
+  /** Sede (Fase L.0), para las tarjetas de partido. */
+  venueName: string | null;
+  venueText: string | null;
+  city: string | null;
   createdAt: string;
 }
 
@@ -107,6 +117,17 @@ export class CreateMatchDto {
   @IsOptional()
   @IsDateString()
   scheduledAt?: string;
+
+  /** Sede (Fase L.0): una cancha de la app… */
+  @IsOptional()
+  @IsUUID()
+  venueId?: string;
+
+  /** …o texto libre si la cancha no está en la app. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  venueText?: string;
 }
 
 export class CreateMatchPayload extends CreateMatchDto {

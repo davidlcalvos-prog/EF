@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   Alert,
   KeyboardAvoidingView,
@@ -11,11 +11,13 @@ import { Ionicons } from "@expo/vector-icons"
 import { useFocusEffect } from "@react-navigation/native"
 import { Text, XStack, YStack } from "tamagui"
 
+import { MunicipalityPicker, type MunicipalityValue } from "@/components/MunicipalityPicker"
 import { Button, Input } from "@/components/ui"
 import { useAuth } from "@/context/AuthContext"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
 import type { AppStackScreenProps } from "@/navigators/navigationTypes"
+import { api } from "@/services/api"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 import type { PlayerProfileData } from "@/utils/playerProfileStorage"
 
@@ -31,12 +33,30 @@ function getUserColor(seed: string) {
 }
 
 export function ProfileEditScreen({ navigation }: AppStackScreenProps<"ProfileEdit">) {
-  const { authEmail } = useAuth()
+  const { authEmail, authUserId } = useAuth()
   const userKey = authEmail ?? "guest"
   const { profile, saveFullProfile } = usePlayerProfile(userKey, authEmail)
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
 
   const [form, setForm] = useState<PlayerProfileData>(profile)
+
+  // Mi zona (Fase L.0) — vive en el backend, no en el perfil local MMKV.
+  const [municipality, setMunicipality] = useState<MunicipalityValue | null>(null)
+  const [municipalityDirty, setMunicipalityDirty] = useState(false)
+  useEffect(() => {
+    if (!authUserId) return
+    let cancelled = false
+    api.getMyProfile(authUserId).then((result) => {
+      if (cancelled || result.kind !== "ok") return
+      const { municipalityCode, city, department } = result.profile
+      if (municipalityCode && city && department) {
+        setMunicipality({ code: municipalityCode, name: city, department })
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [authUserId])
 
   useFocusEffect(
     useCallback(() => {
@@ -62,8 +82,13 @@ export function ProfileEditScreen({ navigation }: AppStackScreenProps<"ProfileEd
       return
     }
     saveFullProfile(form)
+    if (municipalityDirty) {
+      // Best-effort: la zona se guarda en el backend con el resto del perfil.
+      api.updateProfileMunicipality(municipality?.code ?? null)
+    }
     navigation.goBack()
-  }, [form, navigation, saveFullProfile])
+    // handleSave solo se invoca onPress — agregar estas deps no re-renderiza nada.
+  }, [form, navigation, saveFullProfile, municipality?.code, municipalityDirty])
 
   const displaySeed = form.displayName || form.email || authEmail || "player"
 
@@ -155,6 +180,22 @@ export function ProfileEditScreen({ navigation }: AppStackScreenProps<"ProfileEd
                 onChangeText={(text) => patchForm({ bio: text })}
                 placeholder={translate("profileScreen:editBioHint")}
               />
+
+              <YStack gap={8}>
+                <Text color="rgba(255,255,255,0.75)" fontSize={12} fontWeight="700">
+                  {translate("profileScreen:myZoneTitle")}
+                </Text>
+                <Text color="rgba(255,255,255,0.45)" fontSize={11} lineHeight={16}>
+                  {translate("profileScreen:myZoneHint")}
+                </Text>
+                <MunicipalityPicker
+                  value={municipality}
+                  onChange={(value) => {
+                    setMunicipality(value)
+                    setMunicipalityDirty(true)
+                  }}
+                />
+              </YStack>
 
               <YStack gap={8}>
                 <Text color="rgba(255,255,255,0.75)" fontSize={12} fontWeight="700">

@@ -16,6 +16,12 @@ import {
   totalCourts,
 } from '@/lib/dal/admin/venue-extras'
 import { eliteForgeColors } from '@/lib/theme/elite-forge'
+import dynamic from 'next/dynamic'
+
+// Leaflet toca window — solo cliente (mapa de solo lectura si hay pin).
+const VenueLocationMap = dynamic(() => import('@/components/admin/venue-location-map'), {
+  ssr: false,
+})
 
 const PHONE_KEY = 'ef-admin-phone-reservations'
 const EDITS_KEY = 'ef-admin-edited-reservations'
@@ -241,6 +247,25 @@ export function OwnerSummaryDashboard({
           <p className="mt-1 text-sm text-muted-foreground">
             {venues[0].address || 'Sin dirección configurada'}
           </p>
+          {venues[0].city ? (
+            <p className="mt-1 text-sm text-primary">
+              {venues[0].city}
+              {venues[0].department ? `, ${venues[0].department}` : ''}
+            </p>
+          ) : null}
+          {venues[0].location_source === 'pin' &&
+          venues[0].latitude != null &&
+          venues[0].longitude != null ? (
+            <div className="mt-4">
+              <VenueLocationMap
+                center={[venues[0].latitude, venues[0].longitude]}
+                pin={[venues[0].latitude, venues[0].longitude]}
+                onPinChange={null}
+                heightClass="h-44"
+                zoom={15}
+              />
+            </div>
+          ) : null}
         </div>
       )}
 

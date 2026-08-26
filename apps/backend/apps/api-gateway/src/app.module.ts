@@ -10,6 +10,7 @@ import { VenuesProxyModule } from './venues/venues-proxy.module';
 import { ProfileStatsProxyModule } from './profile-stats/profile-stats-proxy.module';
 import { GroupFriendshipsProxyModule } from './group-friendships/group-friendships-proxy.module';
 import { UserFriendshipsProxyModule } from './user-friendships/user-friendships-proxy.module';
+import { GeoModule } from './geo/geo.module';
 import { GroupsProxyModule } from './groups/groups-proxy.module';
 import { MatchesProxyModule } from './matches/matches-proxy.module';
 import { ReservationsProxyModule } from './reservations/reservations-proxy.module';
@@ -42,6 +43,7 @@ import { HealthController } from './health/health.controller';
     GroupsProxyModule,
     GroupFriendshipsProxyModule,
     UserFriendshipsProxyModule,
+    GeoModule,
     MatchesProxyModule,
     ReservationsProxyModule,
     FeedProxyModule,

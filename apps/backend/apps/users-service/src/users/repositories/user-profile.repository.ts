@@ -10,6 +10,9 @@ export interface UserProfileRecord {
   email: string;
   name: string;
   avatarBase64: string | null;
+  city: string | null;
+  department: string | null;
+  municipalityCode: string | null;
   createdAt: Date;
 }
 
@@ -81,8 +84,37 @@ export class UserProfileRepository {
     });
   }
 
+  /** Fase L.0: escribe la zona resuelta server-side; null limpia todo. */
+  async updateLocation(
+    userId: string,
+    location: {
+      municipalityCode: string;
+      city: string;
+      department: string;
+      latitude: number;
+      longitude: number;
+    } | null,
+  ): Promise<void> {
+    await this.prisma.profile.update({
+      where: { userId },
+      data: location
+        ? { ...location, locationUpdatedAt: new Date() }
+        : {
+            municipalityCode: null,
+            city: null,
+            department: null,
+            latitude: null,
+            longitude: null,
+            locationUpdatedAt: new Date(),
+          },
+    });
+  }
+
   private toRecord(profile: {
     avatarBase64: string | null;
+    city: string | null;
+    department: string | null;
+    municipalityCode: string | null;
     createdAt: Date;
     user: { id: string; email: string; firstname: string; lastname: string };
   }): UserProfileRecord {
@@ -95,6 +127,9 @@ export class UserProfileRepository {
         profile.user.lastname,
       ),
       avatarBase64: profile.avatarBase64,
+      city: profile.city,
+      department: profile.department,
+      municipalityCode: profile.municipalityCode,
       createdAt: profile.createdAt,
     };
   }

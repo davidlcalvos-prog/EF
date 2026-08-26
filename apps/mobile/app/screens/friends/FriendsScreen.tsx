@@ -6,11 +6,11 @@ import {
   RefreshControl,
   ScrollView,
   StatusBar,
-  TextInput,
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
+import { TextField } from "@/components/TextField"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
 import type { AppStackScreenProps } from "@/navigators/navigationTypes"
@@ -78,7 +78,11 @@ function FriendRow({
 }) {
   const subtitle = friendship.user.alias
   return (
-    <Pressable onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? "button" : undefined}>
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole={onPress ? "button" : undefined}
+    >
       <XStack
         alignItems="center"
         gap={12}
@@ -130,11 +134,7 @@ function ActionButton({
         paddingVertical={8}
         opacity={disabled ? 0.6 : 1}
       >
-        <Text
-          color={variant === "primary" ? "#1a1a1a" : "#E74C3C"}
-          fontWeight="800"
-          fontSize={12}
-        >
+        <Text color={variant === "primary" ? "#1a1a1a" : "#E74C3C"} fontWeight="800" fontSize={12}>
           {label}
         </Text>
       </XStack>
@@ -363,14 +363,20 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
           paddingHorizontal={12}
         >
           <Ionicons name="search" size={18} color="rgba(255,255,255,0.5)" />
-          <TextInput
+          <TextField
             value={query}
             onChangeText={setQuery}
             placeholder={translate("friendsScreen:searchPlaceholder")}
             placeholderTextColor="rgba(255,255,255,0.4)"
             autoCapitalize="none"
             autoCorrect={false}
-            style={{ flex: 1, color: "#FFFFFF", fontSize: 14, paddingVertical: 12 }}
+            containerStyle={{ flex: 1 }}
+            inputWrapperStyle={{
+              backgroundColor: "transparent",
+              borderWidth: 0,
+              paddingHorizontal: 0,
+            }}
+            style={{ color: "#FFFFFF", fontSize: 14, paddingVertical: 12 }}
           />
           {searchActive ? (
             <Pressable onPress={() => setQuery("")} hitSlop={10} accessibilityRole="button">
@@ -381,62 +387,62 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
 
         {/* Pestañas (ocultas mientras se busca) */}
         {searchActive ? null : (
-        <XStack gap={8}>
-          {(
-            [
-              { id: "friends", label: translate("friendsScreen:tabFriends"), badge: 0 },
-              {
-                id: "requests",
-                label: translate("friendsScreen:tabRequests"),
-                badge: requestsCount,
-              },
-              {
-                id: "suggestions",
-                label: translate("friendsScreen:tabSuggestions"),
-                badge: 0,
-              },
-            ] as { id: FriendsTab; label: string; badge: number }[]
-          ).map((item) => {
-            const active = tab === item.id
-            return (
-              <Pressable key={item.id} onPress={() => setTab(item.id)} accessibilityRole="button">
-                <XStack
-                  alignItems="center"
-                  gap={6}
-                  paddingHorizontal={14}
-                  paddingVertical={8}
-                  borderRadius={999}
-                  backgroundColor={active ? "rgba(0,206,200,0.15)" : eliteForgeColors.carbonInput}
-                  borderWidth={1}
-                  borderColor={active ? eliteForgeColors.emerald : eliteForgeColors.carbonBorder}
-                >
-                  <Text
-                    color={active ? eliteForgeColors.emerald : "rgba(255,255,255,0.7)"}
-                    fontWeight="700"
-                    fontSize={13}
+          <XStack gap={8}>
+            {(
+              [
+                { id: "friends", label: translate("friendsScreen:tabFriends"), badge: 0 },
+                {
+                  id: "requests",
+                  label: translate("friendsScreen:tabRequests"),
+                  badge: requestsCount,
+                },
+                {
+                  id: "suggestions",
+                  label: translate("friendsScreen:tabSuggestions"),
+                  badge: 0,
+                },
+              ] as { id: FriendsTab; label: string; badge: number }[]
+            ).map((item) => {
+              const active = tab === item.id
+              return (
+                <Pressable key={item.id} onPress={() => setTab(item.id)} accessibilityRole="button">
+                  <XStack
+                    alignItems="center"
+                    gap={6}
+                    paddingHorizontal={14}
+                    paddingVertical={8}
+                    borderRadius={999}
+                    backgroundColor={active ? "rgba(0,206,200,0.15)" : eliteForgeColors.carbonInput}
+                    borderWidth={1}
+                    borderColor={active ? eliteForgeColors.emerald : eliteForgeColors.carbonBorder}
                   >
-                    {item.label}
-                  </Text>
-                  {item.badge > 0 ? (
-                    <XStack
-                      minWidth={18}
-                      height={18}
-                      borderRadius={9}
-                      backgroundColor={eliteForgeColors.orange}
-                      alignItems="center"
-                      justifyContent="center"
-                      paddingHorizontal={4}
+                    <Text
+                      color={active ? eliteForgeColors.emerald : "rgba(255,255,255,0.7)"}
+                      fontWeight="700"
+                      fontSize={13}
                     >
-                      <Text color="#1a1a1a" fontWeight="800" fontSize={10}>
-                        {item.badge}
-                      </Text>
-                    </XStack>
-                  ) : null}
-                </XStack>
-              </Pressable>
-            )
-          })}
-        </XStack>
+                      {item.label}
+                    </Text>
+                    {item.badge > 0 ? (
+                      <XStack
+                        minWidth={18}
+                        height={18}
+                        borderRadius={9}
+                        backgroundColor={eliteForgeColors.orange}
+                        alignItems="center"
+                        justifyContent="center"
+                        paddingHorizontal={4}
+                      >
+                        <Text color="#1a1a1a" fontWeight="800" fontSize={10}>
+                          {item.badge}
+                        </Text>
+                      </XStack>
+                    ) : null}
+                  </XStack>
+                </Pressable>
+              )
+            })}
+          </XStack>
         )}
 
         {searchActive ? (
@@ -478,7 +484,9 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
               {results.map((row) => (
                 <Pressable
                   key={row.user.id}
-                  onPress={() => setProfileTarget({ userId: row.user.id, source: "search", preview: row.user })}
+                  onPress={() =>
+                    setProfileTarget({ userId: row.user.id, source: "search", preview: row.user })
+                  }
                   accessibilityRole="button"
                 >
                   <XStack
@@ -582,7 +590,13 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
                 suggestions.map((suggestion) => (
                   <Pressable
                     key={suggestion.user.id}
-                    onPress={() => setProfileTarget({ userId: suggestion.user.id, source: "suggestions", preview: suggestion.user })}
+                    onPress={() =>
+                      setProfileTarget({
+                        userId: suggestion.user.id,
+                        source: "suggestions",
+                        preview: suggestion.user,
+                      })
+                    }
                     accessibilityRole="button"
                   >
                     <XStack
@@ -670,7 +684,13 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
                   <FriendRow
                     key={friendship.id}
                     friendship={friendship}
-                    onPress={() => setProfileTarget({ userId: friendship.user.id, source: "friends", preview: friendship.user })}
+                    onPress={() =>
+                      setProfileTarget({
+                        userId: friendship.user.id,
+                        source: "friends",
+                        preview: friendship.user,
+                      })
+                    }
                   />
                 ))
               )
@@ -689,7 +709,13 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
                       <FriendRow
                         key={friendship.id}
                         friendship={friendship}
-                        onPress={() => setProfileTarget({ userId: friendship.user.id, source: "friends", preview: friendship.user })}
+                        onPress={() =>
+                          setProfileTarget({
+                            userId: friendship.user.id,
+                            source: "friends",
+                            preview: friendship.user,
+                          })
+                        }
                       >
                         <XStack gap={8}>
                           <ActionButton
@@ -717,7 +743,13 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
                       <FriendRow
                         key={friendship.id}
                         friendship={friendship}
-                        onPress={() => setProfileTarget({ userId: friendship.user.id, source: "friends", preview: friendship.user })}
+                        onPress={() =>
+                          setProfileTarget({
+                            userId: friendship.user.id,
+                            source: "friends",
+                            preview: friendship.user,
+                          })
+                        }
                       >
                         <ActionButton
                           label={translate("friendsScreen:cancelRequest")}

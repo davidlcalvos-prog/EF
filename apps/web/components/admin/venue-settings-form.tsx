@@ -1,10 +1,17 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { saveVenue } from '@/app/admin/(portal)/mi-cancha/actions'
+import { saveVenue, searchMunicipalities } from '@/app/admin/(portal)/mi-cancha/actions'
+import type { MunicipalityDto } from '@/lib/dal/admin/venues'
+
+// Leaflet toca window al importarse — solo en cliente.
+const VenueLocationMap = dynamic(() => import('@/components/admin/venue-location-map'), {
+  ssr: false,
+})
 import {
   DEFAULT_VENUE_EXTRAS,
   loadVenueExtras,
@@ -19,6 +26,13 @@ export type VenueFormBase = {
   address: string | null
   price_per_hour_cents: number
   surface_type: 'natural_grass' | 'synthetic_grass' | 'dirt_gravel' | 'futsal_concrete' | null
+  /** Ubicación (Fase L.0). */
+  municipality_code: string | null
+  city: string | null
+  department: string | null
+  latitude: number | null
+  longitude: number | null
+  location_source: 'municipality' | 'pin' | null
 }
 
 const SURFACE_TYPE_OPTIONS = [
@@ -88,6 +102,74 @@ export function VenueSettingsForm({ venue }: { venue: VenueFormBase | null }) {
   }))
   const [savedLocalHint, setSavedLocalHint] = useState(false)
 
+  // ── Ubicación (Fase L.0) ──────────────────────────────────────────────
+  const [municipality, setMunicipality] = useState<MunicipalityDto | null>(null)
+  const [municipalityQuery, setMunicipalityQuery] = useState('')
+  const [municipalityResults, setMunicipalityResults] = useState<MunicipalityDto[]>([])
+  const [searchingMunicipality, setSearchingMunicipality] = useState(false)
+  const [pin, setPin] = useState<[number, number] | null>(null)
+  const [pinDirty, setPinDirty] = useState(false)
+  const searchSeqRef = useRef(0)
+
+  // Precarga desde la cancha guardada.
+  useEffect(() => {
+    if (venue?.municipality_code && venue.city && venue.department) {
+      setMunicipality({
+        code: venue.municipality_code,
+        name: venue.city,
+        department: venue.department,
+        lat: venue.latitude ?? 0,
+        lng: venue.longitude ?? 0,
+      })
+    } else {
+      setMunicipality(null)
+    }
+    setPin(
+      venue?.latitude != null && venue?.longitude != null
+        ? [venue.latitude, venue.longitude]
+        : null,
+    )
+    setPinDirty(false)
+    setMunicipalityQuery('')
+    setMunicipalityResults([])
+  }, [venue?.id, venue?.municipality_code, venue?.city, venue?.department, venue?.latitude, venue?.longitude])
+
+  useEffect(() => {
+    const term = municipalityQuery.trim()
+    if (term.length < 2) {
+      setMunicipalityResults([])
+      setSearchingMunicipality(false)
+      return
+    }
+    setSearchingMunicipality(true)
+    const seq = ++searchSeqRef.current
+    const timer = setTimeout(() => {
+      searchMunicipalities(term)
+        .then((results) => {
+          if (searchSeqRef.current !== seq) return
+          setMunicipalityResults(results)
+        })
+        .finally(() => {
+          if (searchSeqRef.current === seq) setSearchingMunicipality(false)
+        })
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [municipalityQuery])
+
+  const mapCenter: [number, number] | null = municipality
+    ? pin ?? [municipality.lat, municipality.lng]
+    : null
+
+  /**
+   * Coordenadas a enviar: solo si el dueño movió el pin en esta sesión, o si
+   * la cancha ya tenía pin y no cambió de municipio (para no degradarlo).
+   */
+  const keepExistingPin =
+    venue?.location_source === 'pin' &&
+    municipality?.code === venue.municipality_code &&
+    pin != null
+  const submitPin = pinDirty || keepExistingPin ? pin : null
+
   useEffect(() => {
     setExtras(loadVenueExtras(venue?.id, basePrice))
     setName(venue?.name ?? '')
@@ -111,6 +193,9 @@ export function VenueSettingsForm({ venue }: { venue: VenueFormBase | null }) {
         name="price_per_hour"
         value={extras.price6 || extras.price8 || extras.price11 || basePrice}
       />
+      <input type="hidden" name="municipality_code" value={municipality?.code ?? ''} />
+      <input type="hidden" name="latitude" value={submitPin ? String(submitPin[0]) : ''} />
+      <input type="hidden" name="longitude" value={submitPin ? String(submitPin[1]) : ''} />
 
       <section className="space-y-4 rounded-2xl ef-card p-5">
         <div>
@@ -144,6 +229,84 @@ export function VenueSettingsForm({ venue }: { venue: VenueFormBase | null }) {
             placeholder="Calle, ciudad"
           />
         </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="municipality">Municipio</Label>
+          {municipality ? (
+            <div className="flex items-center justify-between rounded-lg border border-border bg-input/30 px-3 py-2">
+              <span className="text-sm text-foreground">
+                {municipality.name}, {municipality.department}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setMunicipality(null)
+                  setPin(null)
+                  setPinDirty(false)
+                }}
+                className="text-xs text-muted-foreground transition-colors hover:text-destructive"
+              >
+                Cambiar
+              </button>
+            </div>
+          ) : (
+            <div className="relative">
+              <Input
+                id="municipality"
+                value={municipalityQuery}
+                onChange={(e) => setMunicipalityQuery(e.target.value)}
+                placeholder="Busca tu municipio (p. ej. Pereira)"
+                autoComplete="off"
+              />
+              {municipalityQuery.trim().length >= 2 ? (
+                <div className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-lg border border-border bg-popover shadow-xl">
+                  {searchingMunicipality ? (
+                    <p className="px-3 py-2 text-xs text-muted-foreground">Buscando…</p>
+                  ) : municipalityResults.length === 0 ? (
+                    <p className="px-3 py-2 text-xs text-muted-foreground">
+                      No encontramos ese municipio.
+                    </p>
+                  ) : (
+                    municipalityResults.map((item) => (
+                      <button
+                        key={item.code}
+                        type="button"
+                        onClick={() => {
+                          setMunicipality(item)
+                          setMunicipalityQuery('')
+                          setMunicipalityResults([])
+                          setPin([item.lat, item.lng])
+                          setPinDirty(false)
+                        }}
+                        className="block w-full px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-primary/10"
+                      >
+                        {item.name}
+                        <span className="text-muted-foreground"> — {item.department}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
+
+        {municipality && mapCenter && pin ? (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Arrastrá el pin hasta la entrada de tu cancha. Si no lo movés, se
+              usa el centro del municipio.
+            </p>
+            <VenueLocationMap
+              center={mapCenter}
+              pin={pin}
+              onPinChange={(next) => {
+                setPin(next)
+                setPinDirty(true)
+              }}
+            />
+          </div>
+        ) : null}
 
         <div className="space-y-2">
           <Label htmlFor="surface_type">Tipo de superficie</Label>

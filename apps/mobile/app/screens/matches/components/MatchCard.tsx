@@ -111,6 +111,14 @@ export function MatchCard({ match, groupName, opponentGroupName, onPress }: Matc
               max: match.maxPlayers,
             })}
           </Text>
+          {match.venueName || match.venueText || match.city ? (
+            <XStack alignItems="center" gap={4}>
+              <Ionicons name="location-outline" size={11} color={eliteForgeColors.emerald} />
+              <Text color="rgba(255,255,255,0.45)" fontSize={11} numberOfLines={1}>
+                {match.venueName ?? match.venueText ?? match.city}
+              </Text>
+            </XStack>
+          ) : null}
         </YStack>
 
         <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.35)" />
