@@ -561,7 +561,9 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
                   <Ionicons name="location-outline" size={16} color="rgba(255,255,255,0.5)" />
                   <Text color="rgba(255,255,255,0.6)" fontSize={13} numberOfLines={1}>
                     {match.venueName ?? match.venueText ?? ""}
-                    {match.city ? `${match.venueName || match.venueText ? " · " : ""}${match.city}` : ""}
+                    {match.city
+                      ? `${match.venueName || match.venueText ? " · " : ""}${match.city}`
+                      : ""}
                   </Text>
                 </XStack>
               ) : null}

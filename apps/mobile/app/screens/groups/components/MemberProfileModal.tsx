@@ -9,11 +9,7 @@ import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
 import { getPositionLabel } from "@/screens/profile/components/ProfileHeader"
 import { StatsRadarChart, type RadarAxis } from "@/screens/profile/components/StatsRadarChart"
-import {
-  api,
-  type FriendshipStatusApiDto,
-  type PublicMemberProfileApiDto,
-} from "@/services/api"
+import { api, type FriendshipStatusApiDto, type PublicMemberProfileApiDto } from "@/services/api"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
 import { GroupAvatar } from "./GroupAvatar"
@@ -50,8 +46,7 @@ function FriendshipButton({
   disabled?: boolean
   onPress: () => void
 }) {
-  const background =
-    variant === "primary" ? eliteForgeColors.emerald : eliteForgeColors.carbonInput
+  const background = variant === "primary" ? eliteForgeColors.emerald : eliteForgeColors.carbonInput
   const border = variant === "danger" ? "#E74C3C" : eliteForgeColors.carbonBorder
   const color =
     variant === "primary" ? "#1a1a1a" : variant === "danger" ? "#E74C3C" : "rgba(255,255,255,0.8)"

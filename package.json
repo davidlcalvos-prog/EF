@@ -21,7 +21,8 @@
     "backend:venues": "npm run start:venues --workspace=apps/backend",
     "docker:up": "docker compose -f infrastructure/docker/docker-compose.yml up -d",
     "docker:down": "docker compose -f infrastructure/docker/docker-compose.yml down",
-    "docker:build": "docker compose -f infrastructure/docker/docker-compose.yml build"
+    "docker:build": "docker compose -f infrastructure/docker/docker-compose.yml build",
+    "prepare": "husky"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -29,5 +30,9 @@
   "overrides": {
     "react-native-worklets": "0.7.4",
     "eslint": "^9.39.5"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.3.0"
   }
 }

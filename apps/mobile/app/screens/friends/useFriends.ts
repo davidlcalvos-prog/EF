@@ -30,11 +30,7 @@ export function useFriends() {
       api.listFriendships("pending_sent"),
     ])
 
-    if (
-      acceptedResult.kind === "ok" &&
-      receivedResult.kind === "ok" &&
-      sentResult.kind === "ok"
-    ) {
+    if (acceptedResult.kind === "ok" && receivedResult.kind === "ok" && sentResult.kind === "ok") {
       setFriends(acceptedResult.friendships)
       setIncoming(receivedResult.friendships)
       setOutgoing(sentResult.friendships)

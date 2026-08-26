@@ -318,7 +318,8 @@ const en = {
     accept: "Accept",
     reject: "Reject",
     cancelRequest: "Cancel",
-    emptyFriends: "You have no friends yet. Open a player's profile from your groups or rankings and send a request.",
+    emptyFriends:
+      "You have no friends yet. Open a player's profile from your groups or rankings and send a request.",
     emptyRequests: "No pending requests.",
     loadError: "Your friendships could not be loaded.",
     retry: "Retry",

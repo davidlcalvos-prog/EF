@@ -14,10 +14,10 @@ import { Text, XStack, YStack } from "tamagui"
 import { MunicipalityPicker, type MunicipalityValue } from "@/components/MunicipalityPicker"
 import { Button, Input } from "@/components/ui"
 import { useAuth } from "@/context/AuthContext"
-import { api } from "@/services/api"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
 import type { AppStackScreenProps } from "@/navigators/navigationTypes"
+import { api } from "@/services/api"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 import type { PlayerProfileData } from "@/utils/playerProfileStorage"
 
@@ -87,7 +87,8 @@ export function ProfileEditScreen({ navigation }: AppStackScreenProps<"ProfileEd
       api.updateProfileMunicipality(municipality?.code ?? null)
     }
     navigation.goBack()
-  }, [form, navigation, saveFullProfile])
+    // handleSave solo se invoca onPress — agregar estas deps no re-renderiza nada.
+  }, [form, navigation, saveFullProfile, municipality?.code, municipalityDirty])
 
   const displaySeed = form.displayName || form.email || authEmail || "player"
 

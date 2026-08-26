@@ -317,7 +317,8 @@ const ja: Translations = {
     accept: "承認",
     reject: "拒否",
     cancelRequest: "キャンセル",
-    emptyFriends: "まだフレンドがいません。グループやランキングから選手のプロフィールを開いてリクエストを送りましょう。",
+    emptyFriends:
+      "まだフレンドがいません。グループやランキングから選手のプロフィールを開いてリクエストを送りましょう。",
     emptyRequests: "保留中のリクエストはありません。",
     loadError: "フレンド情報を読み込めませんでした。",
     retry: "再試行",
@@ -338,7 +339,8 @@ const ja: Translations = {
     reasonMutual: "共通のフレンド{{count}}人",
     reasonSameGroup: "{{group}}のチームメイト",
     reasonFriendGroup: "フレンドグループ{{group}}のメンバー",
-    emptySuggestions: "まだおすすめはありません。グループに参加するか、@エイリアスでフレンドを探しましょう。",
+    emptySuggestions:
+      "まだおすすめはありません。グループに参加するか、@エイリアスでフレンドを探しましょう。",
   },
   groupFriendsScreen: {
     title: "フレンドグループ",

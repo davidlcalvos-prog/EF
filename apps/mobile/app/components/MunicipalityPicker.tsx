@@ -1,15 +1,9 @@
 import { useEffect, useRef, useState } from "react"
-import {
-  ActivityIndicator,
-  FlatList,
-  Modal,
-  Pressable,
-  TextInput,
-  View,
-} from "react-native"
+import { ActivityIndicator, FlatList, Modal, Pressable, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
+import { TextField } from "@/components/TextField"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
 import { api, type MunicipalityApiDto } from "@/services/api"
@@ -109,7 +103,9 @@ export function MunicipalityPicker({
             fontSize={14}
             numberOfLines={1}
           >
-            {value ? formatMunicipality(value) : (placeholder ?? translate("municipalityPicker:placeholder"))}
+            {value
+              ? formatMunicipality(value)
+              : (placeholder ?? translate("municipalityPicker:placeholder"))}
           </Text>
           {value && clearable ? (
             <Pressable
@@ -170,7 +166,7 @@ export function MunicipalityPicker({
               paddingHorizontal={12}
             >
               <Ionicons name="search" size={18} color="rgba(255,255,255,0.5)" />
-              <TextInput
+              <TextField
                 value={query}
                 onChangeText={setQuery}
                 placeholder={translate("municipalityPicker:searchPlaceholder")}
@@ -178,7 +174,13 @@ export function MunicipalityPicker({
                 autoFocus
                 autoCapitalize="none"
                 autoCorrect={false}
-                style={{ flex: 1, color: "#FFFFFF", fontSize: 14, paddingVertical: 12 }}
+                containerStyle={{ flex: 1 }}
+                inputWrapperStyle={{
+                  backgroundColor: "transparent",
+                  borderWidth: 0,
+                  paddingHorizontal: 0,
+                }}
+                style={{ color: "#FFFFFF", fontSize: 14, paddingVertical: 12 }}
               />
             </XStack>
 
@@ -225,11 +227,7 @@ export function MunicipalityPicker({
                       borderBottomWidth={1}
                       borderBottomColor={eliteForgeColors.carbonBorder}
                     >
-                      <Ionicons
-                        name="location-outline"
-                        size={16}
-                        color={eliteForgeColors.orange}
-                      />
+                      <Ionicons name="location-outline" size={16} color={eliteForgeColors.orange} />
                       <Text color="#FFFFFF" fontSize={14} flex={1} numberOfLines={1}>
                         {item.name}
                         <Text color="rgba(255,255,255,0.5)"> — {item.department}</Text>

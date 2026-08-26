@@ -321,7 +321,8 @@ const es: Translations = {
     accept: "Aceptar",
     reject: "Rechazar",
     cancelRequest: "Cancelar",
-    emptyFriends: "Todavía no tienes amigos. Abre la ficha de un jugador desde tus grupos o rankings y envíale una solicitud.",
+    emptyFriends:
+      "Todavía no tienes amigos. Abre la ficha de un jugador desde tus grupos o rankings y envíale una solicitud.",
     emptyRequests: "No hay solicitudes pendientes.",
     loadError: "No se pudieron cargar tus amistades.",
     retry: "Reintentar",
@@ -342,7 +343,8 @@ const es: Translations = {
     reasonMutual: "{{count}} amigos en común",
     reasonSameGroup: "Compañero en {{group}}",
     reasonFriendGroup: "Del grupo amigo {{group}}",
-    emptySuggestions: "Todavía no tenemos sugerencias. Unite a un grupo o buscá a tus amigos por @alias.",
+    emptySuggestions:
+      "Todavía no tenemos sugerencias. Unite a un grupo o buscá a tus amigos por @alias.",
   },
   groupFriendsScreen: {
     title: "Grupos amigos",

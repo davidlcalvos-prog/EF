@@ -321,7 +321,8 @@ const fr: Translations = {
     accept: "Accepter",
     reject: "Refuser",
     cancelRequest: "Annuler",
-    emptyFriends: "Tu n'as pas encore d'amis. Ouvre la fiche d'un joueur depuis tes groupes ou les classements et envoie une demande.",
+    emptyFriends:
+      "Tu n'as pas encore d'amis. Ouvre la fiche d'un joueur depuis tes groupes ou les classements et envoie une demande.",
     emptyRequests: "Aucune demande en attente.",
     loadError: "Impossible de charger tes amitiés.",
     retry: "Réessayer",
@@ -342,7 +343,8 @@ const fr: Translations = {
     reasonMutual: "{{count}} amis en commun",
     reasonSameGroup: "Coéquipier dans {{group}}",
     reasonFriendGroup: "Du groupe ami {{group}}",
-    emptySuggestions: "Pas encore de suggestions. Rejoins un groupe ou cherche tes amis par @alias.",
+    emptySuggestions:
+      "Pas encore de suggestions. Rejoins un groupe ou cherche tes amis par @alias.",
   },
   groupFriendsScreen: {
     title: "Groupes amis",

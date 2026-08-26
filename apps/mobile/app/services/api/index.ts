@@ -709,9 +709,7 @@ export class Api {
   async getFriendshipStatus(
     userId: string,
   ): Promise<{ kind: "ok"; status: FriendshipStatusApiDto } | GeneralApiProblem> {
-    const response = await this.apisauce.get<FriendshipStatusApiDto>(
-      `friendships/status/${userId}`,
-    )
+    const response = await this.apisauce.get<FriendshipStatusApiDto>(`friendships/status/${userId}`)
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)
@@ -781,9 +779,7 @@ export class Api {
   async listFriendSuggestions(): Promise<
     { kind: "ok"; suggestions: FriendSuggestionApiDto[] } | GeneralApiProblem
   > {
-    const response = await this.apisauce.get<FriendSuggestionApiDto[]>(
-      "friendships/suggestions",
-    )
+    const response = await this.apisauce.get<FriendSuggestionApiDto[]>("friendships/suggestions")
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)
