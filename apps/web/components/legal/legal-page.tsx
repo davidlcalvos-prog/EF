@@ -1,5 +1,6 @@
 import { LandingNav } from '@/components/landing/landing-nav'
 import { LandingFooter } from '@/components/landing/final-cta'
+import { LandingBackground } from '@/components/landing/landing-background'
 
 /** Placeholder compartido de las páginas legales; el contenido real llega después. */
 export function LegalPlaceholderPage({ title }: { title: string }) {
@@ -10,7 +11,8 @@ export function LegalPlaceholderPage({ title }: { title: string }) {
   })
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen">
+      <LandingBackground />
       <LandingNav />
       <div className="mx-auto max-w-3xl px-4 pb-20 pt-32 sm:px-6">
         <h1 className="font-heading text-3xl font-bold italic uppercase tracking-tight text-foreground">

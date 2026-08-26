@@ -1,4 +1,3 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -6,16 +5,10 @@ import { Button } from '@/components/ui/button'
 export function Hero() {
   return (
     <section className="relative overflow-hidden pt-16">
+      {/* El fondo lo pone LandingBackground (fijo, a página completa);
+          acá solo un degradado local para la legibilidad del titular. */}
       <div className="absolute inset-0">
-        <Image
-          src="/hero-player.svg"
-          alt="Jugador de fútbol ejecutando una chilena en un estadio nocturno"
-          fill
-          priority
-          className="object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/55 via-background/25 to-background" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/80 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background/60 via-background/20 to-transparent" />
         <div aria-hidden className="ef-glow-orange absolute -bottom-40 left-1/4 h-96 w-[60rem] -translate-x-1/2" />
       </div>
 
