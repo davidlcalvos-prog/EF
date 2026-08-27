@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { ActivityIndicator, Keyboard, Modal, Pressable, ScrollView, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { addDays } from "date-fns/addDays"
@@ -10,7 +10,12 @@ import { Text, XStack, YStack } from "tamagui"
 import { TextField } from "@/components/TextField"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
-import type { MyReservationApiDto, PublicVenueApiDto } from "@/services/api"
+import {
+  api,
+  type CourtSizeApi,
+  type MyReservationApiDto,
+  type PublicVenueApiDto,
+} from "@/services/api"
 import type { GeneralApiProblem } from "@/services/api/apiProblem"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 import { formatDate } from "@/utils/formatDate"
@@ -21,13 +26,16 @@ export interface CreateReservationModalProps {
   venues: PublicVenueApiDto[]
   matchId?: string
   onCreate: (payload: {
-    courtId: string
+    venueId: string
+    size: CourtSizeApi
     startsAt: string
     endsAt: string
     notes?: string
     matchId?: string
   }) => Promise<{ kind: "ok"; reservation: MyReservationApiDto } | GeneralApiProblem>
 }
+
+const AVAILABILITY_DEBOUNCE_MS = 350
 
 const DAYS_AHEAD = 14
 
@@ -148,7 +156,7 @@ export function CreateReservationModal({
   const { insets } = useResponsiveLayout()
   const dateOptions = useMemo(() => buildDateOptions(), [])
   const [venueId, setVenueId] = useState("")
-  const [courtId, setCourtId] = useState("")
+  const [size, setSize] = useState<CourtSizeApi | "">("")
   const [selectedDate, setSelectedDate] = useState<Date>(dateOptions[0])
   const [startHour, setStartHour] = useState("19")
   const [startMinute, setStartMinute] = useState("00")
@@ -157,6 +165,11 @@ export function CreateReservationModal({
   const [notes, setNotes] = useState("")
   const [creating, setCreating] = useState(false)
   const [errorText, setErrorText] = useState<string | null>(null)
+
+  const [availableCourts, setAvailableCourts] = useState<number | null>(null)
+  const [availabilityLoading, setAvailabilityLoading] = useState(false)
+  const [availabilityError, setAvailabilityError] = useState(false)
+  const availabilitySeqRef = useRef(0)
 
   const startTimeValid = isValidTime(startHour, startMinute)
   const endTimeValid = isValidTime(endHour, endMinute)
@@ -169,25 +182,46 @@ export function CreateReservationModal({
   }, [selectedDate, startHour, startMinute, endHour, endMinute, startTimeValid, endTimeValid])
 
   const selectedVenue = venues.find((v) => v.id === venueId)
-  const venueCourts = selectedVenue?.courts ?? []
+  const venueSizes = selectedVenue?.courtSizes ?? []
+  const isRangeValid = !!startsAtIso && !!endsAtIso && endsAtIso > startsAtIso
 
-  // Si el complejo tiene una sola cancha activa, se salta el paso de elegirla.
+  // Cambiar de complejo o tamaño invalida la disponibilidad ya consultada.
   useEffect(() => {
-    if (venueCourts.length === 1) {
-      setCourtId(venueCourts[0].id)
-    } else {
-      setCourtId("")
-    }
-    // Solo cuando cambia el complejo elegido — no en cada render de venueCourts.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setSize("")
+    setAvailableCourts(null)
   }, [venueId])
 
-  const isRangeValid = !!startsAtIso && !!endsAtIso && endsAtIso > startsAtIso
-  const isValid = !!courtId && isRangeValid
+  // Fase W.1.1: se consulta disponibilidad ANTES de dejar confirmar — nunca
+  // se llega al final para chocar con un error de solape.
+  useEffect(() => {
+    if (!venueId || !size || !isRangeValid || !startsAtIso || !endsAtIso) {
+      setAvailableCourts(null)
+      setAvailabilityLoading(false)
+      setAvailabilityError(false)
+      return
+    }
+    setAvailabilityLoading(true)
+    setAvailabilityError(false)
+    const seq = ++availabilitySeqRef.current
+    const timer = setTimeout(() => {
+      api.getAvailability(venueId, size, startsAtIso, endsAtIso).then((result) => {
+        if (availabilitySeqRef.current !== seq) return
+        setAvailabilityLoading(false)
+        if (result.kind === "ok") {
+          setAvailableCourts(result.availability.availableCourts)
+        } else {
+          setAvailabilityError(true)
+        }
+      })
+    }, AVAILABILITY_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [venueId, size, isRangeValid, startsAtIso, endsAtIso])
+
+  const isValid = !!venueId && !!size && isRangeValid && !!availableCourts
 
   const reset = () => {
     setVenueId("")
-    setCourtId("")
+    setSize("")
     setSelectedDate(dateOptions[0])
     setStartHour("19")
     setStartMinute("00")
@@ -195,6 +229,7 @@ export function CreateReservationModal({
     setEndMinute("00")
     setNotes("")
     setErrorText(null)
+    setAvailableCourts(null)
   }
 
   const handleClose = () => {
@@ -205,11 +240,12 @@ export function CreateReservationModal({
   }
 
   const handleCreate = async () => {
-    if (!isValid || creating || !startsAtIso || !endsAtIso) return
+    if (!isValid || creating || !startsAtIso || !endsAtIso || !size) return
     setErrorText(null)
     setCreating(true)
     const result = await onCreate({
-      courtId,
+      venueId,
+      size,
       startsAt: startsAtIso,
       endsAt: endsAtIso,
       notes: notes.trim() || undefined,
@@ -371,18 +407,18 @@ export function CreateReservationModal({
               )}
             </YStack>
 
-            {selectedVenue && venueCourts.length > 1 ? (
+            {selectedVenue && venueSizes.length > 0 ? (
               <YStack gap={8} marginBottom={16}>
                 <Text color="rgba(255,255,255,0.6)" fontSize={12} fontWeight="700">
                   {translate("reservationsScreen:courtLabel")}
                 </Text>
                 <YStack gap={8}>
-                  {venueCourts.map((court) => {
-                    const selected = court.id === courtId
+                  {venueSizes.map((entry) => {
+                    const selected = entry.size === size
                     return (
                       <Pressable
-                        key={court.id}
-                        onPress={() => setCourtId(court.id)}
+                        key={entry.size}
+                        onPress={() => setSize(entry.size)}
                         accessibilityRole="button"
                       >
                         <XStack
@@ -400,15 +436,15 @@ export function CreateReservationModal({
                         >
                           <YStack flex={1} gap={2}>
                             <Text color="#FFFFFF" fontWeight="700" fontSize={14}>
-                              {court.name}
+                              {courtSizeLabel(entry.size)}
                             </Text>
                             <Text color="rgba(255,255,255,0.5)" fontSize={12}>
-                              {courtSizeLabel(court.size)}
+                              {translate("reservationsScreen:courtCount", { count: entry.count })}
                             </Text>
                           </YStack>
                           <Text color={eliteForgeColors.emerald} fontWeight="700" fontSize={13}>
                             {translate("reservationsScreen:pricePerHour", {
-                              price: formatPrice(court.pricePerHourCents),
+                              price: formatPrice(entry.pricePerHourCents),
                             })}
                           </Text>
                         </XStack>
@@ -419,7 +455,7 @@ export function CreateReservationModal({
               </YStack>
             ) : null}
 
-            {selectedVenue && venueCourts.length === 0 ? (
+            {selectedVenue && venueSizes.length === 0 ? (
               <YStack gap={8} marginBottom={16}>
                 <Text color="rgba(255,255,255,0.6)" fontSize={12} fontWeight="700">
                   {translate("reservationsScreen:courtLabel")}
@@ -480,6 +516,39 @@ export function CreateReservationModal({
                 </Text>
               ) : null}
             </YStack>
+
+            {venueId && size && isRangeValid ? (
+              <YStack gap={8} marginBottom={16}>
+                {availabilityLoading ? (
+                  <XStack alignItems="center" gap={8}>
+                    <ActivityIndicator size="small" color={eliteForgeColors.emerald} />
+                    <Text color="rgba(255,255,255,0.5)" fontSize={13}>
+                      {translate("reservationsScreen:checkingAvailability")}
+                    </Text>
+                  </XStack>
+                ) : availabilityError ? (
+                  <Text color="#E74C3C" fontSize={13}>
+                    {translate("reservationsScreen:availabilityError")}
+                  </Text>
+                ) : availableCourts !== null && availableCourts > 0 ? (
+                  <XStack alignItems="center" gap={8}>
+                    <Ionicons name="checkmark-circle" size={16} color={eliteForgeColors.emerald} />
+                    <Text color={eliteForgeColors.emerald} fontSize={13} fontWeight="700">
+                      {translate("reservationsScreen:availabilityCount", {
+                        count: availableCourts,
+                      })}
+                    </Text>
+                  </XStack>
+                ) : availableCourts === 0 ? (
+                  <XStack alignItems="center" gap={8}>
+                    <Ionicons name="close-circle" size={16} color="#E74C3C" />
+                    <Text color="#E74C3C" fontSize={13} fontWeight="700">
+                      {translate("reservationsScreen:noAvailability")}
+                    </Text>
+                  </XStack>
+                ) : null}
+              </YStack>
+            ) : null}
 
             <YStack gap={8} marginBottom={8}>
               <Text color="rgba(255,255,255,0.6)" fontSize={12} fontWeight="700">

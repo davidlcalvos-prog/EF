@@ -158,7 +158,9 @@ export function ReservationDetailScreen({
                 <XStack alignItems="center" gap={8}>
                   <Ionicons name="grid-outline" size={16} color="rgba(255,255,255,0.5)" />
                   <Text color="rgba(255,255,255,0.6)" fontSize={13}>
-                    {reservation.courtName}
+                    {translate("reservationsScreen:assignedCourt", {
+                      court: reservation.courtName,
+                    })}
                   </Text>
                 </XStack>
               ) : null}

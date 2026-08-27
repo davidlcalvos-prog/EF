@@ -13,7 +13,9 @@ import type { PhysicalTestId } from "@/data/mockPlayerProfile"
 import type { PlayerPositionId } from "@/data/suggestPlayerPosition"
 import type {
   AuthApiResponse,
+  AvailabilityApiDto,
   CommentApiDto,
+  CourtSizeApi,
   EpisodeItem,
   ApiConfig,
   ApiFeedResponse,
@@ -75,7 +77,7 @@ export type {
   TeamAssignmentWarningApiDto,
   ReservationStatusApi,
   CourtSizeApi,
-  PublicCourtApiDto,
+  AvailabilityApiDto,
   PublicVenueApiDto,
   MyReservationApiDto,
   PublicMemberProfileApiDto,
@@ -1194,14 +1196,41 @@ export class Api {
   }
 
   /**
-   * Nace siempre en 'pending' (Fase W.1: se reserva una cancha puntual, no
-   * el complejo entero). 400 si endsAt <= startsAt, 409 si hay choque de
-   * horario en esa cancha o si el matchId ya tiene reserva, 404 si la cancha
-   * o el matchId no existen, 403 si no eres creator/admin del grupo origen o
+   * Fase W.1.1: cuántas canchas de ese tamaño quedan libres en ese horario —
+   * se consulta ANTES de dejar confirmar, para no chocar con un solape al final.
+   */
+  async getAvailability(
+    venueId: string,
+    size: CourtSizeApi,
+    startsAt: string,
+    endsAt: string,
+  ): Promise<{ kind: "ok"; availability: AvailabilityApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.get<AvailabilityApiDto>(`venues/${venueId}/availability`, {
+      size,
+      startsAt,
+      endsAt,
+    })
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", availability: response.data }
+  }
+
+  /**
+   * Nace siempre en 'pending' (Fase W.1.1: se elige complejo + tamaño, el
+   * backend auto-asigna la cancha puntual con lock — ver A.2 del prompt).
+   * 400 si endsAt <= startsAt, 409 si no hay canchas de ese tamaño libres en
+   * el horario o si el matchId ya tiene reserva, 404 si el venue o el
+   * matchId no existen, 403 si no eres creator/admin del grupo origen o
    * rival del partido.
    */
   async createReservation(payload: {
-    courtId: string
+    venueId: string
+    size: CourtSizeApi
     startsAt: string
     endsAt: string
     notes?: string

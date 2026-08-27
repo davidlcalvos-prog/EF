@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import { api, type MyReservationApiDto } from "@/services/api"
+import { api, type CourtSizeApi, type MyReservationApiDto } from "@/services/api"
 import type { GeneralApiProblem } from "@/services/api/apiProblem"
 
 type CreateResult = { kind: "ok"; reservation: MyReservationApiDto } | GeneralApiProblem
@@ -38,7 +38,8 @@ export function useReservations() {
 
   const create = useCallback(
     async (payload: {
-      courtId: string
+      venueId: string
+      size: CourtSizeApi
       startsAt: string
       endsAt: string
       notes?: string
