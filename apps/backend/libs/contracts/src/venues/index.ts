@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsInt,
@@ -25,15 +26,25 @@ export type VenueSurfaceTypeDto =
 /** Origen de las coordenadas de una cancha (Fase L.0). */
 export type LocationSourceDto = 'municipality' | 'pin';
 
+/** Tamaño de una Court (Fase W.1) — distinto de TournamentCourtSize (ese solo tiene 3 valores). */
+export type CourtSizeDto = 'five' | 'six' | 'seven' | 'eight' | 'eleven';
+export const COURT_SIZE_VALUES: CourtSizeDto[] = ['five', 'six', 'seven', 'eight', 'eleven'];
+
+/** Quién originó una reserva (Fase W.1). */
+export type ReservationSourceDto = 'app' | 'phone' | 'tournament' | 'block';
+
 export interface VenueDto {
   id: string;
   ownerId: string;
   name: string;
   address: string | null;
+  /** "Precio desde" — mínimo entre las courts activas, calculado; ver A.3. Sin courts, es el valor viejo tal cual. */
   pricePerHourCents: number;
   availability: Record<string, unknown>;
   /** Null hasta que el owner lo complete desde "Mi cancha" — sin migración de datos existentes. */
   surfaceType: VenueSurfaceTypeDto | null;
+  /** Fase W.1: canchas reales del complejo. [] si el owner todavía no cargó ninguna. */
+  courts: CourtDto[];
   /** Ubicación (Fase L.0). Una cancha es pública: lat/lng sí se exponen. */
   municipalityCode: string | null;
   city: string | null;
@@ -86,27 +97,145 @@ export class UpsertVenueDto {
   longitude?: number;
 }
 
+// --- Courts (Fase W.1) ---
+
+export interface CourtDto {
+  id: string;
+  name: string;
+  size: CourtSizeDto;
+  /** Null = hereda el surfaceType del Venue. */
+  surfaceType: VenueSurfaceTypeDto | null;
+  pricePerHourCents: number;
+  isActive: boolean;
+}
+
+export class CreateCourtDto {
+  @IsString()
+  @MinLength(1)
+  name!: string;
+
+  @IsEnum(COURT_SIZE_VALUES)
+  size!: CourtSizeDto;
+
+  @IsOptional()
+  @IsEnum(['natural_grass', 'synthetic_grass', 'dirt_gravel', 'futsal_concrete'])
+  surfaceType?: VenueSurfaceTypeDto;
+
+  @IsInt()
+  @Min(0)
+  pricePerHourCents!: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class CreateCourtPayload extends CreateCourtDto {
+  @IsUUID()
+  ownerId!: string;
+
+  @IsUUID()
+  venueId!: string;
+}
+
+export class UpdateCourtDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  name?: string;
+
+  @IsOptional()
+  @IsEnum(COURT_SIZE_VALUES)
+  size?: CourtSizeDto;
+
+  @IsOptional()
+  @IsEnum(['natural_grass', 'synthetic_grass', 'dirt_gravel', 'futsal_concrete'])
+  surfaceType?: VenueSurfaceTypeDto;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  pricePerHourCents?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class UpdateCourtPayload extends UpdateCourtDto {
+  @IsUUID()
+  ownerId!: string;
+
+  @IsUUID()
+  courtId!: string;
+}
+
+/** Desactivar es la única forma de "borrar" una court con reservas futuras — ver A.3. */
+export class DeactivateCourtPayload {
+  @IsUUID()
+  ownerId!: string;
+
+  @IsUUID()
+  courtId!: string;
+}
+
 export interface ReservationDto {
   id: string;
   userId: string;
+  /** Nombre del usuario dueño de la fila (para source=app, quién reservó desde mobile). Null si el usuario ya no existe. */
+  userName: string | null;
   venueId: string | null;
   venueName: string;
+  courtId: string | null;
+  courtName: string | null;
   startsAt: string;
   endsAt: string;
   status: ReservationStatusDto;
+  source: ReservationSourceDto;
+  customerName: string | null;
+  customerPhone: string | null;
   notes: string | null;
   createdAt: string;
 }
 
 export class UpdateReservationStatusDto {
-  @IsEnum(['pending', 'confirmed', 'cancelled'])
-  status!: ReservationStatusDto;
+  @IsEnum(['confirmed', 'cancelled'])
+  status!: 'confirmed' | 'cancelled';
 }
 
 export class UpdateReservationStatusPayload extends UpdateReservationStatusDto {
   @IsUUID()
   reservationId!: string;
 
+  @IsUUID()
+  ownerId!: string;
+}
+
+/** Reserva telefónica (lado dueño, Fase W.1) — nace confirmed, source=phone. */
+export class CreatePhoneReservationDto {
+  @IsUUID()
+  courtId!: string;
+
+  @IsDateString()
+  startsAt!: string;
+
+  @IsDateString()
+  endsAt!: string;
+
+  @IsString()
+  @MinLength(1)
+  customerName!: string;
+
+  @IsOptional()
+  @IsString()
+  customerPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+export class CreatePhoneReservationPayload extends CreatePhoneReservationDto {
   @IsUUID()
   ownerId!: string;
 }
@@ -130,6 +259,8 @@ export interface PublicVenueDto {
   address: string | null;
   pricePerHourCents: number;
   availability: Record<string, unknown>;
+  /** Fase W.1: solo las courts activas — sin isActive/surfaceType, el jugador no los necesita. */
+  courts: Array<{ id: string; name: string; size: CourtSizeDto; pricePerHourCents: number }>;
   /** Ubicación (Fase L.0) — pública para canchas. */
   municipalityCode: string | null;
   city: string | null;
@@ -146,8 +277,9 @@ export class ListPublicVenuesPayload {
 }
 
 export class CreateReservationDto {
+  /** Fase W.1: el jugador reserva una cancha puntual, no el venue completo. */
   @IsUUID()
-  venueId!: string;
+  courtId!: string;
 
   @IsDateString()
   startsAt!: string;
@@ -184,6 +316,8 @@ export interface MyReservationDto {
   userId: string;
   venueId: string | null;
   venueName: string;
+  courtId: string | null;
+  courtName: string | null;
   startsAt: string;
   endsAt: string;
   status: ReservationStatusDto;

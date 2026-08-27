@@ -24,6 +24,11 @@ export const MESSAGE_PATTERNS = {
     UPSERT_MINE: 'venues.upsert_mine',
     LIST_RESERVATIONS_MINE: 'venues.list_reservations_mine',
     UPDATE_RESERVATION_STATUS: 'venues.update_reservation_status',
+    // Courts (Fase W.1)
+    CREATE_COURT: 'venues.create_court',
+    UPDATE_COURT: 'venues.update_court',
+    DEACTIVATE_COURT: 'venues.deactivate_court',
+    CREATE_PHONE_RESERVATION: 'venues.create_phone_reservation',
     // Lado jugador (Fase 4)
     LIST_PUBLIC: 'venues.list_public',
     CREATE_RESERVATION: 'venues.create_reservation',

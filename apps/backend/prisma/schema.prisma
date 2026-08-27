@@ -192,12 +192,20 @@ model Venue {
   owner                     User              @relation("VenueOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   name                      String
   address                   String?
+  /// Fase W.1: precio único de todo el complejo, previo a Court. Sigue existiendo
+  /// por compatibilidad (nada lo migra); una vez que el venue tiene courts, el
+  /// service lo calcula al vuelo como el mínimo de sus courts activas ("desde $X")
+  /// en vez de leer esta columna — ver VenueRepository.toVenueDto/toPublicVenueDto.
   pricePerHourCents         Int               @default(0)
   availability              Json              @default("{}")
   /// Fase 7.2: null en canchas ya registradas (no hay migracion de datos existentes,
   /// el owner lo completa desde "Mi cancha" cuando quiera). Solo synthetic_grass es
   /// elegible para el pool aleatorio de Copa Elite Forge.
   surfaceType               VenueSurfaceType?
+  /// Fase W.1: canchas reales del complejo (tamaño + precio propios). Un venue
+  /// migrado desde antes de esta fase empieza sin courts — el owner las carga
+  /// desde "Mi cancha"; mismo criterio que surfaceType arriba.
+  courts                    Court[]
   reservations              Reservation[]
   tournaments               Tournament[]
   /// Partidos de Copa Elite Forge (kind=elite_forge) asignados a esta cancha al azar.
@@ -228,6 +236,42 @@ enum LocationSource {
   pin
 }
 
+enum CourtSize {
+  five
+  six
+  seven
+  eight
+  eleven
+}
+
+/// Fase W.1: cancha real dentro de un complejo (Venue), con su propio tamaño y
+/// precio. Un Venue puede tener 0 (todavía no migrado) o varias.
+model Court {
+  id                String        @id @default(uuid()) @db.Uuid
+  venueId           String        @db.Uuid
+  venue             Venue         @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  name              String
+  size              CourtSize
+  /// Null hereda el surfaceType del Venue.
+  surfaceType       VenueSurfaceType?
+  pricePerHourCents Int
+  isActive          Boolean       @default(true)
+  reservations      Reservation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([venueId])
+  @@map("courts")
+}
+
+enum ReservationSource {
+  app
+  phone
+  tournament
+  block
+}
+
 model Reservation {
   id                String            @id @default(uuid()) @db.Uuid
   userId            String            @db.Uuid
@@ -235,10 +279,21 @@ model Reservation {
   venueId           String?           @db.Uuid
   venue             Venue?            @relation(fields: [venueId], references: [id], onDelete: SetNull)
   venueName         String
+  /// Fase W.1: cancha específica dentro del venue. Null en reservas previas a
+  /// esta fase (no hay migración de datos) y en los flujos automáticos de
+  /// Match/Tournament que siguen reservando a nivel de venue — ver A.3.
+  courtId           String?           @db.Uuid
+  court             Court?            @relation(fields: [courtId], references: [id], onDelete: SetNull)
   startsAt          DateTime
   endsAt            DateTime
   status            ReservationStatus @default(pending)
   notes             String?
+  /// Fase W.1: quién la originó. app = jugador desde mobile (nace pending);
+  /// phone = el dueño la carga a mano (nace confirmed); tournament/block se
+  /// dejan previstos para usos futuros del portal, no se generan todavía.
+  source            ReservationSource @default(app)
+  customerName      String?
+  customerPhone     String?
   /// Vincula la reserva con el partido que la origina (Fase 4). Opcional: se puede reservar sin partido.
   matchId           String?           @unique @db.Uuid
   match             Match?            @relation(fields: [matchId], references: [id], onDelete: SetNull)
@@ -250,6 +305,7 @@ model Reservation {
   updatedAt DateTime @updatedAt
 
   @@index([venueId])
+  @@index([courtId])
   @@index([userId])
   @@map("reservations")
 }
