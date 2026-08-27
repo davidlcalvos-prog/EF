@@ -5,25 +5,10 @@ import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import type { ReservationStatus } from '@/lib/dal/admin/types'
-import {
-  courtSizeLabel,
-  type CalendarReservation,
-  type CourtSize,
-} from '@/lib/dal/admin/mock-reservations'
+import type { CourtRow } from '@/lib/dal/admin/types'
+import { courtSizeLabel } from '@/lib/dal/admin/court-occupancy'
 
 const HOUR_OPTIONS = Array.from({ length: 15 }, (_, i) => i + 8)
-
-export type ReservationFormDraft = {
-  guest_name: string
-  venue_name: string
-  court_size: CourtSize
-  date: string
-  start_hour: number
-  duration_hours: number
-  status: ReservationStatus
-  phone: string
-}
 
 export function toDateInputValue(date: Date) {
   const y = date.getFullYear()
@@ -38,122 +23,60 @@ function formatHourOption(hour: number) {
   return `${h12}:00 ${suffix}`
 }
 
-function extractPhone(notes: string | null) {
-  if (!notes) return ''
-  const match = notes.match(/Tel:\s*([^·]+)/i)
-  return match?.[1]?.trim() ?? ''
-}
-
-export function draftFromReservation(
-  reservation: CalendarReservation,
-): ReservationFormDraft {
-  const start = new Date(reservation.starts_at)
-  const end = new Date(reservation.ends_at)
-  const durationHours = Math.max(
-    1,
-    Math.round((end.getTime() - start.getTime()) / (60 * 60 * 1000)),
-  )
-  return {
-    guest_name: reservation.guest_name,
-    venue_name: reservation.venue_name,
-    court_size: reservation.court_size,
-    date: toDateInputValue(start),
-    start_hour: start.getHours(),
-    duration_hours: Math.min(3, durationHours),
-    status:
-      reservation.status === 'cancelled' ? 'pending' : reservation.status,
-    phone: extractPhone(reservation.notes),
-  }
-}
-
-export function applyDraftToReservation(
-  draft: ReservationFormDraft,
-  existing?: CalendarReservation,
-): CalendarReservation {
-  const [y, m, d] = draft.date.split('-').map(Number)
-  const starts = new Date(y, m - 1, d, draft.start_hour, 0, 0, 0)
-  const ends = new Date(
-    starts.getTime() + draft.duration_hours * 60 * 60 * 1000,
-  )
-  const id =
-    existing?.id ??
-    `phone-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-  const phoneNote = draft.phone.trim()
-    ? `Tel: ${draft.phone.trim()} · Reserva telefónica`
-    : existing?.notes?.includes('Tel:')
-      ? 'Reserva telefónica'
-      : existing?.notes ?? 'Reserva telefónica'
-
-  return {
-    id,
-    user_id: existing?.user_id ?? `phone-user-${id}`,
-    venue_id: existing?.venue_id ?? null,
-    venue_name: draft.venue_name.trim() || 'Cancha Elite Demo',
-    starts_at: starts.toISOString(),
-    ends_at: ends.toISOString(),
-    status: draft.status,
-    notes: phoneNote,
-    created_at: existing?.created_at ?? new Date().toISOString(),
-    guest_name: draft.guest_name.trim(),
-    court_size: draft.court_size,
-    is_demo: existing?.is_demo ?? true,
-  }
-}
-
 const selectClass =
   'h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40'
 
-export function ReservationFormModal({
+export type PhoneReservationPayload = {
+  court_id: string
+  starts_at: string
+  ends_at: string
+  customer_name: string
+  customer_phone?: string
+  notes?: string
+}
+
+/** Modal de "reserva telefónica" (Fase W.1) — el owner elige una cancha real. */
+export function AddReservationModal({
   open,
-  mode,
   onClose,
   onSave,
-  defaultVenueName,
+  courts,
   defaultDate,
-  initial,
 }: {
   open: boolean
-  mode: 'add' | 'edit'
   onClose: () => void
-  onSave: (reservation: CalendarReservation) => void
-  defaultVenueName: string
+  onSave: (payload: PhoneReservationPayload) => Promise<void>
+  courts: CourtRow[]
   defaultDate: Date
-  initial?: CalendarReservation | null
 }) {
-  const [guestName, setGuestName] = useState('')
-  const [venueName, setVenueName] = useState(defaultVenueName)
-  const [courtSize, setCourtSize] = useState<CourtSize>('6vs6')
+  const activeCourts = courts.filter((c) => c.is_active)
+
+  const [customerName, setCustomerName] = useState('')
+  const [customerPhone, setCustomerPhone] = useState('')
+  const [courtId, setCourtId] = useState(activeCourts[0]?.id ?? '')
   const [date, setDate] = useState(toDateInputValue(defaultDate))
   const [startHour, setStartHour] = useState(18)
   const [durationHours, setDurationHours] = useState(1)
-  const [status, setStatus] = useState<ReservationStatus>('confirmed')
-  const [phone, setPhone] = useState('')
+  const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    if (!open) return
-    if (mode === 'edit' && initial) {
-      const draft = draftFromReservation(initial)
-      setGuestName(draft.guest_name)
-      setVenueName(draft.venue_name)
-      setCourtSize(draft.court_size)
-      setDate(draft.date)
-      setStartHour(draft.start_hour)
-      setDurationHours(draft.duration_hours)
-      setStatus(draft.status)
-      setPhone(draft.phone)
-    } else {
-      setGuestName('')
-      setVenueName(defaultVenueName)
-      setCourtSize('6vs6')
+  // Reinicia el formulario cada vez que el modal se abre. Se ajusta durante
+  // el render (no en un efecto) para evitar un render extra en cada apertura.
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) {
+      setCustomerName('')
+      setCustomerPhone('')
+      setCourtId(activeCourts[0]?.id ?? '')
       setDate(toDateInputValue(defaultDate))
       setStartHour(18)
       setDurationHours(1)
-      setStatus('confirmed')
-      setPhone('')
+      setNotes('')
+      setError(null)
     }
-    setError(null)
-  }, [open, mode, initial, defaultVenueName, defaultDate])
+  }
 
   useEffect(() => {
     if (!open) return
@@ -166,10 +89,14 @@ export function ReservationFormModal({
 
   if (!open) return null
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (guestName.trim().length < 2) {
+    if (customerName.trim().length < 2) {
       setError('Ingresa el nombre de quien reserva.')
+      return
+    }
+    if (!courtId) {
+      setError('Selecciona una cancha.')
       return
     }
     if (!date) {
@@ -181,21 +108,29 @@ export function ReservationFormModal({
       return
     }
 
-    const reservation = applyDraftToReservation(
-      {
-        guest_name: guestName,
-        venue_name: venueName,
-        court_size: courtSize,
-        date,
-        start_hour: startHour,
-        duration_hours: durationHours,
-        status,
-        phone,
-      },
-      mode === 'edit' ? initial ?? undefined : undefined,
-    )
-    onSave(reservation)
-    onClose()
+    const [y, m, d] = date.split('-').map(Number)
+    const starts = new Date(y, m - 1, d, startHour, 0, 0, 0)
+    const ends = new Date(starts.getTime() + durationHours * 60 * 60 * 1000)
+
+    setSaving(true)
+    setError(null)
+    try {
+      await onSave({
+        court_id: courtId,
+        starts_at: starts.toISOString(),
+        ends_at: ends.toISOString(),
+        customer_name: customerName.trim(),
+        customer_phone: customerPhone.trim() || undefined,
+        notes: notes.trim() || undefined,
+      })
+      onClose()
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'No se pudo crear la reserva.',
+      )
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -213,18 +148,17 @@ export function ReservationFormModal({
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              {mode === 'edit' ? 'Editar reserva' : 'Reserva telefónica'}
+              Reserva telefónica
             </p>
             <h2
               id="reservation-form-title"
               className="mt-1 font-heading text-2xl font-bold text-foreground"
             >
-              {mode === 'edit' ? 'Modificar reserva' : 'Añadir reserva'}
+              Nueva reserva telefónica
             </h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              {mode === 'edit'
-                ? 'Cambia formato, fecha, horario, nombre o estado.'
-                : 'Para citas gestionadas por llamada (no vienen de la app).'}
+              Para citas gestionadas por llamada (no vienen de la app). Queda
+              confirmada de inmediato.
             </p>
           </div>
           <button
@@ -237,96 +171,79 @@ export function ReservationFormModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="guest_name">Nombre del jugador</Label>
-            <Input
-              id="guest_name"
-              required
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
-              placeholder="Ej. Pedro Sánchez"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="phone">Teléfono (opcional)</Label>
-            <Input
-              id="phone"
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="300 123 4567"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="venue_name">Cancha / complejo</Label>
-            <Input
-              id="venue_name"
-              required
-              value={venueName}
-              onChange={(e) => setVenueName(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="court_size">Formato de cancha</Label>
-            <select
-              id="court_size"
-              className={selectClass}
-              value={courtSize}
-              onChange={(e) => setCourtSize(e.target.value as CourtSize)}
-            >
-              <option value="6vs6">{courtSizeLabel('6vs6')}</option>
-              <option value="8vs8">{courtSizeLabel('8vs8')}</option>
-              <option value="11vs11">{courtSizeLabel('11vs11')}</option>
-            </select>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
+        {activeCourts.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+            No hay canchas activas. Agregá al menos una en “Mi cancha” antes
+            de crear reservas telefónicas.
+          </p>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="date">Fecha</Label>
+              <Label htmlFor="customer_name">Nombre del cliente</Label>
               <Input
-                id="date"
-                type="date"
+                id="customer_name"
                 required
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Ej. Pedro Sánchez"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="status">Estado</Label>
-              <select
-                id="status"
-                className={selectClass}
-                value={status}
-                onChange={(e) =>
-                  setStatus(e.target.value as ReservationStatus)
-                }
-              >
-                <option value="confirmed">Confirmada</option>
-                <option value="pending">Pendiente</option>
-              </select>
-            </div>
-          </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="start_hour">Hora de inicio</Label>
+              <Label htmlFor="customer_phone">Teléfono (opcional)</Label>
+              <Input
+                id="customer_phone"
+                type="tel"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="300 123 4567"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="court_id">Cancha</Label>
               <select
-                id="start_hour"
+                id="court_id"
                 className={selectClass}
-                value={startHour}
-                onChange={(e) => setStartHour(Number(e.target.value))}
+                value={courtId}
+                onChange={(e) => setCourtId(e.target.value)}
               >
-                {HOUR_OPTIONS.map((hour) => (
-                  <option key={hour} value={hour} disabled={hour >= 22}>
-                    {formatHourOption(hour)}
+                {activeCourts.map((court) => (
+                  <option key={court.id} value={court.id}>
+                    {court.name} — {courtSizeLabel(court.size)}
                   </option>
                 ))}
               </select>
             </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="date">Fecha</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  required
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="start_hour">Hora de inicio</Label>
+                <select
+                  id="start_hour"
+                  className={selectClass}
+                  value={startHour}
+                  onChange={(e) => setStartHour(Number(e.target.value))}
+                >
+                  {HOUR_OPTIONS.map((hour) => (
+                    <option key={hour} value={hour} disabled={hour >= 22}>
+                      {formatHourOption(hour)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="duration">Duración</Label>
               <select
@@ -340,46 +257,30 @@ export function ReservationFormModal({
                 <option value={3}>3 horas</option>
               </select>
             </div>
-          </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notas (opcional)</Label>
+              <Input
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Ej. Pide balón prestado"
+              />
+            </div>
 
-          <div className="flex flex-wrap gap-2 pt-2">
-            <Button type="submit">
-              {mode === 'edit' ? 'Guardar cambios' : 'Guardar reserva'}
-            </Button>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-          </div>
-        </form>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+
+            <div className="flex flex-wrap gap-2 pt-2">
+              <Button type="submit" disabled={saving}>
+                {saving ? 'Guardando…' : 'Guardar reserva'}
+              </Button>
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
-  )
-}
-
-/** Compatibilidad: añadir reserva telefónica */
-export function AddReservationModal({
-  open,
-  onClose,
-  onSave,
-  defaultVenueName,
-  defaultDate,
-}: {
-  open: boolean
-  onClose: () => void
-  onSave: (reservation: CalendarReservation) => void
-  defaultVenueName: string
-  defaultDate: Date
-}) {
-  return (
-    <ReservationFormModal
-      open={open}
-      mode="add"
-      onClose={onClose}
-      onSave={onSave}
-      defaultVenueName={defaultVenueName}
-      defaultDate={defaultDate}
-    />
   )
 }

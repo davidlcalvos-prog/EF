@@ -1,21 +1,15 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import type { ReservationRow } from '@/lib/dal/admin/types'
-import {
-  enrichReservationsForCalendar,
-  type CalendarReservation,
-} from '@/lib/dal/admin/mock-reservations'
 import {
   computeClientStats,
   computeDayOccupancy,
   computeHourOccupancy,
+  computeSourceBreakdown,
 } from '@/lib/dal/admin/analytics'
 import { AdminPageHeader } from '@/components/admin/page-header'
 import { eliteForgeColors } from '@/lib/theme/elite-forge'
-
-const PHONE_KEY = 'ef-admin-phone-reservations'
-const EDITS_KEY = 'ef-admin-edited-reservations'
 
 const BRAND = {
   emerald: eliteForgeColors.emerald,
@@ -52,40 +46,10 @@ export function AnalyticsDashboard({
 }: {
   reservations: ReservationRow[]
 }) {
-  const [extra, setExtra] = useState<CalendarReservation[]>([])
-  const [edits, setEdits] = useState<Record<string, CalendarReservation>>({})
-
-  useEffect(() => {
-    try {
-      const phone = localStorage.getItem(PHONE_KEY)
-      if (phone) {
-        const parsed = JSON.parse(phone) as CalendarReservation[]
-        if (Array.isArray(parsed)) setExtra(parsed)
-      }
-      const rawEdits = localStorage.getItem(EDITS_KEY)
-      if (rawEdits) {
-        const parsed = JSON.parse(rawEdits) as Record<
-          string,
-          CalendarReservation
-        >
-        if (parsed && typeof parsed === 'object') setEdits(parsed)
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [])
-
-  const items = useMemo(() => {
-    const base = [
-      ...enrichReservationsForCalendar(reservations),
-      ...extra,
-    ]
-    return base.map((r) => edits[r.id] ?? r)
-  }, [reservations, extra, edits])
-
-  const dayStats = useMemo(() => computeDayOccupancy(items), [items])
-  const hourStats = useMemo(() => computeHourOccupancy(items), [items])
-  const clients = useMemo(() => computeClientStats(items), [items])
+  const dayStats = useMemo(() => computeDayOccupancy(reservations), [reservations])
+  const hourStats = useMemo(() => computeHourOccupancy(reservations), [reservations])
+  const clients = useMemo(() => computeClientStats(reservations), [reservations])
+  const sources = useMemo(() => computeSourceBreakdown(reservations), [reservations])
 
   const maxDay = Math.max(1, ...dayStats.byDay.map((d) => d.count))
   const maxHour = Math.max(
@@ -94,9 +58,10 @@ export function AnalyticsDashboard({
     ...hourStats.quietestHours.map((h) => h.count),
   )
   const maxClient = Math.max(1, ...clients.slice(0, 8).map((c) => c.total), 1)
+  const maxSource = Math.max(1, ...sources.map((s) => s.count))
 
-  const activeCount = items.filter((r) => r.status !== 'cancelled').length
-  const cancelledCount = items.filter((r) => r.status === 'cancelled').length
+  const activeCount = reservations.filter((r) => r.status !== 'cancelled').length
+  const cancelledCount = reservations.filter((r) => r.status === 'cancelled').length
 
   return (
     <div className="space-y-8">
@@ -146,7 +111,7 @@ export function AnalyticsDashboard({
             {clients.length}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Incluye app, demo y teléfono
+            Incluye app y teléfono
           </p>
         </div>
       </div>
@@ -264,6 +229,26 @@ export function AnalyticsDashboard({
             ))}
           </ul>
         </div>
+      </section>
+
+      <section className="rounded-2xl ef-card p-5">
+        <h2 className="font-heading text-lg font-bold uppercase italic tracking-tight text-foreground">
+          Reservas por origen
+        </h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          App, teléfono, torneo o bloqueo manual.
+        </p>
+        <ul className="mt-5 space-y-3">
+          {sources.map((s) => (
+            <li key={s.source} className="space-y-1.5">
+              <div className="flex justify-between text-sm">
+                <span>{s.label}</span>
+                <span style={{ color: BRAND.emerald }}>{s.count}</span>
+              </div>
+              <Bar value={s.count} max={maxSource} color={BRAND.emerald} />
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="rounded-2xl ef-card p-5">
