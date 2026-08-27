@@ -38,7 +38,7 @@ export function useReservations() {
 
   const create = useCallback(
     async (payload: {
-      venueId: string
+      courtId: string
       startsAt: string
       endsAt: string
       notes?: string

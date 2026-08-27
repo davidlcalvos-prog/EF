@@ -74,6 +74,8 @@ export type {
   PositionCategoryApi,
   TeamAssignmentWarningApiDto,
   ReservationStatusApi,
+  CourtSizeApi,
+  PublicCourtApiDto,
   PublicVenueApiDto,
   MyReservationApiDto,
   PublicMemberProfileApiDto,
@@ -1192,12 +1194,14 @@ export class Api {
   }
 
   /**
-   * Nace siempre en 'pending'. 400 si endsAt <= startsAt, 409 si hay choque de
-   * horario o si el matchId ya tiene reserva, 404 si el matchId no existe,
-   * 403 si no eres creator/admin del grupo origen o rival del partido.
+   * Nace siempre en 'pending' (Fase W.1: se reserva una cancha puntual, no
+   * el complejo entero). 400 si endsAt <= startsAt, 409 si hay choque de
+   * horario en esa cancha o si el matchId ya tiene reserva, 404 si la cancha
+   * o el matchId no existen, 403 si no eres creator/admin del grupo origen o
+   * rival del partido.
    */
   async createReservation(payload: {
-    venueId: string
+    courtId: string
     startsAt: string
     endsAt: string
     notes?: string
