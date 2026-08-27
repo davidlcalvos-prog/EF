@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 import {
   ActivityIndicator,
   Alert,
@@ -8,6 +8,7 @@ import {
   StatusBar,
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
+import { useFocusEffect } from "@react-navigation/native"
 import { Text, XStack, YStack } from "tamagui"
 
 import { useAuth } from "@/context/AuthContext"
@@ -41,17 +42,24 @@ export function NearbyGuestRequestsScreen({
   const [hasLocation, setHasLocation] = useState<boolean | null>(null)
   const [applyingId, setApplyingId] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!authUserId) return
-    let cancelled = false
-    api.getMyProfile(authUserId).then((result) => {
-      if (cancelled) return
-      if (result.kind === "ok") setHasLocation(!!result.profile.municipalityCode)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [authUserId])
+  // Se re-chequea CADA VEZ que la pantalla recupera foco (no solo al montar):
+  // se llega acá, se va a ProfileEdit a cargar la zona y se vuelve con goBack
+  // — React Navigation reusa esta misma instancia, así que un efecto atado
+  // solo al montaje nunca se enteraba de que la zona ya estaba guardada.
+  useFocusEffect(
+    useCallback(() => {
+      if (!authUserId) return
+      let cancelled = false
+      api.getMyProfile(authUserId).then((result) => {
+        if (cancelled) return
+        if (result.kind === "ok") setHasLocation(!!result.profile.municipalityCode)
+      })
+      refresh()
+      return () => {
+        cancelled = true
+      }
+    }, [authUserId, refresh]),
+  )
 
   const handleApply = useCallback(
     async (requestId: string) => {
