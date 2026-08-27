@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Phone,
   Plus,
+  Repeat,
   Search,
   Smartphone,
   Trophy,
@@ -20,6 +21,7 @@ import {
   cancelReservation,
   confirmReservation,
   createPhoneReservation,
+  reassignReservationCourt,
 } from '@/app/admin/(portal)/reservas/actions'
 import {
   getReservationSourceLabel,
@@ -27,6 +29,7 @@ import {
 } from '@/lib/dal/admin/reservation-format'
 import { courtSizeLabel } from '@/lib/dal/admin/court-occupancy'
 import { AddReservationModal, type PhoneReservationPayload } from '@/components/admin/add-reservation-modal'
+import { ReassignCourtModal } from '@/components/admin/reassign-court-modal'
 import { eliteForgeColors } from '@/lib/theme/elite-forge'
 
 type CalendarView = 'day' | 'week' | 'month'
@@ -183,16 +186,26 @@ function NamePill({
 function ReservationModal({
   event,
   onClose,
+  courts,
+  allReservations,
 }: {
   event: ReservationRow
   onClose: () => void
+  courts: CourtRow[]
+  allReservations: ReservationRow[]
 }) {
   const start = new Date(event.starts_at)
   const end = new Date(event.ends_at)
   const canConfirm = event.status === 'pending'
   const canCancel = event.status === 'pending' || event.status === 'confirmed'
+  const canReassign =
+    event.source === 'app' &&
+    (event.status === 'pending' || event.status === 'confirmed') &&
+    !!event.court_id &&
+    start > new Date()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reassignOpen, setReassignOpen] = useState(false)
 
   async function handleConfirm() {
     setPending(true)
@@ -329,11 +342,35 @@ function ReservationModal({
               {event.status === 'pending' ? 'Rechazar' : 'Cancelar reserva'}
             </Button>
           )}
+          {canReassign && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pending}
+              onClick={() => setReassignOpen(true)}
+            >
+              <Repeat className="mr-1.5 h-4 w-4" />
+              Reasignar cancha
+            </Button>
+          )}
           <Button type="button" variant="ghost" onClick={onClose}>
             Cerrar
           </Button>
         </div>
       </div>
+
+      {canReassign && reassignOpen && (
+        <ReassignCourtModal
+          open={reassignOpen}
+          onClose={() => setReassignOpen(false)}
+          reservation={event}
+          courts={courts}
+          allReservations={allReservations}
+          onReassign={async (courtId) => {
+            await reassignReservationCourt(event.id, courtId)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -798,7 +835,12 @@ export function ReservationsCalendar({
       )}
 
       {selected && (
-        <ReservationModal event={selected} onClose={() => setSelectedId(null)} />
+        <ReservationModal
+          event={selected}
+          onClose={() => setSelectedId(null)}
+          courts={courts}
+          allReservations={reservations}
+        />
       )}
 
       <AddReservationModal

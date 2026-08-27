@@ -66,6 +66,22 @@ export async function updateReservationStatusAsOwner(
   return toReservationRow(row)
 }
 
+/** Owner reasigna una reserva app a otra cancha activa del mismo tamaño. */
+export async function reassignReservationCourtAsOwner(
+  _ownerId: string,
+  reservationId: string,
+  courtId: string,
+): Promise<ReservationRow> {
+  const row = await apiFetchAuth<ReservationApiDto>(
+    `venues/reservations/${reservationId}/court`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ courtId }),
+    },
+  )
+  return toReservationRow(row)
+}
+
 /** Owner crea una reserva telefónica — nace confirmed, source=phone. */
 export async function createPhoneReservationAsOwner(
   _ownerId: string,

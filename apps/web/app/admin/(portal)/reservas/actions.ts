@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { requireAdminSession } from '@/lib/admin/session'
 import {
   createPhoneReservationAsOwner,
+  reassignReservationCourtAsOwner,
   updateReservationStatusAsOwner,
 } from '@/lib/dal/admin/reservations'
 import type { SettableReservationStatus } from '@/lib/dal/admin/types'
@@ -34,6 +35,20 @@ export async function confirmReservation(reservationId: string) {
 
 export async function cancelReservation(reservationId: string) {
   return setReservationStatus(reservationId, 'cancelled')
+}
+
+export async function reassignReservationCourt(
+  reservationId: string,
+  courtId: string,
+) {
+  const session = await requireAdminSession()
+  const reservation = await reassignReservationCourtAsOwner(
+    session.user.id,
+    reservationId,
+    courtId,
+  )
+  revalidateReservationPaths()
+  return reservation
 }
 
 export async function createPhoneReservation(payload: {
