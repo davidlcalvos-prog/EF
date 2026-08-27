@@ -252,15 +252,19 @@ export class OwnerPayload {
 
 // --- Lado jugador (Fase 4): buscar cancha y reservar, sin necesitar rol de dueño ---
 
-/** Igual que VenueDto pero sin campos que solo le importan al dueño (ownerId, updatedAt). */
+/**
+ * Fase W.1.1: al jugador no le importa CUÁL cancha física, le importa si hay
+ * una libre de ese tamaño — agrupado por size en vez de la lista plana de
+ * courts de la W.1. Precio = mínimo entre las courts de ese tamaño (caso
+ * borde si difieren entre sí; no se rediseña el pricing por esto).
+ */
 export interface PublicVenueDto {
   id: string;
   name: string;
   address: string | null;
   pricePerHourCents: number;
   availability: Record<string, unknown>;
-  /** Fase W.1: solo las courts activas — sin isActive/surfaceType, el jugador no los necesita. */
-  courts: Array<{ id: string; name: string; size: CourtSizeDto; pricePerHourCents: number }>;
+  courtSizes: Array<{ size: CourtSizeDto; count: number; pricePerHourCents: number }>;
   /** Ubicación (Fase L.0) — pública para canchas. */
   municipalityCode: string | null;
   city: string | null;
@@ -276,10 +280,33 @@ export class ListPublicVenuesPayload {
   municipalityCode?: string;
 }
 
-export class CreateReservationDto {
-  /** Fase W.1: el jugador reserva una cancha puntual, no el venue completo. */
+/** Fase W.1.1: cuántas canchas de un tamaño están libres en un horario — se consulta ANTES de confirmar. */
+export class AvailabilityQueryDto {
   @IsUUID()
-  courtId!: string;
+  venueId!: string;
+
+  @IsEnum(COURT_SIZE_VALUES)
+  size!: CourtSizeDto;
+
+  @IsDateString()
+  startsAt!: string;
+
+  @IsDateString()
+  endsAt!: string;
+}
+
+export interface AvailabilityDto {
+  totalCourts: number;
+  availableCourts: number;
+}
+
+export class CreateReservationDto {
+  /** Fase W.1.1: el jugador elige complejo + tamaño; el backend auto-asigna la cancha puntual. */
+  @IsUUID()
+  venueId!: string;
+
+  @IsEnum(COURT_SIZE_VALUES)
+  size!: CourtSizeDto;
 
   @IsDateString()
   startsAt!: string;
@@ -300,6 +327,20 @@ export class CreateReservationDto {
 export class CreateReservationPayload extends CreateReservationDto {
   @IsUUID()
   requesterId!: string;
+}
+
+/** Fase W.1.1: el dueño reasigna manualmente una reserva a otra cancha del mismo tamaño (ej. mantenimiento). */
+export class ReassignReservationCourtDto {
+  @IsUUID()
+  courtId!: string;
+}
+
+export class ReassignReservationCourtPayload extends ReassignReservationCourtDto {
+  @IsUUID()
+  ownerId!: string;
+
+  @IsUUID()
+  reservationId!: string;
 }
 
 /** GET detalle y PATCH cancel — ambos solo necesitan la reserva + quién pregunta. */

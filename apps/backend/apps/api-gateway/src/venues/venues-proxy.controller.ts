@@ -13,6 +13,7 @@ import { SYSTEM_ROLE_NAMES } from '@ef/common';
 import {
   CreateCourtDto,
   CreatePhoneReservationDto,
+  ReassignReservationCourtDto,
   UpdateCourtDto,
   UpdateReservationStatusDto,
   UpsertVenueDto,
@@ -94,5 +95,15 @@ export class VenuesProxyController {
     @Body() dto: CreatePhoneReservationDto,
   ) {
     return this.venuesProxy.createPhoneReservation(user.sub, dto);
+  }
+
+  /** Fase W.1.1: reasignar manualmente a otra cancha del mismo tamaño (ej. mantenimiento). */
+  @Patch('venues/reservations/:id/court')
+  reassignCourt(
+    @CurrentUser() user: { sub: string },
+    @Param('id') reservationId: string,
+    @Body() dto: ReassignReservationCourtDto,
+  ) {
+    return this.venuesProxy.reassignCourt(user.sub, reservationId, dto);
   }
 }

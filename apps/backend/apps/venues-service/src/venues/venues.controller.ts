@@ -2,12 +2,14 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { MESSAGE_PATTERNS } from '@ef/common';
 import {
+  AvailabilityQueryDto,
   CancelReservationPayload,
   CreateCourtPayload,
   CreatePhoneReservationPayload,
   CreateReservationPayload,
   DeactivateCourtPayload,
   OwnerPayload,
+  ReassignReservationCourtPayload,
   UpdateCourtPayload,
   UpdateReservationStatusPayload,
   UpsertVenuePayload,
@@ -61,7 +63,17 @@ export class VenuesController {
     return this.venuesService.createPhoneReservation(data);
   }
 
+  @MessagePattern(MESSAGE_PATTERNS.VENUES.REASSIGN_COURT)
+  reassignCourt(@Payload() data: ReassignReservationCourtPayload) {
+    return this.venuesService.reassignCourt(data);
+  }
+
   // --- Lado jugador (Fase 4) ---
+
+  @MessagePattern(MESSAGE_PATTERNS.VENUES.GET_AVAILABILITY)
+  getAvailability(@Payload() data: AvailabilityQueryDto) {
+    return this.venuesService.getAvailability(data);
+  }
 
   @MessagePattern(MESSAGE_PATTERNS.VENUES.LIST_PUBLIC)
   listPublic(@Payload() data: { municipalityCode?: string }) {

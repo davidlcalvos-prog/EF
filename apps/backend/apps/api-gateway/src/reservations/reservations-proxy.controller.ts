@@ -8,7 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { AuthTokenPayload, CreateReservationDto } from '@ef/contracts';
+import { AuthTokenPayload, CourtSizeDto, CreateReservationDto } from '@ef/contracts';
 import { CurrentUser } from '../auth/decorators';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ReservationsProxyService } from './reservations-proxy.service';
@@ -26,6 +26,17 @@ export class ReservationsProxyController {
   @Get('venues')
   listVenues(@Query('municipalityCode') municipalityCode?: string) {
     return this.reservationsProxy.listPublicVenues(municipalityCode);
+  }
+
+  /** Fase W.1.1: se consulta antes de dejar confirmar la reserva. */
+  @Get('venues/:id/availability')
+  getAvailability(
+    @Param('id') venueId: string,
+    @Query('size') size: CourtSizeDto,
+    @Query('startsAt') startsAt: string,
+    @Query('endsAt') endsAt: string,
+  ) {
+    return this.reservationsProxy.getAvailability(venueId, size, startsAt, endsAt);
   }
 
   @Post('my-reservations')

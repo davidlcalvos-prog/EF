@@ -29,6 +29,9 @@ export const MESSAGE_PATTERNS = {
     UPDATE_COURT: 'venues.update_court',
     DEACTIVATE_COURT: 'venues.deactivate_court',
     CREATE_PHONE_RESERVATION: 'venues.create_phone_reservation',
+    // Fase W.1.1: reservar por tamaño con auto-asignación
+    GET_AVAILABILITY: 'venues.get_availability',
+    REASSIGN_COURT: 'venues.reassign_court',
     // Lado jugador (Fase 4)
     LIST_PUBLIC: 'venues.list_public',
     CREATE_RESERVATION: 'venues.create_reservation',

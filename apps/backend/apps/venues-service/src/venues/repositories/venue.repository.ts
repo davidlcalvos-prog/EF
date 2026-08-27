@@ -1,7 +1,9 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@ef/database';
 import {
+  AvailabilityDto,
   CourtDto,
+  CourtSizeDto,
   MyReservationDto,
   PublicVenueDto,
   ReservationDto,
@@ -339,6 +341,15 @@ export class VenueRepository {
     });
   }
 
+  /** Fase W.1.1: para avisarle al dueño de una reserva nueva sin repetir el lookup dentro de la transacción. */
+  async findVenueOwnerId(venueId: string): Promise<string | null> {
+    const venue = await this.prisma.venue.findUnique({
+      where: { id: venueId },
+      select: { ownerId: true },
+    });
+    return venue?.ownerId ?? null;
+  }
+
   /** Fase W.1: solape a nivel de cancha — dos courts del mismo venue pueden reservarse a la misma hora. */
   async findActiveCourtWithVenue(courtId: string) {
     return this.prisma.court.findUnique({
@@ -422,21 +433,160 @@ export class VenueRepository {
     return existing != null;
   }
 
-  async createReservation(data: {
+  /** Cuántas courts activas de ese tamaño hay, y cuántas siguen libres en ese rango — se consulta ANTES de confirmar. */
+  async getAvailability(
+    venueId: string,
+    size: CourtSizeDto,
+    startsAt: Date,
+    endsAt: Date,
+  ): Promise<AvailabilityDto> {
+    const rows = await this.prisma.$queryRaw<{ totalCourts: bigint; availableCourts: bigint }[]>`
+      SELECT
+        COUNT(*)::int AS "totalCourts",
+        COUNT(*) FILTER (WHERE NOT EXISTS (
+          SELECT 1 FROM reservations r
+          WHERE r."courtId" = c.id
+            AND r.status IN ('pending', 'confirmed')
+            AND r."startsAt" < ${endsAt}
+            AND r."endsAt" > ${startsAt}
+        ))::int AS "availableCourts"
+      FROM courts c
+      WHERE c."venueId" = ${venueId}::uuid
+        AND c.size = ${size}::"CourtSize"
+        AND c."isActive" = true
+    `;
+    const row = rows[0];
+    return {
+      totalCourts: row ? Number(row.totalCourts) : 0,
+      availableCourts: row ? Number(row.availableCourts) : 0,
+    };
+  }
+
+  /**
+   * Fase W.1.1: auto-asignación con lock, mismo patrón que
+   * lockMatchRow/assertRosterHasCapacity de la Fase 8.2, ahora sobre el
+   * conjunto de courts activas de un tamaño en vez de un solo match. El
+   * SELECT ... FOR UPDATE bloquea esas filas hasta el commit, así que dos
+   * transacciones concurrentes para el mismo venue+size quedan serializadas
+   * — la segunda relee el estado fresco (ya con la primera comprometida)
+   * antes de decidir. Orden determinístico por createdAt: la asignación es
+   * siempre la misma para el mismo estado de reservas, fácil de explicar en
+   * soporte ("se le asignó la cancha más antigua libre").
+   */
+  async createReservationWithAutoAssign(data: {
     userId: string;
     venueId: string;
-    venueName: string;
-    courtId: string;
+    size: CourtSizeDto;
     startsAt: Date;
     endsAt: Date;
     notes?: string;
     matchId?: string;
   }): Promise<MyReservationDto> {
-    const created = await this.prisma.reservation.create({
-      data,
-      include: { court: { select: { name: true } } },
+    return this.prisma.$transaction(async (tx) => {
+      const venue = await tx.venue.findUnique({
+        where: { id: data.venueId },
+        select: { id: true, name: true },
+      });
+      if (!venue) {
+        throw new NotFoundException(`Venue ${data.venueId} not found`);
+      }
+
+      const lockedCourts = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM courts
+        WHERE "venueId" = ${data.venueId}::uuid
+          AND size = ${data.size}::"CourtSize"
+          AND "isActive" = true
+        ORDER BY "createdAt" ASC
+        FOR UPDATE
+      `;
+
+      let chosenCourtId: string | null = null;
+      for (const court of lockedCourts) {
+        const overlaps = await this.hasOverlappingReservationForCourt(
+          court.id,
+          data.startsAt,
+          data.endsAt,
+          tx,
+        );
+        if (!overlaps) {
+          chosenCourtId = court.id;
+          break;
+        }
+      }
+
+      if (!chosenCourtId) {
+        throw new ConflictException(
+          `No courts of size ${data.size} are available for that time slot`,
+        );
+      }
+
+      const created = await tx.reservation.create({
+        data: {
+          userId: data.userId,
+          venueId: venue.id,
+          venueName: venue.name,
+          courtId: chosenCourtId,
+          startsAt: data.startsAt,
+          endsAt: data.endsAt,
+          notes: data.notes,
+          matchId: data.matchId,
+        },
+        include: { court: { select: { name: true } } },
+      });
+      return this.toMyReservationDto(created);
     });
-    return this.toMyReservationDto(created);
+  }
+
+  /**
+   * Reasignación manual del dueño (Fase W.1.1) — misma cancha física para
+   * toda la reserva, no re-corre la auto-asignación: el dueño ya sabe cuál
+   * cancha libre quiere usar (ej. mantenimiento de último momento).
+   */
+  async reassignCourt(
+    ownerId: string,
+    reservationId: string,
+    newCourtId: string,
+  ): Promise<ReservationDto> {
+    const reservation = await this.prisma.reservation.findUnique({
+      where: { id: reservationId },
+      include: { venue: { select: { ownerId: true } }, court: { select: { size: true } } },
+    });
+    if (!reservation || reservation.venue?.ownerId !== ownerId) {
+      throw new NotFoundException(`Reservation ${reservationId} not found`);
+    }
+    if (reservation.status === 'cancelled') {
+      throw new ConflictException('This reservation is cancelled');
+    }
+    if (reservation.startsAt.getTime() <= Date.now()) {
+      throw new ConflictException('Cannot reassign a reservation that already started');
+    }
+
+    const newCourt = await this.requireOwnedCourt(ownerId, newCourtId);
+    if (!newCourt.isActive) {
+      throw new ConflictException('This court is not active');
+    }
+    if (!reservation.court || newCourt.size !== reservation.court.size) {
+      throw new ConflictException('The new court must be the same size as the current one');
+    }
+
+    const overlaps = await this.hasOverlappingReservationForCourt(
+      newCourtId,
+      reservation.startsAt,
+      reservation.endsAt,
+    );
+    if (overlaps) {
+      throw new ConflictException('The new court already has a reservation in that time range');
+    }
+
+    const updated = await this.prisma.reservation.update({
+      where: { id: reservationId },
+      data: { courtId: newCourtId },
+      include: {
+        court: { select: { name: true } },
+        user: { select: { firstname: true, lastname: true } },
+      },
+    });
+    return this.toReservationDto(updated);
   }
 
   async findReservationById(reservationId: string): Promise<MyReservationDto | null> {
@@ -489,26 +639,41 @@ export class VenueRepository {
     return activePrices.length > 0 ? Math.min(...activePrices) : fallback;
   }
 
+  /**
+   * Fase W.1.1: el jugador elige tamaño, no cancha puntual — agrupa las
+   * courts activas por size. Precio = mínimo entre las de ese tamaño (caso
+   * borde si un venue les puso precios distintos a canchas del mismo
+   * tamaño; no se rediseña el pricing por esto, ver A.1 del prompt).
+   */
   private toPublicVenueDto(
     row: VenueWithCourts & {
       address: string | null;
       availability: unknown;
     },
   ): PublicVenueDto {
+    const activeCourts = row.courts.filter((c) => c.isActive);
+    const bySize = new Map<CourtSizeDto, { count: number; minPrice: number }>();
+    for (const court of activeCourts) {
+      const existing = bySize.get(court.size);
+      if (existing) {
+        existing.count += 1;
+        existing.minPrice = Math.min(existing.minPrice, court.pricePerHourCents);
+      } else {
+        bySize.set(court.size, { count: 1, minPrice: court.pricePerHourCents });
+      }
+    }
+
     return {
       id: row.id,
       name: row.name,
       address: row.address,
       pricePerHourCents: this.minActiveCourtPrice(row.courts, row.pricePerHourCents),
       availability: (row.availability as Record<string, unknown>) ?? {},
-      courts: row.courts
-        .filter((c) => c.isActive)
-        .map((c) => ({
-          id: c.id,
-          name: c.name,
-          size: c.size,
-          pricePerHourCents: c.pricePerHourCents,
-        })),
+      courtSizes: Array.from(bySize.entries()).map(([size, { count, minPrice }]) => ({
+        size,
+        count,
+        pricePerHourCents: minPrice,
+      })),
       municipalityCode: row.municipalityCode,
       city: row.city,
       department: row.department,

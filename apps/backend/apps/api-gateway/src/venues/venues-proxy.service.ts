@@ -6,6 +6,7 @@ import {
   CourtDto,
   CreateCourtDto,
   CreatePhoneReservationDto,
+  ReassignReservationCourtDto,
   ReservationDto,
   UpdateCourtDto,
   UpdateReservationStatusDto,
@@ -83,6 +84,19 @@ export class VenuesProxyService {
       MESSAGE_PATTERNS.VENUES.CREATE_PHONE_RESERVATION,
       { ownerId, ...dto },
     );
+  }
+
+  /** Fase W.1.1: reasignación manual del dueño (ej. mantenimiento de último momento). */
+  reassignCourt(
+    ownerId: string,
+    reservationId: string,
+    dto: ReassignReservationCourtDto,
+  ): Promise<ReservationDto> {
+    return this.send<ReservationDto>(MESSAGE_PATTERNS.VENUES.REASSIGN_COURT, {
+      ownerId,
+      reservationId,
+      ...dto,
+    });
   }
 
   private send<T>(pattern: string, payload: unknown): Promise<T> {

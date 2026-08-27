@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 import { findMunicipality, haversineKm } from '@ef/common';
 import {
+  AvailabilityDto,
+  AvailabilityQueryDto,
   CancelReservationPayload,
   CourtDto,
   CreateCourtPayload,
@@ -15,6 +17,7 @@ import {
   DeactivateCourtPayload,
   MyReservationDto,
   PublicVenueDto,
+  ReassignReservationCourtPayload,
   ReservationDto,
   UpdateCourtPayload,
   UpdateReservationStatusPayload,
@@ -174,57 +177,81 @@ export class VenuesService {
     return this.venueRepository.listPublic(municipalityCode);
   }
 
+  /** Fase W.1.1: cuántas courts de ese tamaño quedan libres — el mobile lo consulta antes de dejar confirmar. */
+  getAvailability(query: AvailabilityQueryDto): Promise<AvailabilityDto> {
+    const startsAt = new Date(query.startsAt);
+    const endsAt = new Date(query.endsAt);
+    if (endsAt <= startsAt) {
+      throw new ConflictException('endsAt must be after startsAt');
+    }
+    return this.venueRepository.getAvailability(query.venueId, query.size, startsAt, endsAt);
+  }
+
+  /**
+   * Fase W.1.1: el jugador elige complejo + tamaño, no una cancha puntual —
+   * el repositorio auto-asigna con lock dentro de una transacción (mismo
+   * patrón que el roster de Fase 8.2). 409 con mensaje claro si no hay
+   * ninguna libre, en vez de dejar que choque con un solape al final.
+   */
   async createReservation(
     payload: CreateReservationPayload,
   ): Promise<MyReservationDto> {
-    const court = await this.venueRepository.findActiveCourtWithVenue(payload.courtId);
-    if (!court) {
-      throw new NotFoundException(`Court ${payload.courtId} not found`);
-    }
-    if (!court.isActive) {
-      throw new ConflictException('This court is not active');
-    }
-
     const startsAt = new Date(payload.startsAt);
     const endsAt = new Date(payload.endsAt);
     if (endsAt <= startsAt) {
       throw new ConflictException('endsAt must be after startsAt');
     }
 
-    const overlaps = await this.venueRepository.hasOverlappingReservationForCourt(
-      payload.courtId,
-      startsAt,
-      endsAt,
-    );
-    if (overlaps) {
-      throw new ConflictException(
-        'This court already has a reservation in that time range',
-      );
-    }
-
     if (payload.matchId) {
       await this.requireCanLinkMatch(payload.matchId, payload.requesterId);
     }
 
-    const created = await this.venueRepository.createReservation({
+    const created = await this.venueRepository.createReservationWithAutoAssign({
       userId: payload.requesterId,
-      venueId: court.venue.id,
-      venueName: court.venue.name,
-      courtId: payload.courtId,
+      venueId: payload.venueId,
+      size: payload.size,
       startsAt,
       endsAt,
       notes: payload.notes,
       matchId: payload.matchId,
     });
 
-    await this.notificationsService.sendToUser(
-      court.venue.ownerId,
-      'Nueva reserva pendiente',
-      `Tenés una reserva pendiente en ${created.courtName ?? created.venueName}.`,
-      { type: 'new_reservation', reservationId: created.id },
-    );
+    const ownerId = await this.venueRepository.findVenueOwnerId(payload.venueId);
+    if (ownerId) {
+      await this.notificationsService.sendToUser(
+        ownerId,
+        'Nueva reserva pendiente',
+        `Tenés una reserva pendiente en ${created.courtName ?? created.venueName}.`,
+        { type: 'new_reservation', reservationId: created.id },
+      );
+    }
 
     return created;
+  }
+
+  /**
+   * Reasignación manual del dueño (Fase W.1.1) — ej. mantenimiento de
+   * último momento. Solo entre canchas del mismo tamaño, y solo si la
+   * reserva sigue vigente (no cancelled, no ya empezada) — validado en el
+   * repositorio. Push al jugador solo si era source=app.
+   */
+  async reassignCourt(payload: ReassignReservationCourtPayload): Promise<ReservationDto> {
+    const updated = await this.venueRepository.reassignCourt(
+      payload.ownerId,
+      payload.reservationId,
+      payload.courtId,
+    );
+
+    if (updated.source === 'app') {
+      await this.notificationsService.sendToUser(
+        updated.userId,
+        'Tu reserva fue reasignada',
+        `Tu reserva ahora es en ${updated.courtName ?? updated.venueName}.`,
+        { type: 'reservation_status', reservationId: updated.id },
+      );
+    }
+
+    return updated;
   }
 
   async getMyReservation(
