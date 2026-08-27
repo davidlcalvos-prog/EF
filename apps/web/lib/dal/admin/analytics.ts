@@ -1,4 +1,8 @@
-import type { CalendarReservation } from '@/lib/dal/admin/mock-reservations'
+import type { ReservationRow, ReservationSource } from '@/lib/dal/admin/types'
+import {
+  getReservationSourceLabel,
+  reservationDisplayName,
+} from '@/lib/dal/admin/reservation-format'
 
 export type DayStat = {
   dayIndex: number
@@ -23,6 +27,12 @@ export type ClientStat = {
   fulfillmentRate: number
 }
 
+export type SourceStat = {
+  source: ReservationSource
+  label: string
+  count: number
+}
+
 const DAY_LABELS = [
   'Domingo',
   'Lunes',
@@ -33,6 +43,8 @@ const DAY_LABELS = [
   'Sábado',
 ]
 
+const SOURCES: ReservationSource[] = ['app', 'phone', 'tournament', 'block']
+
 function formatHourLabel(hour: number) {
   const suffix = hour >= 12 ? 'PM' : 'AM'
   const h12 = hour % 12 === 0 ? 12 : hour % 12
@@ -40,17 +52,17 @@ function formatHourLabel(hour: number) {
 }
 
 /** Ocupación: pending + confirmed (excluye canceladas). */
-function activeReservations(items: CalendarReservation[]) {
+function activeReservations(items: ReservationRow[]) {
   return items.filter((r) => r.status !== 'cancelled')
 }
 
-export function computeDayOccupancy(items: CalendarReservation[]): {
+export function computeDayOccupancy(items: ReservationRow[]): {
   busiest: DayStat[]
   quietest: DayStat[]
   byDay: DayStat[]
 } {
   const active = activeReservations(items)
-  const dayMap = new Map<number, CalendarReservation[]>()
+  const dayMap = new Map<number, ReservationRow[]>()
 
   for (let i = 0; i < 7; i++) dayMap.set(i, [])
 
@@ -95,7 +107,7 @@ export function computeDayOccupancy(items: CalendarReservation[]): {
   }
 }
 
-export function computeHourOccupancy(items: CalendarReservation[]): {
+export function computeHourOccupancy(items: ReservationRow[]): {
   busiestHours: HourStat[]
   quietestHours: HourStat[]
 } {
@@ -124,11 +136,11 @@ export function computeHourOccupancy(items: CalendarReservation[]): {
   }
 }
 
-export function computeClientStats(items: CalendarReservation[]): ClientStat[] {
-  const byName = new Map<string, CalendarReservation[]>()
+export function computeClientStats(items: ReservationRow[]): ClientStat[] {
+  const byName = new Map<string, ReservationRow[]>()
 
   for (const r of items) {
-    const key = r.guest_name.trim() || 'Sin nombre'
+    const key = reservationDisplayName(r)
     const list = byName.get(key) ?? []
     list.push(r)
     byName.set(key, list)
@@ -153,4 +165,15 @@ export function computeClientStats(items: CalendarReservation[]): ClientStat[] {
       }
     })
     .sort((a, b) => b.total - a.total)
+}
+
+export function computeSourceBreakdown(items: ReservationRow[]): SourceStat[] {
+  const counts = new Map<ReservationSource, number>()
+  for (const source of SOURCES) counts.set(source, 0)
+  for (const r of items) counts.set(r.source, (counts.get(r.source) ?? 0) + 1)
+  return SOURCES.map((source) => ({
+    source,
+    label: getReservationSourceLabel(source),
+    count: counts.get(source) ?? 0,
+  }))
 }
