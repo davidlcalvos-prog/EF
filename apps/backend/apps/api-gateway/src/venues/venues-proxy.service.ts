@@ -3,7 +3,12 @@ import { ClientProxy } from '@nestjs/microservices';
 import { catchError, firstValueFrom, throwError } from 'rxjs';
 import { MESSAGE_PATTERNS, SERVICE_NAMES, toHttpException } from '@ef/common';
 import {
+  CourtDto,
+  CreateCourtDto,
+  CreatePhoneReservationDto,
+  ReassignReservationCourtDto,
   ReservationDto,
+  UpdateCourtDto,
   UpdateReservationStatusDto,
   UpsertVenueDto,
   VenueDto,
@@ -44,6 +49,54 @@ export class VenuesProxyService {
       MESSAGE_PATTERNS.VENUES.UPDATE_RESERVATION_STATUS,
       { ownerId, reservationId, status: dto.status },
     );
+  }
+
+  // --- Courts (Fase W.1) ---
+
+  createCourt(ownerId: string, venueId: string, dto: CreateCourtDto): Promise<CourtDto> {
+    return this.send<CourtDto>(MESSAGE_PATTERNS.VENUES.CREATE_COURT, {
+      ownerId,
+      venueId,
+      ...dto,
+    });
+  }
+
+  updateCourt(ownerId: string, courtId: string, dto: UpdateCourtDto): Promise<CourtDto> {
+    return this.send<CourtDto>(MESSAGE_PATTERNS.VENUES.UPDATE_COURT, {
+      ownerId,
+      courtId,
+      ...dto,
+    });
+  }
+
+  deactivateCourt(ownerId: string, courtId: string): Promise<CourtDto> {
+    return this.send<CourtDto>(MESSAGE_PATTERNS.VENUES.DEACTIVATE_COURT, {
+      ownerId,
+      courtId,
+    });
+  }
+
+  createPhoneReservation(
+    ownerId: string,
+    dto: CreatePhoneReservationDto,
+  ): Promise<ReservationDto> {
+    return this.send<ReservationDto>(
+      MESSAGE_PATTERNS.VENUES.CREATE_PHONE_RESERVATION,
+      { ownerId, ...dto },
+    );
+  }
+
+  /** Fase W.1.1: reasignación manual del dueño (ej. mantenimiento de último momento). */
+  reassignCourt(
+    ownerId: string,
+    reservationId: string,
+    dto: ReassignReservationCourtDto,
+  ): Promise<ReservationDto> {
+    return this.send<ReservationDto>(MESSAGE_PATTERNS.VENUES.REASSIGN_COURT, {
+      ownerId,
+      reservationId,
+      ...dto,
+    });
   }
 
   private send<T>(pattern: string, payload: unknown): Promise<T> {

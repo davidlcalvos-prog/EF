@@ -366,12 +366,20 @@ export interface MatchGuestApplicationApiDto {
 /** Forma real de los datos de Reservas — calcada de libs/contracts/src/venues/index.ts del backend. */
 export type ReservationStatusApi = "pending" | "confirmed" | "cancelled"
 
+/** Fase W.1: tamaño de una cancha real dentro de un complejo — distinto de PositionCategoryApi. */
+export type CourtSizeApi = "five" | "six" | "seven" | "eight" | "eleven"
+
+/**
+ * Fase W.1.1: al jugador no le importa CUÁL cancha, le importa si hay una
+ * libre de ese tamaño — agrupado por size, ya no lista plana de canchas.
+ */
 export interface PublicVenueApiDto {
   id: string
   name: string
   address: string | null
   pricePerHourCents: number
   availability: Record<string, unknown>
+  courtSizes: Array<{ size: CourtSizeApi; count: number; pricePerHourCents: number }>
   /** Ubicación (Fase L.0) — pública para canchas. */
   municipalityCode: string | null
   city: string | null
@@ -380,11 +388,20 @@ export interface PublicVenueApiDto {
   longitude: number | null
 }
 
+/** Fase W.1.1: cuántas canchas de un tamaño quedan libres en un horario — se consulta antes de confirmar. */
+export interface AvailabilityApiDto {
+  totalCourts: number
+  availableCourts: number
+}
+
 export interface MyReservationApiDto {
   id: string
   userId: string
   venueId: string | null
   venueName: string
+  /** Fase W.1: cancha puntual reservada dentro del complejo. */
+  courtId: string | null
+  courtName: string | null
   startsAt: string
   endsAt: string
   status: ReservationStatusApi

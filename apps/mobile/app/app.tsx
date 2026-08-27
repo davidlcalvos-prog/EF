@@ -36,6 +36,7 @@ import { loadDateFnsLocale } from "./utils/formatDate"
 import {
   addGuestRequestNearbyTapListener,
   addNotificationTapListener,
+  addReservationStatusTapListener,
 } from "./utils/pushNotifications"
 import * as storage from "./utils/storage"
 
@@ -90,9 +91,13 @@ export function App() {
     const nearbySubscription = addGuestRequestNearbyTapListener(() => {
       navigate("NearbyGuestRequests", undefined)
     })
+    const reservationSubscription = addReservationStatusTapListener((reservationId) => {
+      navigate("ReservationDetail", { reservationId })
+    })
     return () => {
       subscription.remove()
       nearbySubscription.remove()
+      reservationSubscription.remove()
     }
   }, [])
 

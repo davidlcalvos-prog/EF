@@ -1,25 +1,36 @@
 'use client'
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { ChevronLeft, ChevronRight, Plus, Search, X } from 'lucide-react'
+import { useMemo, useState, type CSSProperties } from 'react'
+import {
+  Ban,
+  ChevronLeft,
+  ChevronRight,
+  Phone,
+  Plus,
+  Repeat,
+  Search,
+  Smartphone,
+  Trophy,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import type { ReservationRow, ReservationStatus } from '@/lib/dal/admin/types'
+import type { CourtRow, ReservationRow, ReservationSource, ReservationStatus } from '@/lib/dal/admin/types'
 import {
   cancelReservation,
   confirmReservation,
+  createPhoneReservation,
+  reassignReservationCourt,
 } from '@/app/admin/(portal)/reservas/actions'
 import {
-  courtSizeLabel,
-  enrichReservationsForCalendar,
-  type CalendarReservation,
-} from '@/lib/dal/admin/mock-reservations'
-import { AddReservationModal, ReservationFormModal } from '@/components/admin/add-reservation-modal'
+  getReservationSourceLabel,
+  reservationDisplayName,
+} from '@/lib/dal/admin/reservation-format'
+import { courtSizeLabel } from '@/lib/dal/admin/court-occupancy'
+import { AddReservationModal, type PhoneReservationPayload } from '@/components/admin/add-reservation-modal'
+import { ReassignCourtModal } from '@/components/admin/reassign-court-modal'
 import { eliteForgeColors } from '@/lib/theme/elite-forge'
-
-const PHONE_RESERVATIONS_KEY = 'ef-admin-phone-reservations'
-const EDITED_RESERVATIONS_KEY = 'ef-admin-edited-reservations'
-const TOURNAMENT_RESERVATIONS_KEY = 'ef-admin-tournament-reservations'
 
 type CalendarView = 'day' | 'week' | 'month'
 
@@ -41,6 +52,23 @@ const BRAND = {
   onEmerald: eliteForgeColors.onEmerald,
   onOrange: eliteForgeColors.onOrange,
 } as const
+
+const SOURCE_ICON: Record<ReservationSource, LucideIcon> = {
+  app: Smartphone,
+  phone: Phone,
+  tournament: Trophy,
+  block: Ban,
+}
+
+function SourceBadge({ source }: { source: ReservationSource }) {
+  const Icon = SOURCE_ICON[source]
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-secondary/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <Icon className="h-3 w-3" />
+      {getReservationSourceLabel(source)}
+    </span>
+  )
+}
 
 function startOfDay(date: Date) {
   const d = new Date(date)
@@ -119,16 +147,17 @@ function formatHour(hour: number) {
   return `${h12} ${suffix}`
 }
 
-function matchesQuery(r: CalendarReservation, query: string) {
+function matchesQuery(r: ReservationRow, query: string) {
   const q = query.trim().toLowerCase()
   if (!q) return true
   return [
-    r.guest_name,
+    reservationDisplayName(r),
     r.venue_name,
-    courtSizeLabel(r.court_size),
-    r.court_size,
+    r.court_name,
     statusLabel(r.status),
+    getReservationSourceLabel(r.source),
   ]
+    .filter(Boolean)
     .join(' ')
     .toLowerCase()
     .includes(q)
@@ -138,18 +167,18 @@ function NamePill({
   event,
   onOpen,
 }: {
-  event: CalendarReservation
+  event: ReservationRow
   onOpen: () => void
 }) {
   return (
     <button
       type="button"
       onClick={onOpen}
-      title={event.guest_name}
+      title={reservationDisplayName(event)}
       className="min-w-0 max-w-full truncate rounded-lg border-2 px-2.5 py-1.5 text-left text-xs font-bold shadow-sm transition hover:brightness-110 sm:text-sm"
       style={statusChipStyle(event.status)}
     >
-      {event.guest_name}
+      {reservationDisplayName(event)}
     </button>
   )
 }
@@ -157,29 +186,52 @@ function NamePill({
 function ReservationModal({
   event,
   onClose,
-  onLocalStatus,
-  onEdit,
+  courts,
+  allReservations,
 }: {
-  event: CalendarReservation
+  event: ReservationRow
   onClose: () => void
-  onLocalStatus: (id: string, status: ReservationStatus) => void
-  onEdit: () => void
+  courts: CourtRow[]
+  allReservations: ReservationRow[]
 }) {
   const start = new Date(event.starts_at)
   const end = new Date(event.ends_at)
   const canConfirm = event.status === 'pending'
-  const canCancel =
-    event.status === 'pending' || event.status === 'confirmed'
-  const canEdit =
-    event.status === 'pending' || event.status === 'confirmed'
+  const canCancel = event.status === 'pending' || event.status === 'confirmed'
+  const canReassign =
+    event.source === 'app' &&
+    (event.status === 'pending' || event.status === 'confirmed') &&
+    !!event.court_id &&
+    start > new Date()
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [reassignOpen, setReassignOpen] = useState(false)
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+  async function handleConfirm() {
+    setPending(true)
+    setError(null)
+    try {
+      await confirmReservation(event.id)
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo confirmar.')
+    } finally {
+      setPending(false)
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }
+
+  async function handleCancel() {
+    setPending(true)
+    setError(null)
+    try {
+      await cancelReservation(event.id)
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo cancelar.')
+    } finally {
+      setPending(false)
+    }
+  }
 
   return (
     <div
@@ -202,8 +254,11 @@ function ReservationModal({
               id="reservation-modal-title"
               className="mt-1 font-heading text-2xl font-bold text-foreground"
             >
-              {event.guest_name}
+              {reservationDisplayName(event)}
             </h2>
+            <div className="mt-2">
+              <SourceBadge source={event.source} />
+            </div>
           </div>
           <button
             type="button"
@@ -218,12 +273,8 @@ function ReservationModal({
         <dl className="space-y-3 text-sm">
           <div>
             <dt className="text-xs text-muted-foreground">Cancha</dt>
-            <dd className="font-medium text-foreground">{event.venue_name}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Formato</dt>
-            <dd className="font-semibold text-foreground">
-              {courtSizeLabel(event.court_size)}
+            <dd className="font-medium text-foreground">
+              {event.court_name ?? event.venue_name}
             </dd>
           </div>
           <div>
@@ -254,6 +305,12 @@ function ReservationModal({
               </span>
             </dd>
           </div>
+          {event.customer_phone && (
+            <div>
+              <dt className="text-xs text-muted-foreground">Teléfono</dt>
+              <dd className="text-foreground">{event.customer_phone}</dd>
+            </div>
+          )}
           {event.notes && (
             <div>
               <dt className="text-xs text-muted-foreground">Notas</dt>
@@ -262,56 +319,58 @@ function ReservationModal({
           )}
         </dl>
 
+        {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+
         <div className="mt-6 flex flex-wrap gap-2">
-          {canEdit && (
-            <Button type="button" onClick={onEdit}>
-              Editar
+          {canConfirm && (
+            <Button
+              type="button"
+              disabled={pending}
+              onClick={handleConfirm}
+              style={{ backgroundColor: BRAND.emerald, color: BRAND.onEmerald }}
+            >
+              Confirmar
             </Button>
           )}
-          {canConfirm &&
-            (event.is_demo ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  onLocalStatus(event.id, 'confirmed')
-                  onClose()
-                }}
-              >
-                Confirmar
-              </Button>
-            ) : (
-              <form action={confirmReservation.bind(null, event.id)}>
-                <Button type="submit" variant="outline">
-                  Confirmar
-                </Button>
-              </form>
-            ))}
-          {canCancel &&
-            event.status !== 'cancelled' &&
-            (event.is_demo ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  onLocalStatus(event.id, 'cancelled')
-                  onClose()
-                }}
-              >
-                Cancelar reserva
-              </Button>
-            ) : (
-              <form action={cancelReservation.bind(null, event.id)}>
-                <Button type="submit" variant="outline">
-                  Cancelar reserva
-                </Button>
-              </form>
-            ))}
+          {canCancel && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pending}
+              onClick={handleCancel}
+            >
+              {event.status === 'pending' ? 'Rechazar' : 'Cancelar reserva'}
+            </Button>
+          )}
+          {canReassign && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pending}
+              onClick={() => setReassignOpen(true)}
+            >
+              <Repeat className="mr-1.5 h-4 w-4" />
+              Reasignar cancha
+            </Button>
+          )}
           <Button type="button" variant="ghost" onClick={onClose}>
             Cerrar
           </Button>
         </div>
       </div>
+
+      {canReassign && reassignOpen && (
+        <ReassignCourtModal
+          open={reassignOpen}
+          onClose={() => setReassignOpen(false)}
+          reservation={event}
+          courts={courts}
+          allReservations={allReservations}
+          onReassign={async (courtId) => {
+            await reassignReservationCourt(event.id, courtId)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -323,7 +382,7 @@ function DayTimeline({
   onOpen,
 }: {
   day: Date
-  eventsByHour: Map<string, CalendarReservation[]>
+  eventsByHour: Map<string, ReservationRow[]>
   onOpen: (id: string) => void
 }) {
   return (
@@ -378,103 +437,32 @@ function DayTimeline({
 
 export function ReservationsCalendar({
   reservations,
+  venueId,
+  courts,
 }: {
   reservations: ReservationRow[]
+  venueId: string | null
+  courts: CourtRow[]
 }) {
   const [view, setView] = useState<CalendarView>('week')
   const [anchor, setAnchor] = useState(() => startOfDay(new Date()))
   const [nameQuery, setNameQuery] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [statusOverrides, setStatusOverrides] = useState<
-    Record<string, ReservationStatus>
-  >({})
   const [addOpen, setAddOpen] = useState(false)
-  const [editOpen, setEditOpen] = useState(false)
-  const [phoneReservations, setPhoneReservations] = useState<
-    CalendarReservation[]
-  >([])
-  const [tournamentReservations, setTournamentReservations] = useState<
-    CalendarReservation[]
-  >([])
-  const [editedById, setEditedById] = useState<
-    Record<string, CalendarReservation>
-  >({})
+  const [courtFilter, setCourtFilter] = useState<string>('all')
+  const [addError, setAddError] = useState<string | null>(null)
 
-  useEffect(() => {
-    try {
-      const rawPhone = localStorage.getItem(PHONE_RESERVATIONS_KEY)
-      if (rawPhone) {
-        const parsed = JSON.parse(rawPhone) as CalendarReservation[]
-        if (Array.isArray(parsed)) setPhoneReservations(parsed)
-      }
-      const rawTournament = localStorage.getItem(TOURNAMENT_RESERVATIONS_KEY)
-      if (rawTournament) {
-        const parsed = JSON.parse(rawTournament) as CalendarReservation[]
-        if (Array.isArray(parsed)) setTournamentReservations(parsed)
-      }
-      const rawEdits = localStorage.getItem(EDITED_RESERVATIONS_KEY)
-      if (rawEdits) {
-        const parsed = JSON.parse(rawEdits) as Record<
-          string,
-          CalendarReservation
-        >
-        if (parsed && typeof parsed === 'object') setEditedById(parsed)
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [])
-
-  function persistPhoneReservations(next: CalendarReservation[]) {
-    setPhoneReservations(next)
-    try {
-      localStorage.setItem(PHONE_RESERVATIONS_KEY, JSON.stringify(next))
-    } catch {
-      /* ignore */
-    }
-  }
-
-  function persistEdited(next: Record<string, CalendarReservation>) {
-    setEditedById(next)
-    try {
-      localStorage.setItem(EDITED_RESERVATIONS_KEY, JSON.stringify(next))
-    } catch {
-      /* ignore */
-    }
-  }
-
-  const calendarItems = useMemo(() => {
-    const base = [
-      ...enrichReservationsForCalendar(reservations),
-      ...phoneReservations,
-      ...tournamentReservations,
-    ]
-    const withEdits = base.map((r) => editedById[r.id] ?? r)
-    // Si una edición es de un id solo phone-guardado ya está en phone lista
-    const phoneIds = new Set(withEdits.map((r) => r.id))
-    const orphanEdits = Object.values(editedById).filter(
-      (r) => !phoneIds.has(r.id),
-    )
-    const merged = [...withEdits, ...orphanEdits]
-    return merged.map((r) =>
-      statusOverrides[r.id] ? { ...r, status: statusOverrides[r.id] } : r,
-    )
-  }, [
-    reservations,
-    phoneReservations,
-    tournamentReservations,
-    editedById,
-    statusOverrides,
-  ])
-
-  const defaultVenueName =
-    phoneReservations[0]?.venue_name ||
-    reservations[0]?.venue_name ||
-    'Cancha Elite Demo'
+  const courtFiltered = useMemo(
+    () =>
+      courtFilter === 'all'
+        ? reservations
+        : reservations.filter((r) => r.court_id === courtFilter),
+    [reservations, courtFilter],
+  )
 
   const filtered = useMemo(
-    () => calendarItems.filter((r) => matchesQuery(r, nameQuery)),
-    [calendarItems, nameQuery],
+    () => courtFiltered.filter((r) => matchesQuery(r, nameQuery)),
+    [courtFiltered, nameQuery],
   )
 
   const weekDays = useMemo(() => {
@@ -529,7 +517,7 @@ export function ReservationsCalendar({
   )
 
   const eventsByDayHour = useMemo(() => {
-    const map = new Map<string, CalendarReservation[]>()
+    const map = new Map<string, ReservationRow[]>()
     for (const reservation of filtered) {
       const start = new Date(reservation.starts_at)
       const key = `${start.toDateString()}-${start.getHours()}`
@@ -541,7 +529,7 @@ export function ReservationsCalendar({
   }, [filtered])
 
   const eventsByDay = useMemo(() => {
-    const map = new Map<string, CalendarReservation[]>()
+    const map = new Map<string, ReservationRow[]>()
     for (const reservation of filtered) {
       const start = new Date(reservation.starts_at)
       const key = start.toDateString()
@@ -561,7 +549,7 @@ export function ReservationsCalendar({
     [inRange],
   )
 
-  const selected = calendarItems.find((r) => r.id === selectedId) ?? null
+  const selected = courtFiltered.find((r) => r.id === selectedId) ?? null
 
   function shiftPeriod(direction: -1 | 1) {
     if (view === 'day') setAnchor((d) => addDays(d, direction))
@@ -569,43 +557,11 @@ export function ReservationsCalendar({
     else setAnchor((d) => new Date(d.getFullYear(), d.getMonth() + direction, 1))
   }
 
-  function setLocalStatus(id: string, status: ReservationStatus) {
-    setStatusOverrides((prev) => ({ ...prev, [id]: status }))
-    if (phoneReservations.some((r) => r.id === id)) {
-      persistPhoneReservations(
-        phoneReservations.map((r) => (r.id === id ? { ...r, status } : r)),
-      )
-    }
-  }
-
-  function handleAddReservation(reservation: CalendarReservation) {
-    persistPhoneReservations([...phoneReservations, reservation])
+  async function handleCreatePhoneReservation(payload: PhoneReservationPayload) {
+    const reservation = await createPhoneReservation(payload)
     setAnchor(startOfDay(new Date(reservation.starts_at)))
     setView('day')
     setSelectedId(reservation.id)
-  }
-
-  function handleEditReservation(reservation: CalendarReservation) {
-    const inPhone = phoneReservations.some((r) => r.id === reservation.id)
-    if (inPhone) {
-      persistPhoneReservations(
-        phoneReservations.map((r) =>
-          r.id === reservation.id ? reservation : r,
-        ),
-      )
-    } else {
-      persistEdited({ ...editedById, [reservation.id]: reservation })
-    }
-    // limpia override de estado parcial si ya viene en el objeto editado
-    setStatusOverrides((prev) => {
-      const next = { ...prev }
-      delete next[reservation.id]
-      return next
-    })
-    setAnchor(startOfDay(new Date(reservation.starts_at)))
-    setView('day')
-    setSelectedId(reservation.id)
-    setEditOpen(false)
   }
 
   return (
@@ -676,25 +632,59 @@ export function ReservationsCalendar({
             <Input
               value={nameQuery}
               onChange={(e) => setNameQuery(e.target.value)}
-              placeholder="Buscar nombre o 6vs6…"
+              placeholder="Buscar nombre, cancha…"
               className="h-10 pl-9"
             />
           </div>
         </div>
+
+        {courts.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCourtFilter('all')}
+              className="rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition"
+              style={
+                courtFilter === 'all'
+                  ? { backgroundColor: `${BRAND.emerald}33`, color: BRAND.emerald }
+                  : { backgroundColor: BRAND.grayBg, color: BRAND.white }
+              }
+            >
+              Todas las canchas
+            </button>
+            {courts.map((court) => (
+              <button
+                key={court.id}
+                type="button"
+                onClick={() => setCourtFilter(court.id)}
+                className="rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition"
+                style={
+                  courtFilter === court.id
+                    ? { backgroundColor: `${BRAND.emerald}33`, color: BRAND.emerald }
+                    : { backgroundColor: BRAND.grayBg, color: BRAND.white }
+                }
+              >
+                {court.name}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <Button
             type="button"
             className="h-10 w-full font-heading font-semibold uppercase tracking-wide sm:w-auto"
             onClick={() => setAddOpen(true)}
+            disabled={!venueId}
           >
             <Plus className="mr-1.5 h-4 w-4" />
-            Añadir reserva
+            Nueva reserva telefónica
           </Button>
           <p className="text-[11px] text-muted-foreground sm:text-right">
             Ideal para reservas por llamada telefónica.
           </p>
         </div>
+        {addError && <p className="text-sm text-destructive">{addError}</p>}
       </div>
 
       <div className="flex flex-wrap gap-2 text-xs">
@@ -844,32 +834,30 @@ export function ReservationsCalendar({
         </p>
       )}
 
-      {selected && !editOpen && (
+      {selected && (
         <ReservationModal
           event={selected}
           onClose={() => setSelectedId(null)}
-          onLocalStatus={setLocalStatus}
-          onEdit={() => {
-            setEditOpen(true)
-          }}
+          courts={courts}
+          allReservations={reservations}
         />
       )}
 
       <AddReservationModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        onSave={handleAddReservation}
-        defaultVenueName={defaultVenueName}
-        defaultDate={anchor}
-      />
-
-      <ReservationFormModal
-        open={editOpen && !!selected}
-        mode="edit"
-        initial={selected}
-        onClose={() => setEditOpen(false)}
-        onSave={handleEditReservation}
-        defaultVenueName={defaultVenueName}
+        onSave={async (payload) => {
+          setAddError(null)
+          try {
+            await handleCreatePhoneReservation(payload)
+          } catch (err) {
+            setAddError(
+              err instanceof Error ? err.message : 'No se pudo crear la reserva.',
+            )
+            throw err
+          }
+        }}
+        courts={courts}
         defaultDate={anchor}
       />
     </div>

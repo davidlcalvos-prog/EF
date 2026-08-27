@@ -7,23 +7,35 @@ import {
 } from '@nestjs/common';
 import { findMunicipality, haversineKm } from '@ef/common';
 import {
+  AvailabilityDto,
+  AvailabilityQueryDto,
   CancelReservationPayload,
+  CourtDto,
+  CreateCourtPayload,
+  CreatePhoneReservationPayload,
   CreateReservationPayload,
+  DeactivateCourtPayload,
   MyReservationDto,
   PublicVenueDto,
+  ReassignReservationCourtPayload,
   ReservationDto,
+  UpdateCourtPayload,
   UpdateReservationStatusPayload,
   UpsertVenuePayload,
   VenueDto,
 } from '@ef/contracts';
 import { GroupRole } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 import { VenueRepository } from './repositories/venue.repository';
 
 const GROUP_LEADER_ROLES: GroupRole[] = ['creator', 'admin'];
 
 @Injectable()
 export class VenuesService {
-  constructor(private readonly venueRepository: VenueRepository) {}
+  constructor(
+    private readonly venueRepository: VenueRepository,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   listMine(ownerId: string): Promise<VenueDto[]> {
     return this.venueRepository.listByOwner(ownerId);
@@ -88,18 +100,75 @@ export class VenuesService {
     };
   }
 
+  // --- Courts (Fase W.1) ---
+
+  createCourt(payload: CreateCourtPayload): Promise<CourtDto> {
+    const { ownerId, venueId, ...dto } = payload;
+    return this.venueRepository.createCourt(ownerId, venueId, dto);
+  }
+
+  updateCourt(payload: UpdateCourtPayload): Promise<CourtDto> {
+    const { ownerId, courtId, ...dto } = payload;
+    return this.venueRepository.updateCourt(ownerId, courtId, dto);
+  }
+
+  deactivateCourt(payload: DeactivateCourtPayload): Promise<CourtDto> {
+    return this.venueRepository.deactivateCourt(payload.ownerId, payload.courtId);
+  }
+
   listReservationsMine(ownerId: string): Promise<ReservationDto[]> {
     return this.venueRepository.listReservationsForOwner(ownerId);
   }
 
-  updateReservationStatus(
+  /**
+   * El dueño confirma o rechaza (cancelled) una reserva de su venue. Si era
+   * source=app, el jugador recibe push en ambos casos (A.3) — las
+   * telefónicas ya nacen confirmed y normalmente no pasan por acá.
+   */
+  async updateReservationStatus(
     payload: UpdateReservationStatusPayload,
   ): Promise<ReservationDto> {
-    return this.venueRepository.updateReservationStatus(
+    const updated = await this.venueRepository.updateReservationStatus(
       payload.ownerId,
       payload.reservationId,
       payload.status,
     );
+
+    if (updated.source === 'app') {
+      const title =
+        payload.status === 'confirmed'
+          ? '¡Tu reserva fue confirmada!'
+          : 'Tu reserva fue rechazada';
+      const body =
+        payload.status === 'confirmed'
+          ? `Tu reserva en ${updated.courtName ?? updated.venueName} quedó confirmada.`
+          : `Tu reserva en ${updated.courtName ?? updated.venueName} fue rechazada por el dueño.`;
+      await this.notificationsService.sendToUser(updated.userId, title, body, {
+        type: 'reservation_status',
+        reservationId: updated.id,
+      });
+    }
+
+    return updated;
+  }
+
+  /** Reserva telefónica (Fase W.1): el dueño la carga ya confirmed, sin pasar por el jugador. */
+  createPhoneReservation(payload: CreatePhoneReservationPayload): Promise<ReservationDto> {
+    const { ownerId, courtId, startsAt, endsAt, customerName, customerPhone, notes } = payload;
+    const startsAtDate = new Date(startsAt);
+    const endsAtDate = new Date(endsAt);
+    if (endsAtDate <= startsAtDate) {
+      throw new ConflictException('endsAt must be after startsAt');
+    }
+    return this.venueRepository.createPhoneReservation({
+      ownerId,
+      courtId,
+      startsAt: startsAtDate,
+      endsAt: endsAtDate,
+      customerName,
+      customerPhone,
+      notes,
+    });
   }
 
   // --- Lado jugador (Fase 4) ---
@@ -108,44 +177,81 @@ export class VenuesService {
     return this.venueRepository.listPublic(municipalityCode);
   }
 
+  /** Fase W.1.1: cuántas courts de ese tamaño quedan libres — el mobile lo consulta antes de dejar confirmar. */
+  getAvailability(query: AvailabilityQueryDto): Promise<AvailabilityDto> {
+    const startsAt = new Date(query.startsAt);
+    const endsAt = new Date(query.endsAt);
+    if (endsAt <= startsAt) {
+      throw new ConflictException('endsAt must be after startsAt');
+    }
+    return this.venueRepository.getAvailability(query.venueId, query.size, startsAt, endsAt);
+  }
+
+  /**
+   * Fase W.1.1: el jugador elige complejo + tamaño, no una cancha puntual —
+   * el repositorio auto-asigna con lock dentro de una transacción (mismo
+   * patrón que el roster de Fase 8.2). 409 con mensaje claro si no hay
+   * ninguna libre, en vez de dejar que choque con un solape al final.
+   */
   async createReservation(
     payload: CreateReservationPayload,
   ): Promise<MyReservationDto> {
-    const venue = await this.venueRepository.findVenueById(payload.venueId);
-    if (!venue) {
-      throw new NotFoundException(`Venue ${payload.venueId} not found`);
-    }
-
     const startsAt = new Date(payload.startsAt);
     const endsAt = new Date(payload.endsAt);
     if (endsAt <= startsAt) {
       throw new ConflictException('endsAt must be after startsAt');
     }
 
-    const overlaps = await this.venueRepository.hasOverlappingReservation(
-      payload.venueId,
-      startsAt,
-      endsAt,
-    );
-    if (overlaps) {
-      throw new ConflictException(
-        'This venue already has a reservation in that time range',
-      );
-    }
-
     if (payload.matchId) {
       await this.requireCanLinkMatch(payload.matchId, payload.requesterId);
     }
 
-    return this.venueRepository.createReservation({
+    const created = await this.venueRepository.createReservationWithAutoAssign({
       userId: payload.requesterId,
       venueId: payload.venueId,
-      venueName: venue.name,
+      size: payload.size,
       startsAt,
       endsAt,
       notes: payload.notes,
       matchId: payload.matchId,
     });
+
+    const ownerId = await this.venueRepository.findVenueOwnerId(payload.venueId);
+    if (ownerId) {
+      await this.notificationsService.sendToUser(
+        ownerId,
+        'Nueva reserva pendiente',
+        `Tenés una reserva pendiente en ${created.courtName ?? created.venueName}.`,
+        { type: 'new_reservation', reservationId: created.id },
+      );
+    }
+
+    return created;
+  }
+
+  /**
+   * Reasignación manual del dueño (Fase W.1.1) — ej. mantenimiento de
+   * último momento. Solo entre canchas del mismo tamaño, y solo si la
+   * reserva sigue vigente (no cancelled, no ya empezada) — validado en el
+   * repositorio. Push al jugador solo si era source=app.
+   */
+  async reassignCourt(payload: ReassignReservationCourtPayload): Promise<ReservationDto> {
+    const updated = await this.venueRepository.reassignCourt(
+      payload.ownerId,
+      payload.reservationId,
+      payload.courtId,
+    );
+
+    if (updated.source === 'app') {
+      await this.notificationsService.sendToUser(
+        updated.userId,
+        'Tu reserva fue reasignada',
+        `Tu reserva ahora es en ${updated.courtName ?? updated.venueName}.`,
+        { type: 'reservation_status', reservationId: updated.id },
+      );
+    }
+
+    return updated;
   }
 
   async getMyReservation(

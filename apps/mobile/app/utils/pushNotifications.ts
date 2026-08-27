@@ -97,3 +97,16 @@ export function addGuestRequestNearbyTapListener(onTap: () => void) {
     if (type === "match_guest_request") onTap()
   })
 }
+
+/**
+ * Deep link para "tu reserva fue confirmada/rechazada" (Fase W.1) — abre el
+ * detalle de esa reserva puntual (venues.service.ts manda reservationId).
+ */
+export function addReservationStatusTapListener(onTap: (reservationId: string) => void) {
+  return Notifications.addNotificationResponseReceivedListener((response) => {
+    const data = response.notification.request.content.data
+    if (data?.type !== "reservation_status") return
+    const reservationId = data?.reservationId
+    if (typeof reservationId === "string") onTap(reservationId)
+  })
+}

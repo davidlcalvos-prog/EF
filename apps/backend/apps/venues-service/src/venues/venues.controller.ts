@@ -2,9 +2,15 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { MESSAGE_PATTERNS } from '@ef/common';
 import {
+  AvailabilityQueryDto,
   CancelReservationPayload,
+  CreateCourtPayload,
+  CreatePhoneReservationPayload,
   CreateReservationPayload,
+  DeactivateCourtPayload,
   OwnerPayload,
+  ReassignReservationCourtPayload,
+  UpdateCourtPayload,
   UpdateReservationStatusPayload,
   UpsertVenuePayload,
   UserIdPayload,
@@ -35,7 +41,39 @@ export class VenuesController {
     return this.venuesService.updateReservationStatus(data);
   }
 
+  // --- Courts (Fase W.1) ---
+
+  @MessagePattern(MESSAGE_PATTERNS.VENUES.CREATE_COURT)
+  createCourt(@Payload() data: CreateCourtPayload) {
+    return this.venuesService.createCourt(data);
+  }
+
+  @MessagePattern(MESSAGE_PATTERNS.VENUES.UPDATE_COURT)
+  updateCourt(@Payload() data: UpdateCourtPayload) {
+    return this.venuesService.updateCourt(data);
+  }
+
+  @MessagePattern(MESSAGE_PATTERNS.VENUES.DEACTIVATE_COURT)
+  deactivateCourt(@Payload() data: DeactivateCourtPayload) {
+    return this.venuesService.deactivateCourt(data);
+  }
+
+  @MessagePattern(MESSAGE_PATTERNS.VENUES.CREATE_PHONE_RESERVATION)
+  createPhoneReservation(@Payload() data: CreatePhoneReservationPayload) {
+    return this.venuesService.createPhoneReservation(data);
+  }
+
+  @MessagePattern(MESSAGE_PATTERNS.VENUES.REASSIGN_COURT)
+  reassignCourt(@Payload() data: ReassignReservationCourtPayload) {
+    return this.venuesService.reassignCourt(data);
+  }
+
   // --- Lado jugador (Fase 4) ---
+
+  @MessagePattern(MESSAGE_PATTERNS.VENUES.GET_AVAILABILITY)
+  getAvailability(@Payload() data: AvailabilityQueryDto) {
+    return this.venuesService.getAvailability(data);
+  }
 
   @MessagePattern(MESSAGE_PATTERNS.VENUES.LIST_PUBLIC)
   listPublic(@Payload() data: { municipalityCode?: string }) {

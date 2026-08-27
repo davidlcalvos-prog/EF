@@ -769,6 +769,9 @@ export class TournamentRepository {
         notes: params.notes,
         tournamentMatchId: params.matchId,
         status: 'confirmed',
+        // Fase W.1: se marca explícitamente en vez de dejar el default 'app' —
+        // el portal la muestra distinto (icono/etiqueta "Torneo") en el calendario.
+        source: 'tournament',
       },
     });
   }

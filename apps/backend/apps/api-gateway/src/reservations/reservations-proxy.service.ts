@@ -2,7 +2,13 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { catchError, firstValueFrom, throwError } from 'rxjs';
 import { MESSAGE_PATTERNS, SERVICE_NAMES, toHttpException } from '@ef/common';
-import { CreateReservationDto, MyReservationDto, PublicVenueDto } from '@ef/contracts';
+import {
+  AvailabilityDto,
+  CourtSizeDto,
+  CreateReservationDto,
+  MyReservationDto,
+  PublicVenueDto,
+} from '@ef/contracts';
 
 @Injectable()
 export class ReservationsProxyService {
@@ -13,6 +19,21 @@ export class ReservationsProxyService {
   listPublicVenues(municipalityCode?: string): Promise<PublicVenueDto[]> {
     return this.send<PublicVenueDto[]>(MESSAGE_PATTERNS.VENUES.LIST_PUBLIC, {
       ...(municipalityCode ? { municipalityCode } : {}),
+    });
+  }
+
+  /** Fase W.1.1: cuántas courts de ese tamaño quedan libres — se consulta antes de dejar confirmar. */
+  getAvailability(
+    venueId: string,
+    size: CourtSizeDto,
+    startsAt: string,
+    endsAt: string,
+  ): Promise<AvailabilityDto> {
+    return this.send<AvailabilityDto>(MESSAGE_PATTERNS.VENUES.GET_AVAILABILITY, {
+      venueId,
+      size,
+      startsAt,
+      endsAt,
     });
   }
 

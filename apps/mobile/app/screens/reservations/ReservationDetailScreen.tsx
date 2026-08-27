@@ -154,12 +154,32 @@ export function ReservationDetailScreen({
                 {reservation.venueName}
               </Text>
 
+              {reservation.courtName ? (
+                <XStack alignItems="center" gap={8}>
+                  <Ionicons name="grid-outline" size={16} color="rgba(255,255,255,0.5)" />
+                  <Text color="rgba(255,255,255,0.6)" fontSize={13}>
+                    {translate("reservationsScreen:assignedCourt", {
+                      court: reservation.courtName,
+                    })}
+                  </Text>
+                </XStack>
+              ) : null}
+
               <XStack alignItems="center" gap={8}>
                 <Ionicons name="calendar-outline" size={16} color="rgba(255,255,255,0.5)" />
                 <Text color="rgba(255,255,255,0.6)" fontSize={13}>
                   {formatReservationRange(reservation.startsAt, reservation.endsAt)}
                 </Text>
               </XStack>
+
+              {reservation.status === "pending" ? (
+                <XStack alignItems="center" gap={8}>
+                  <Ionicons name="time-outline" size={16} color={eliteForgeColors.orange} />
+                  <Text color={eliteForgeColors.orange} fontSize={13}>
+                    {translate("reservationsScreen:pendingNote")}
+                  </Text>
+                </XStack>
+              ) : null}
 
               {reservation.notes ? (
                 <XStack alignItems="flex-start" gap={8}>

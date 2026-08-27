@@ -3,10 +3,14 @@
 import { revalidatePath } from 'next/cache'
 import { requireAdminSession } from '@/lib/admin/session'
 import {
+  createCourt,
+  deactivateCourt,
   searchMunicipalitiesApi,
+  updateCourt,
   upsertMyVenue,
   type MunicipalityDto,
 } from '@/lib/dal/admin/venues'
+import type { CourtSize, VenueSurfaceType } from '@/lib/dal/admin/types'
 
 export async function saveVenue(formData: FormData) {
   const session = await requireAdminSession()
@@ -26,7 +30,7 @@ export async function saveVenue(formData: FormData) {
     throw new Error('El nombre de la cancha es obligatorio')
   }
 
-  await upsertMyVenue(session.user.id, {
+  const venue = await upsertMyVenue(session.user.id, {
     id,
     name,
     address: address || null,
@@ -49,6 +53,7 @@ export async function saveVenue(formData: FormData) {
 
   revalidatePath('/admin/mi-cancha')
   revalidatePath('/admin')
+  return venue
 }
 
 /** Autocompletar de municipios para el formulario (server action, usa la sesión). */
@@ -56,4 +61,52 @@ export async function searchMunicipalities(q: string): Promise<MunicipalityDto[]
   await requireAdminSession()
   if (q.trim().length < 2) return []
   return searchMunicipalitiesApi(q.trim())
+}
+
+// ── Canchas (Fase W.1) ────────────────────────────────────────────────────
+
+export async function addCourt(
+  venueId: string,
+  payload: {
+    name: string
+    size: CourtSize
+    surface_type?: VenueSurfaceType | null
+    price_per_hour_cents: number
+  },
+) {
+  await requireAdminSession()
+  const court = await createCourt(venueId, payload)
+  revalidatePath('/admin/mi-cancha')
+  revalidatePath('/admin')
+  revalidatePath('/admin/reservas')
+  return court
+}
+
+export async function editCourt(
+  venueId: string,
+  courtId: string,
+  payload: {
+    name?: string
+    size?: CourtSize
+    surface_type?: VenueSurfaceType | null
+    price_per_hour_cents?: number
+    is_active?: boolean
+  },
+) {
+  await requireAdminSession()
+  const court = await updateCourt(venueId, courtId, payload)
+  revalidatePath('/admin/mi-cancha')
+  revalidatePath('/admin')
+  revalidatePath('/admin/reservas')
+  return court
+}
+
+/** Desactiva (nunca borra); el gateway responde 409 si tiene reservas futuras. */
+export async function removeCourt(venueId: string, courtId: string) {
+  await requireAdminSession()
+  const court = await deactivateCourt(venueId, courtId)
+  revalidatePath('/admin/mi-cancha')
+  revalidatePath('/admin')
+  revalidatePath('/admin/reservas')
+  return court
 }

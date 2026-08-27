@@ -4,17 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { AdminPageHeader } from '@/components/admin/page-header'
-import type { ReservationRow } from '@/lib/dal/admin/types'
-import type { VenueRow } from '@/lib/dal/admin/types'
-import {
-  enrichReservationsForCalendar,
-  type CalendarReservation,
-} from '@/lib/dal/admin/mock-reservations'
-import {
-  computeLiveOccupancy,
-  loadVenueExtras,
-  totalCourts,
-} from '@/lib/dal/admin/venue-extras'
+import type { ReservationRow, VenueRow } from '@/lib/dal/admin/types'
+import { computeLiveOccupancy } from '@/lib/dal/admin/court-occupancy'
 import { eliteForgeColors } from '@/lib/theme/elite-forge'
 import dynamic from 'next/dynamic'
 
@@ -22,9 +13,6 @@ import dynamic from 'next/dynamic'
 const VenueLocationMap = dynamic(() => import('@/components/admin/venue-location-map'), {
   ssr: false,
 })
-
-const PHONE_KEY = 'ef-admin-phone-reservations'
-const EDITS_KEY = 'ef-admin-edited-reservations'
 
 const BRAND = {
   emerald: eliteForgeColors.emerald,
@@ -41,34 +29,12 @@ export function OwnerSummaryDashboard({
   venues: VenueRow[]
   reservations: ReservationRow[]
 }) {
-  const venueId = venues[0]?.id
+  const courts = useMemo(() => venues[0]?.courts ?? [], [venues])
+  const activeCourts = useMemo(
+    () => courts.filter((c) => c.is_active),
+    [courts],
+  )
   const [now, setNow] = useState(() => new Date())
-  const [extras, setExtras] = useState(() => loadVenueExtras(venueId))
-  const [extraReservations, setExtraReservations] = useState<
-    CalendarReservation[]
-  >([])
-  const [edits, setEdits] = useState<Record<string, CalendarReservation>>({})
-
-  useEffect(() => {
-    setExtras(loadVenueExtras(venueId))
-    try {
-      const phone = localStorage.getItem(PHONE_KEY)
-      if (phone) {
-        const parsed = JSON.parse(phone) as CalendarReservation[]
-        if (Array.isArray(parsed)) setExtraReservations(parsed)
-      }
-      const rawEdits = localStorage.getItem(EDITS_KEY)
-      if (rawEdits) {
-        const parsed = JSON.parse(rawEdits) as Record<
-          string,
-          CalendarReservation
-        >
-        if (parsed && typeof parsed === 'object') setEdits(parsed)
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [venueId])
 
   useEffect(() => {
     const tick = () => setNow(new Date())
@@ -76,20 +42,11 @@ export function OwnerSummaryDashboard({
     return () => window.clearInterval(id)
   }, [])
 
-  const calendarItems = useMemo(() => {
-    const base = [
-      ...enrichReservationsForCalendar(reservations),
-      ...extraReservations,
-    ]
-    return base.map((r) => edits[r.id] ?? r)
-  }, [reservations, extraReservations, edits])
-
   const occupancy = useMemo(
-    () => computeLiveOccupancy(extras, calendarItems, now),
-    [extras, calendarItems, now],
+    () => computeLiveOccupancy(courts, reservations, now),
+    [courts, reservations, now],
   )
 
-  const inventoryTotal = totalCourts(extras)
   const pending = reservations.filter((r) => r.status === 'pending').length
   const confirmed = reservations.filter((r) => r.status === 'confirmed').length
   const cancelled = reservations.filter((r) => r.status === 'cancelled').length
@@ -102,103 +59,125 @@ export function OwnerSummaryDashboard({
         breadcrumbs={[{ label: 'Resumen' }]}
       />
 
-      <section className="mb-6 space-y-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="font-heading text-lg font-bold uppercase italic tracking-tight text-foreground">
-              Ocupación ahora
-            </h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Según la hora exacta ({occupancy.nowLabel}). Se actualiza cada 30 s.
-            </p>
-          </div>
+      {activeCourts.length === 0 ? (
+        <section className="mb-6 rounded-2xl border border-accent/40 bg-accent/10 p-5">
+          <p className="font-heading text-sm font-semibold uppercase tracking-wide text-foreground">
+            Agregá al menos una cancha para empezar a recibir reservas.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Configurá el inventario de canchas de tu complejo.
+          </p>
           <Button
             render={<Link href="/admin/mi-cancha" />}
-            variant="outline"
+            className="mt-3"
             size="sm"
           >
-            Editar inventario
+            Ir a Mi cancha
           </Button>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl ef-card p-5">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Canchas totales
-            </p>
-            <p className="mt-2 font-heading text-3xl font-bold text-foreground">
-              {inventoryTotal}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {extras.courts6}×6vs6 · {extras.courts8}×8vs8 ·{' '}
-              {extras.courts11}×11vs11
-            </p>
-          </div>
-          <div className="rounded-2xl ef-card p-5">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Ocupadas ahora
-            </p>
-            <p
-              className="mt-2 font-heading text-3xl font-bold"
-              style={{ color: BRAND.orange }}
-            >
-              {occupancy.totalOccupied}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Con reserva activa en este momento
-            </p>
-          </div>
-          <div className="rounded-2xl ef-card p-5">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Libres ahora
-            </p>
-            <p
-              className="mt-2 font-heading text-3xl font-bold"
-              style={{ color: BRAND.emerald }}
-            >
-              {occupancy.totalFree}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Disponibles para reservar ya
-            </p>
-          </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-3">
-          {occupancy.bySize.map((row) => (
-            <div
-              key={row.size}
-              className="rounded-2xl border border-border/80 bg-secondary/25 p-4"
-            >
-              <p className="font-heading text-sm font-semibold uppercase tracking-wide text-foreground">
-                {row.label}
+        </section>
+      ) : (
+        <section className="mb-6 space-y-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="font-heading text-lg font-bold uppercase italic tracking-tight text-foreground">
+                Ocupación ahora
+              </h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Según la hora exacta ({occupancy.nowLabel}). Se actualiza cada 30 s.
               </p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                <span className="font-semibold text-foreground">
-                  {row.capacity}
-                </span>{' '}
-                canchas ·{' '}
-                <span style={{ color: BRAND.orange }}>{row.occupied}</span>{' '}
-                ocupadas ·{' '}
-                <span style={{ color: BRAND.emerald }}>{row.free}</span> libres
-              </p>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${
-                      row.capacity === 0
-                        ? 0
-                        : Math.round((row.occupied / row.capacity) * 100)
-                    }%`,
-                    backgroundColor: BRAND.orange,
-                  }}
-                />
-              </div>
             </div>
-          ))}
-        </div>
-      </section>
+            <Button
+              render={<Link href="/admin/mi-cancha" />}
+              variant="outline"
+              size="sm"
+            >
+              Editar canchas
+            </Button>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="rounded-2xl ef-card p-5">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Canchas activas
+              </p>
+              <p className="mt-2 font-heading text-3xl font-bold text-foreground">
+                {activeCourts.length}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {occupancy.bySize
+                  .filter((s) => s.capacity > 0)
+                  .map((s) => `${s.capacity}×${s.label}`)
+                  .join(' · ') || 'Sin canchas configuradas'}
+              </p>
+            </div>
+            <div className="rounded-2xl ef-card p-5">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Ocupadas ahora
+              </p>
+              <p
+                className="mt-2 font-heading text-3xl font-bold"
+                style={{ color: BRAND.orange }}
+              >
+                {occupancy.totalOccupied}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Con reserva activa en este momento
+              </p>
+            </div>
+            <div className="rounded-2xl ef-card p-5">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Libres ahora
+              </p>
+              <p
+                className="mt-2 font-heading text-3xl font-bold"
+                style={{ color: BRAND.emerald }}
+              >
+                {occupancy.totalFree}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Disponibles para reservar ya
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            {occupancy.bySize
+              .filter((row) => row.capacity > 0)
+              .map((row) => (
+                <div
+                  key={row.size}
+                  className="rounded-2xl border border-border/80 bg-secondary/25 p-4"
+                >
+                  <p className="font-heading text-sm font-semibold uppercase tracking-wide text-foreground">
+                    {row.label}
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    <span className="font-semibold text-foreground">
+                      {row.capacity}
+                    </span>{' '}
+                    canchas ·{' '}
+                    <span style={{ color: BRAND.orange }}>{row.occupied}</span>{' '}
+                    ocupadas ·{' '}
+                    <span style={{ color: BRAND.emerald }}>{row.free}</span> libres
+                  </p>
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${
+                          row.capacity === 0
+                            ? 0
+                            : Math.round((row.occupied / row.capacity) * 100)
+                        }%`,
+                        backgroundColor: BRAND.orange,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+          </div>
+        </section>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-2xl ef-card p-5">

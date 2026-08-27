@@ -68,6 +68,7 @@ export function ReservationCard({ reservation, onPress }: ReservationCardProps) 
           <XStack alignItems="center" gap={8} flexWrap="wrap">
             <Text color="#FFFFFF" fontWeight="700" fontSize={15} numberOfLines={1}>
               {reservation.venueName}
+              {reservation.courtName ? ` · ${reservation.courtName}` : ""}
             </Text>
             <XStack
               backgroundColor="rgba(255,255,255,0.08)"
@@ -84,6 +85,12 @@ export function ReservationCard({ reservation, onPress }: ReservationCardProps) 
           <Text color="rgba(255,255,255,0.5)" fontSize={13} numberOfLines={1}>
             {formatReservationRange(reservation.startsAt, reservation.endsAt)}
           </Text>
+
+          {reservation.status === "pending" ? (
+            <Text color={eliteForgeColors.orange} fontSize={12} numberOfLines={1}>
+              {translate("reservationsScreen:pendingNote")}
+            </Text>
+          ) : null}
 
           {reservation.notes ? (
             <Text color="rgba(255,255,255,0.4)" fontSize={12} numberOfLines={1}>

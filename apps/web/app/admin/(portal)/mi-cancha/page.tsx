@@ -25,7 +25,7 @@ export default async function MiCanchaPage() {
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8">
       <AdminPageHeader
         title="Mi cancha"
-        subtitle="Configura inventario por tamaño (6/8/11), tarifas y servicios del complejo."
+        subtitle="Configura el nombre, ubicación y canchas de tu complejo."
         breadcrumbs={[
           { label: 'Resumen', href: '/admin' },
           { label: 'Mi cancha' },
@@ -45,6 +45,7 @@ export default async function MiCanchaPage() {
                 address: venue.address,
                 price_per_hour_cents: venue.price_per_hour_cents,
                 surface_type: venue.surface_type,
+                courts: venue.courts,
                 municipality_code: venue.municipality_code,
                 city: venue.city,
                 department: venue.department,

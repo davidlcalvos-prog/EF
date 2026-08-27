@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { ActivityIndicator, Keyboard, Modal, Pressable, ScrollView, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { addDays } from "date-fns/addDays"
@@ -10,7 +10,12 @@ import { Text, XStack, YStack } from "tamagui"
 import { TextField } from "@/components/TextField"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
-import type { MyReservationApiDto, PublicVenueApiDto } from "@/services/api"
+import {
+  api,
+  type CourtSizeApi,
+  type MyReservationApiDto,
+  type PublicVenueApiDto,
+} from "@/services/api"
 import type { GeneralApiProblem } from "@/services/api/apiProblem"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 import { formatDate } from "@/utils/formatDate"
@@ -22,12 +27,15 @@ export interface CreateReservationModalProps {
   matchId?: string
   onCreate: (payload: {
     venueId: string
+    size: CourtSizeApi
     startsAt: string
     endsAt: string
     notes?: string
     matchId?: string
   }) => Promise<{ kind: "ok"; reservation: MyReservationApiDto } | GeneralApiProblem>
 }
+
+const AVAILABILITY_DEBOUNCE_MS = 350
 
 const DAYS_AHEAD = 14
 
@@ -53,6 +61,10 @@ function describeProblem(problem: GeneralApiProblem): string {
 
 function formatPrice(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`
+}
+
+function courtSizeLabel(size: string): string {
+  return translate(`reservationsScreen:courtSize_${size}` as never)
 }
 
 function isValidTime(hour: string, minute: string): boolean {
@@ -144,6 +156,7 @@ export function CreateReservationModal({
   const { insets } = useResponsiveLayout()
   const dateOptions = useMemo(() => buildDateOptions(), [])
   const [venueId, setVenueId] = useState("")
+  const [size, setSize] = useState<CourtSizeApi | "">("")
   const [selectedDate, setSelectedDate] = useState<Date>(dateOptions[0])
   const [startHour, setStartHour] = useState("19")
   const [startMinute, setStartMinute] = useState("00")
@@ -152,6 +165,11 @@ export function CreateReservationModal({
   const [notes, setNotes] = useState("")
   const [creating, setCreating] = useState(false)
   const [errorText, setErrorText] = useState<string | null>(null)
+
+  const [availableCourts, setAvailableCourts] = useState<number | null>(null)
+  const [availabilityLoading, setAvailabilityLoading] = useState(false)
+  const [availabilityError, setAvailabilityError] = useState(false)
+  const availabilitySeqRef = useRef(0)
 
   const startTimeValid = isValidTime(startHour, startMinute)
   const endTimeValid = isValidTime(endHour, endMinute)
@@ -163,11 +181,47 @@ export function CreateReservationModal({
     return { startsAtIso: starts.toISOString(), endsAtIso: ends.toISOString() }
   }, [selectedDate, startHour, startMinute, endHour, endMinute, startTimeValid, endTimeValid])
 
+  const selectedVenue = venues.find((v) => v.id === venueId)
+  const venueSizes = selectedVenue?.courtSizes ?? []
   const isRangeValid = !!startsAtIso && !!endsAtIso && endsAtIso > startsAtIso
-  const isValid = !!venueId && isRangeValid
+
+  // Cambiar de complejo o tamaño invalida la disponibilidad ya consultada.
+  useEffect(() => {
+    setSize("")
+    setAvailableCourts(null)
+  }, [venueId])
+
+  // Fase W.1.1: se consulta disponibilidad ANTES de dejar confirmar — nunca
+  // se llega al final para chocar con un error de solape.
+  useEffect(() => {
+    if (!venueId || !size || !isRangeValid || !startsAtIso || !endsAtIso) {
+      setAvailableCourts(null)
+      setAvailabilityLoading(false)
+      setAvailabilityError(false)
+      return
+    }
+    setAvailabilityLoading(true)
+    setAvailabilityError(false)
+    const seq = ++availabilitySeqRef.current
+    const timer = setTimeout(() => {
+      api.getAvailability(venueId, size, startsAtIso, endsAtIso).then((result) => {
+        if (availabilitySeqRef.current !== seq) return
+        setAvailabilityLoading(false)
+        if (result.kind === "ok") {
+          setAvailableCourts(result.availability.availableCourts)
+        } else {
+          setAvailabilityError(true)
+        }
+      })
+    }, AVAILABILITY_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [venueId, size, isRangeValid, startsAtIso, endsAtIso])
+
+  const isValid = !!venueId && !!size && isRangeValid && !!availableCourts
 
   const reset = () => {
     setVenueId("")
+    setSize("")
     setSelectedDate(dateOptions[0])
     setStartHour("19")
     setStartMinute("00")
@@ -175,6 +229,7 @@ export function CreateReservationModal({
     setEndMinute("00")
     setNotes("")
     setErrorText(null)
+    setAvailableCourts(null)
   }
 
   const handleClose = () => {
@@ -185,11 +240,12 @@ export function CreateReservationModal({
   }
 
   const handleCreate = async () => {
-    if (!isValid || creating || !startsAtIso || !endsAtIso) return
+    if (!isValid || creating || !startsAtIso || !endsAtIso || !size) return
     setErrorText(null)
     setCreating(true)
     const result = await onCreate({
       venueId,
+      size,
       startsAt: startsAtIso,
       endsAt: endsAtIso,
       notes: notes.trim() || undefined,
@@ -351,6 +407,65 @@ export function CreateReservationModal({
               )}
             </YStack>
 
+            {selectedVenue && venueSizes.length > 0 ? (
+              <YStack gap={8} marginBottom={16}>
+                <Text color="rgba(255,255,255,0.6)" fontSize={12} fontWeight="700">
+                  {translate("reservationsScreen:courtLabel")}
+                </Text>
+                <YStack gap={8}>
+                  {venueSizes.map((entry) => {
+                    const selected = entry.size === size
+                    return (
+                      <Pressable
+                        key={entry.size}
+                        onPress={() => setSize(entry.size)}
+                        accessibilityRole="button"
+                      >
+                        <XStack
+                          padding={12}
+                          borderRadius={12}
+                          backgroundColor={
+                            selected ? "rgba(0,206,200,0.1)" : eliteForgeColors.carbonInput
+                          }
+                          borderWidth={1}
+                          borderColor={
+                            selected ? eliteForgeColors.emerald : eliteForgeColors.carbonBorder
+                          }
+                          alignItems="center"
+                          gap={10}
+                        >
+                          <YStack flex={1} gap={2}>
+                            <Text color="#FFFFFF" fontWeight="700" fontSize={14}>
+                              {courtSizeLabel(entry.size)}
+                            </Text>
+                            <Text color="rgba(255,255,255,0.5)" fontSize={12}>
+                              {translate("reservationsScreen:courtCount", { count: entry.count })}
+                            </Text>
+                          </YStack>
+                          <Text color={eliteForgeColors.emerald} fontWeight="700" fontSize={13}>
+                            {translate("reservationsScreen:pricePerHour", {
+                              price: formatPrice(entry.pricePerHourCents),
+                            })}
+                          </Text>
+                        </XStack>
+                      </Pressable>
+                    )
+                  })}
+                </YStack>
+              </YStack>
+            ) : null}
+
+            {selectedVenue && venueSizes.length === 0 ? (
+              <YStack gap={8} marginBottom={16}>
+                <Text color="rgba(255,255,255,0.6)" fontSize={12} fontWeight="700">
+                  {translate("reservationsScreen:courtLabel")}
+                </Text>
+                <Text color="rgba(255,255,255,0.45)" fontSize={13}>
+                  {translate("reservationsScreen:noCourts")}
+                </Text>
+              </YStack>
+            ) : null}
+
             <YStack gap={8} marginBottom={16}>
               <Text color="rgba(255,255,255,0.6)" fontSize={12} fontWeight="700">
                 {translate("reservationsScreen:dateLabel")}
@@ -401,6 +516,39 @@ export function CreateReservationModal({
                 </Text>
               ) : null}
             </YStack>
+
+            {venueId && size && isRangeValid ? (
+              <YStack gap={8} marginBottom={16}>
+                {availabilityLoading ? (
+                  <XStack alignItems="center" gap={8}>
+                    <ActivityIndicator size="small" color={eliteForgeColors.emerald} />
+                    <Text color="rgba(255,255,255,0.5)" fontSize={13}>
+                      {translate("reservationsScreen:checkingAvailability")}
+                    </Text>
+                  </XStack>
+                ) : availabilityError ? (
+                  <Text color="#E74C3C" fontSize={13}>
+                    {translate("reservationsScreen:availabilityError")}
+                  </Text>
+                ) : availableCourts !== null && availableCourts > 0 ? (
+                  <XStack alignItems="center" gap={8}>
+                    <Ionicons name="checkmark-circle" size={16} color={eliteForgeColors.emerald} />
+                    <Text color={eliteForgeColors.emerald} fontSize={13} fontWeight="700">
+                      {translate("reservationsScreen:availabilityCount", {
+                        count: availableCourts,
+                      })}
+                    </Text>
+                  </XStack>
+                ) : availableCourts === 0 ? (
+                  <XStack alignItems="center" gap={8}>
+                    <Ionicons name="close-circle" size={16} color="#E74C3C" />
+                    <Text color="#E74C3C" fontSize={13} fontWeight="700">
+                      {translate("reservationsScreen:noAvailability")}
+                    </Text>
+                  </XStack>
+                ) : null}
+              </YStack>
+            ) : null}
 
             <YStack gap={8} marginBottom={8}>
               <Text color="rgba(255,255,255,0.6)" fontSize={12} fontWeight="700">
