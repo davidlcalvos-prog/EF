@@ -1,9 +1,10 @@
 import { useCallback, useMemo, useState } from "react"
-import { Alert, Pressable, ScrollView, StatusBar } from "react-native"
+import { Pressable, ScrollView, StatusBar } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import Animated from "react-native-reanimated"
 import { Text, XStack, YStack } from "tamagui"
 
+import { useAppAlert } from "@/components/AppAlert"
 import { useAuth } from "@/context/AuthContext"
 import {
   isPsychTestLockedThisMonth,
@@ -24,6 +25,7 @@ type Step = "intro" | "questions" | "result"
 
 export function PsychologicalTestScreen({ navigation }: AppStackScreenProps<"PsychologicalTest">) {
   const { authEmail } = useAuth()
+  const showAlert = useAppAlert()
   const userKey = authEmail ?? "guest"
   const { psychTest, savePsychTestResult } = usePlayerProfile(userKey, authEmail)
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
@@ -51,7 +53,7 @@ export function PsychologicalTestScreen({ navigation }: AppStackScreenProps<"Psy
   const handleContinue = useCallback(() => {
     if (step === "intro") {
       if (isLocked) {
-        Alert.alert(
+        showAlert(
           translate("profileScreen:psychLockedTitle"),
           translate("profileScreen:psychLockedMessage"),
         )
@@ -63,7 +65,7 @@ export function PsychologicalTestScreen({ navigation }: AppStackScreenProps<"Psy
 
     if (step === "questions") {
       if (answers[questionIndex] === 0) {
-        Alert.alert(
+        showAlert(
           translate("profileScreen:psychValidationTitle"),
           translate("profileScreen:psychSelectAnswer"),
         )
@@ -86,7 +88,7 @@ export function PsychologicalTestScreen({ navigation }: AppStackScreenProps<"Psy
         answers,
         traits: scores.traits ?? undefined,
       })
-      Alert.alert(
+      showAlert(
         translate("profileScreen:psychDoneTitle"),
         translate("profileScreen:psychDoneMessage"),
         [{ text: translate("common:ok"), onPress: () => navigation.goBack() }],
@@ -98,6 +100,7 @@ export function PsychologicalTestScreen({ navigation }: AppStackScreenProps<"Psy
     isLocked,
     navigation,
     questionIndex,
+    showAlert,
     savePsychTestResult,
     scores.onFieldScore,
     scores.overallScore,

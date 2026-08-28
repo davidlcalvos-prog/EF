@@ -1,9 +1,10 @@
 import { useCallback, useState } from "react"
-import { Alert, Pressable, ScrollView, StatusBar } from "react-native"
+import { Pressable, ScrollView, StatusBar } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import Animated from "react-native-reanimated"
 import { Text, XStack, YStack } from "tamagui"
 
+import { useAppAlert } from "@/components/AppAlert"
 import { useAuth } from "@/context/AuthContext"
 import {
   getTestAvailability,
@@ -43,6 +44,7 @@ export function PhysicalTestSessionScreen({
   const { testId } = route.params
   const definition = getTestDefinition(testId)!
   const { authEmail } = useAuth()
+  const showAlert = useAppAlert()
   const userKey = authEmail ?? "guest"
   const { completeTest, getTestState } = useProfileStats(userKey)
   const state = getTestState(testId)
@@ -73,7 +75,7 @@ export function PhysicalTestSessionScreen({
     if (step === "protocol") {
       if (isLocked) {
         const nextDate = getNextRetakeDate(state?.lastCompletedAt)
-        Alert.alert(
+        showAlert(
           translate("profileScreen:testLockedTitle"),
           translate("profileScreen:testLockedMessage", {
             date: nextDate ? formatRetakeDate(nextDate) : "—",
@@ -97,14 +99,14 @@ export function PhysicalTestSessionScreen({
     if (step === "confirm" && measuredResult) {
       const saved = completeTest(testId, measuredResult)
       if (!saved) {
-        Alert.alert(
+        showAlert(
           translate("profileScreen:testLockedTitle"),
           translate("profileScreen:testLockedThisMonth"),
         )
         return
       }
 
-      Alert.alert(
+      showAlert(
         translate("profileScreen:testDoneTitle"),
         translate("profileScreen:testDoneMessage"),
         [{ text: translate("common:ok"), onPress: () => navigation.goBack() }],
@@ -116,6 +118,7 @@ export function PhysicalTestSessionScreen({
     measuredResult,
     measurementComplete,
     navigation,
+    showAlert,
     state?.lastCompletedAt,
     step,
     testId,

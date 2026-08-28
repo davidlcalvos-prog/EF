@@ -1,8 +1,9 @@
 import { FC, useCallback, useState } from "react"
-import { Alert, KeyboardAvoidingView, Platform, Pressable, StatusBar } from "react-native"
+import { KeyboardAvoidingView, Platform, Pressable, StatusBar } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { ScrollView, Text, XStack, YStack } from "tamagui"
 
+import { useAppAlert } from "@/components/AppAlert"
 import {
   AuthFormCard,
   Button,
@@ -39,6 +40,7 @@ export const LoginScreen: FC<LoginScreenProps> = () => {
   const [isLoading, setIsLoading] = useState(false)
 
   const { setAuthToken, setAuthEmail, setAuthUserId } = useAuth()
+  const showAlert = useAppAlert()
 
   const {
     insets,
@@ -125,8 +127,8 @@ export const LoginScreen: FC<LoginScreenProps> = () => {
   }, [setAuthEmail, setAuthToken])
 
   const handleSettings = useCallback(() => {
-    Alert.alert(translate("feedDrawer:comingSoonTitle"), translate("loginScreen:settingsSoon"))
-  }, [])
+    showAlert(translate("feedDrawer:comingSoonTitle"), translate("loginScreen:settingsSoon"))
+  }, [showAlert])
 
   return (
     <YStack flex={1} backgroundColor={eliteForgeColors.carbon}>

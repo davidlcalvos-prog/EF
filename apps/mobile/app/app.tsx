@@ -25,6 +25,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller"
 import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context"
 import { TamaguiProvider } from "tamagui"
 
+import { AppAlertProvider } from "./components/AppAlert"
 import { AuthProvider } from "./context/AuthContext"
 import { initI18n } from "./i18n"
 import tamaguiConfig from "../tamagui.config"
@@ -123,11 +124,13 @@ export function App() {
         <KeyboardProvider>
           <AuthProvider>
             <ThemeProvider>
-              <AppNavigator
-                linking={linking}
-                initialState={initialNavigationState}
-                onStateChange={onNavigationStateChange}
-              />
+              <AppAlertProvider>
+                <AppNavigator
+                  linking={linking}
+                  initialState={initialNavigationState}
+                  onStateChange={onNavigationStateChange}
+                />
+              </AppAlertProvider>
             </ThemeProvider>
           </AuthProvider>
         </KeyboardProvider>

@@ -1,6 +1,6 @@
-import { Alert } from "react-native"
 import * as ImagePicker from "expo-image-picker"
 
+import type { ShowAppAlert } from "@/components/AppAlert"
 import { translate } from "@/i18n/translate"
 
 /** Debe coincidir con MAX_GROUP_PHOTO_BASE64_LENGTH del backend (libs/contracts/src/groups). */
@@ -13,11 +13,11 @@ export type PickGroupPhotoResult =
  * Mismo picker que ya usa el avatar de perfil (recorte cuadrado, comprimido),
  * pero pidiendo el base64 directo — no hay storage real, se guarda en Postgres.
  */
-export async function pickGroupPhoto(): Promise<PickGroupPhotoResult> {
+export async function pickGroupPhoto(showAlert: ShowAppAlert): Promise<PickGroupPhotoResult> {
   try {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
-      Alert.alert(
+      showAlert(
         translate("profileScreen:avatarPermissionTitle"),
         translate("profileScreen:avatarPermissionMessage"),
       )
@@ -43,7 +43,7 @@ export async function pickGroupPhoto(): Promise<PickGroupPhotoResult> {
 
     return { kind: "ok", base64 }
   } catch {
-    Alert.alert(
+    showAlert(
       translate("profileScreen:avatarNativeMissingTitle"),
       translate("profileScreen:avatarNativeMissingMessage"),
     )
