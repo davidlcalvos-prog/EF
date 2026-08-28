@@ -24,6 +24,7 @@ function mapPostToFeedPost(post: PostApiDto): FeedPost {
     authorName: post.authorName,
     authorHandle: post.authorHandle,
     authorAvatarColor: pickAvatarColor(post.authorId),
+    authorAvatarPhoto: post.authorAvatarBase64,
     timeAgoKey: "",
     createdAt: post.createdAt,
     content: post.content,

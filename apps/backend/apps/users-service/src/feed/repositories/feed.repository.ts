@@ -7,7 +7,7 @@ type AuthorInfo = {
   email: string;
   firstname: string;
   lastname: string;
-  profile: { alias: string } | null;
+  profile: { alias: string; avatarBase64: string | null } | null;
 };
 
 type PostRow = {
@@ -33,7 +33,7 @@ type CommentRow = {
 
 const authorInclude = {
   author: {
-    include: { profile: { select: { alias: true } } },
+    include: { profile: { select: { alias: true, avatarBase64: true } } },
   },
 } as const;
 
@@ -238,6 +238,7 @@ export class FeedRepository {
       authorId: post.authorId,
       authorName: this.buildAuthorName(post.author),
       authorHandle: this.buildAuthorHandle(post.author),
+      authorAvatarBase64: post.author.profile?.avatarBase64 ?? null,
       content: post.content,
       mediaType: post.mediaType as PostMediaType,
       mediaUrl: post.mediaUrl,
@@ -256,6 +257,7 @@ export class FeedRepository {
       authorId: comment.authorId,
       authorName: this.buildAuthorName(comment.author),
       authorHandle: this.buildAuthorHandle(comment.author),
+      authorAvatarBase64: comment.author.profile?.avatarBase64 ?? null,
       content: comment.content,
       createdAt: comment.createdAt.toISOString(),
     };

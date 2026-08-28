@@ -9,6 +9,7 @@ import { XStack, YStack } from "tamagui"
 
 import { useAuth } from "@/context/AuthContext"
 import { translate } from "@/i18n/translate"
+import { getUserColor } from "@/utils/avatarColor"
 
 import { FeedAvatar } from "./FeedAvatar"
 import { FeedMenuButton } from "./FeedMenuButton"
@@ -33,15 +34,8 @@ function getUserDisplayName(email?: string) {
   return local.charAt(0).toUpperCase() + local.slice(1)
 }
 
-function getUserColor(email?: string) {
-  if (!email) return "#00CEC8"
-  const hash = email.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  const palette = ["#00CEC8", "#FF8C00", "#7B68EE", "#2ECC71", "#E74C3C"]
-  return palette[hash % palette.length]
-}
-
 export function FeedNavbar({ onMenuPress, onProfilePress, scrollY }: FeedNavbarProps) {
-  const { authEmail } = useAuth()
+  const { authEmail, authAvatarBase64 } = useAuth()
 
   const barStyle = useAnimatedStyle(() => {
     const progress = interpolate(
@@ -118,6 +112,7 @@ export function FeedNavbar({ onMenuPress, onProfilePress, scrollY }: FeedNavbarP
           <FeedAvatar
             label={getUserDisplayName(authEmail)}
             color={getUserColor(authEmail)}
+            photoBase64={authAvatarBase64}
             size={40}
             showRing
             onPress={onProfilePress}

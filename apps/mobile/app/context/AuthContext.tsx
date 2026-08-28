@@ -1,6 +1,16 @@
-import { createContext, FC, PropsWithChildren, useCallback, useContext, useMemo } from "react"
+import {
+  createContext,
+  FC,
+  PropsWithChildren,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
 import { useMMKVString } from "react-native-mmkv"
 
+import { api } from "@/services/api"
 import { unregisterPushToken } from "@/utils/pushNotifications"
 
 import { AUTH_TOKEN_STORAGE_KEY } from "./authTokenStorage"
@@ -10,9 +20,12 @@ export type AuthContextType = {
   authToken?: string
   authEmail?: string
   authUserId?: string
+  /** Foto de perfil real (Fase 12) — en memoria, no persistida; se repuebla al loguear. */
+  authAvatarBase64: string | null
   setAuthToken: (token?: string) => void
   setAuthEmail: (email: string) => void
   setAuthUserId: (userId?: string) => void
+  setAuthAvatarBase64: (avatarBase64: string | null) => void
   logout: () => void
   validationError: string
 }
@@ -32,12 +45,32 @@ export const AuthProvider: FC<PropsWithChildren<AuthProviderProps>> = ({ childre
   const [authToken, setAuthToken] = useMMKVString(AUTH_TOKEN_STORAGE_KEY)
   const [authEmail, setAuthEmail] = useMMKVString("AuthProvider.authEmail")
   const [authUserId, setAuthUserId] = useMMKVString("AuthProvider.authUserId")
+  // En memoria a propósito (no MMKV): repoblar desde el backend al loguear
+  // alcanza, y evita otra capa de caché desincronizada (mismo problema que
+  // tuvimos con el token en la 8.1, ver el comentario de arriba).
+  const [authAvatarBase64, setAuthAvatarBase64] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!authUserId || !authToken) {
+      setAuthAvatarBase64(null)
+      return
+    }
+    let cancelled = false
+    api.getMyProfile(authUserId).then((result) => {
+      if (cancelled) return
+      if (result.kind === "ok") setAuthAvatarBase64(result.profile.avatarBase64)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [authUserId, authToken])
 
   const logout = useCallback(() => {
     if (authToken) void unregisterPushToken(authToken)
     setAuthToken(undefined)
     setAuthEmail("")
     setAuthUserId(undefined)
+    setAuthAvatarBase64(null)
   }, [authToken, setAuthEmail, setAuthToken, setAuthUserId])
 
   const validationError = useMemo(() => {
@@ -52,9 +85,11 @@ export const AuthProvider: FC<PropsWithChildren<AuthProviderProps>> = ({ childre
     authToken,
     authEmail,
     authUserId,
+    authAvatarBase64,
     setAuthToken,
     setAuthEmail,
     setAuthUserId,
+    setAuthAvatarBase64,
     logout,
     validationError,
   }

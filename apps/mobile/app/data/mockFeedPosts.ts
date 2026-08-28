@@ -10,6 +10,8 @@ export interface FeedPost {
   authorName: string
   authorHandle: string
   authorAvatarColor: string
+  /** Foto real de perfil (posts reales del backend) — null/ausente en anuncios. */
+  authorAvatarPhoto?: string | null
   /** Etiqueta curada ("Sponsored") — solo se usa si no hay `createdAt`. */
   timeAgoKey: string
   /** ISO — presente en posts reales del backend, usado para tiempo relativo real. */

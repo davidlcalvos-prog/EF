@@ -61,7 +61,7 @@ function getUserColor(seed: string) {
 }
 
 export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
-  const { authEmail, authToken, authUserId } = useAuth()
+  const { authEmail, authToken, authUserId, setAuthAvatarBase64 } = useAuth()
   const userKey = authEmail ?? "guest"
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
   const {
@@ -122,8 +122,12 @@ export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
     const picked = await pickProfileImageFromGallery(userKey, profile.avatarUri)
     if (!picked) return
     updateProfile({ avatarUri: picked.uri })
+    // Refleja la foto nueva de inmediato en drawer/composer/navbar, sin
+    // esperar la confirmación de red (mismo criterio optimista que
+    // updateProfile de arriba) ni reiniciar la app.
+    setAuthAvatarBase64(picked.base64)
     syncAvatarToBackend(picked.base64)
-  }, [profile.avatarUri, updateProfile, userKey])
+  }, [profile.avatarUri, updateProfile, userKey, setAuthAvatarBase64])
 
   const handleQuickLink = useCallback(
     (id: ProfileQuickLinkId) => {
