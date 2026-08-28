@@ -3,6 +3,7 @@ import { ActivityIndicator, Keyboard, Modal, Pressable, View } from "react-nativ
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
+import { useAppAlert } from "@/components/AppAlert"
 import { MunicipalityPicker, type MunicipalityValue } from "@/components/MunicipalityPicker"
 import { TextField } from "@/components/TextField"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
@@ -41,6 +42,7 @@ function describeProblem(problem: GeneralApiProblem): string {
 
 export function GroupEditModal({ visible, onClose, group, onSave }: GroupEditModalProps) {
   const { insets } = useResponsiveLayout()
+  const showAlert = useAppAlert()
   const [name, setName] = useState(group.name)
   const [newPhotoBase64, setNewPhotoBase64] = useState<string | undefined>(undefined)
   const [removePhoto, setRemovePhoto] = useState(false)
@@ -75,7 +77,7 @@ export function GroupEditModal({ visible, onClose, group, onSave }: GroupEditMod
   }
 
   const handlePickPhoto = async () => {
-    const result = await pickGroupPhoto()
+    const result = await pickGroupPhoto(showAlert)
     if (result.kind === "ok") {
       setErrorText(null)
       setNewPhotoBase64(result.base64)

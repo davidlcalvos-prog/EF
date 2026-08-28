@@ -1,8 +1,9 @@
 import { useCallback, useState } from "react"
-import { ActivityIndicator, Alert, Pressable, ScrollView, StatusBar } from "react-native"
+import { ActivityIndicator, Pressable, ScrollView, StatusBar } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
+import { useAppAlert } from "@/components/AppAlert"
 import { GroupSearchModal } from "@/components/GroupSearchModal"
 import { useAuth } from "@/context/AuthContext"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
@@ -48,6 +49,7 @@ function EmptySection({ text }: { text: string }) {
 export function GroupFriendsScreen({ route, navigation }: AppStackScreenProps<"GroupFriends">) {
   const { groupId } = route.params
   const { authUserId } = useAuth()
+  const showAlert = useAppAlert()
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
   const { group } = useGroupDetail(groupId)
   const {
@@ -75,17 +77,17 @@ export function GroupFriendsScreen({ route, navigation }: AppStackScreenProps<"G
       accept(friendship.id).then((result) => {
         setBusyId(null)
         if (result.kind !== "ok") {
-          Alert.alert(translate("groupFriendsScreen:actionError"), describeProblem(result))
+          showAlert(translate("groupFriendsScreen:actionError"), describeProblem(result))
         }
       })
     },
-    [accept],
+    [accept, showAlert],
   )
 
   const handleRemove = useCallback(
     (friendship: GroupFriendshipApiDto, titleKey: string, messageKey: string) => {
       const other = getOtherGroup(friendship, groupId)
-      Alert.alert(
+      showAlert(
         translate(titleKey as never),
         translate(messageKey as never, { name: other.name }),
         [
@@ -98,7 +100,7 @@ export function GroupFriendsScreen({ route, navigation }: AppStackScreenProps<"G
               remove(friendship.id).then((result) => {
                 setBusyId(null)
                 if (result.kind !== "ok") {
-                  Alert.alert(translate("groupFriendsScreen:actionError"), describeProblem(result))
+                  showAlert(translate("groupFriendsScreen:actionError"), describeProblem(result))
                 }
               })
             },
@@ -106,7 +108,7 @@ export function GroupFriendsScreen({ route, navigation }: AppStackScreenProps<"G
         ],
       )
     },
-    [groupId, remove],
+    [groupId, remove, showAlert],
   )
 
   return (

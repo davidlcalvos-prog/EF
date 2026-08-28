@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react"
-import { ActivityIndicator, Alert, Pressable, ScrollView, StatusBar } from "react-native"
+import { ActivityIndicator, Pressable, ScrollView, StatusBar } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
+import { useAppAlert } from "@/components/AppAlert"
 import { useAuth } from "@/context/AuthContext"
 import type { PlayerPositionId } from "@/data/suggestPlayerPosition"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
@@ -164,6 +165,7 @@ function ParticipantRow({ participant }: { participant: MatchParticipantApiDto }
 export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"MatchDetail">) {
   const { matchId } = route.params
   const { authUserId } = useAuth()
+  const showAlert = useAppAlert()
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
   const {
     match,
@@ -276,17 +278,17 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
       const result = await join(joinAsGroupId)
       setBusy(false)
       if (result.kind !== "ok") {
-        Alert.alert(translate("matchesScreen:actionError"), describeProblem(result))
+        showAlert(translate("matchesScreen:actionError"), describeProblem(result))
       }
     },
-    [join],
+    [join, showAlert],
   )
 
   const handleJoin = useCallback(() => {
     if (!match) return
     // Miembro de los dos grupos del partido: hay que elegir desde cuál se une.
     if (isVs && isOriginMember && isOpponentMember) {
-      Alert.alert(
+      showAlert(
         translate("matchesScreen:selectJoinSideTitle"),
         translate("matchesScreen:selectJoinSideMessage"),
         [
@@ -301,10 +303,10 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
       return
     }
     runJoin()
-  }, [match, isVs, isOriginMember, isOpponentMember, runJoin])
+  }, [match, isVs, isOriginMember, isOpponentMember, runJoin, showAlert])
 
   const handleLeave = useCallback(() => {
-    Alert.alert(
+    showAlert(
       translate("matchesScreen:leaveConfirmTitle"),
       translate("matchesScreen:leaveConfirmMessage"),
       [
@@ -317,16 +319,16 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
             const result = await leave()
             setBusy(false)
             if (result.kind !== "ok") {
-              Alert.alert(translate("matchesScreen:actionError"), describeProblem(result))
+              showAlert(translate("matchesScreen:actionError"), describeProblem(result))
             }
           },
         },
       ],
     )
-  }, [leave])
+  }, [leave, showAlert])
 
   const handleMarkPlayed = useCallback(() => {
-    Alert.alert(
+    showAlert(
       translate("matchesScreen:markPlayedConfirmTitle"),
       translate("matchesScreen:markPlayedConfirmMessage"),
       [
@@ -338,16 +340,16 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
             const result = await updateStatus("played")
             setBusy(false)
             if (result.kind !== "ok") {
-              Alert.alert(translate("matchesScreen:actionError"), describeProblem(result))
+              showAlert(translate("matchesScreen:actionError"), describeProblem(result))
             }
           },
         },
       ],
     )
-  }, [updateStatus])
+  }, [updateStatus, showAlert])
 
   const handleCancelMatch = useCallback(() => {
-    Alert.alert(
+    showAlert(
       translate("matchesScreen:cancelMatchConfirmTitle"),
       translate("matchesScreen:cancelMatchConfirmMessage"),
       [
@@ -360,16 +362,16 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
             const result = await updateStatus("cancelled")
             setBusy(false)
             if (result.kind !== "ok") {
-              Alert.alert(translate("matchesScreen:actionError"), describeProblem(result))
+              showAlert(translate("matchesScreen:actionError"), describeProblem(result))
             }
           },
         },
       ],
     )
-  }, [updateStatus])
+  }, [updateStatus, showAlert])
 
   const handleAccept = useCallback(() => {
-    Alert.alert(
+    showAlert(
       translate("matchesScreen:acceptChallengeConfirmTitle"),
       translate("matchesScreen:acceptChallengeConfirmMessage"),
       [
@@ -381,16 +383,16 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
             const result = await accept()
             setBusy(false)
             if (result.kind !== "ok") {
-              Alert.alert(translate("matchesScreen:actionError"), describeProblem(result))
+              showAlert(translate("matchesScreen:actionError"), describeProblem(result))
             }
           },
         },
       ],
     )
-  }, [accept])
+  }, [accept, showAlert])
 
   const handleReject = useCallback(() => {
-    Alert.alert(
+    showAlert(
       translate("matchesScreen:rejectChallengeConfirmTitle"),
       translate("matchesScreen:rejectChallengeConfirmMessage"),
       [
@@ -403,36 +405,36 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
             const result = await reject()
             setBusy(false)
             if (result.kind !== "ok") {
-              Alert.alert(translate("matchesScreen:actionError"), describeProblem(result))
+              showAlert(translate("matchesScreen:actionError"), describeProblem(result))
             }
           },
         },
       ],
     )
-  }, [reject])
+  }, [reject, showAlert])
 
   const runRandomizeTeams = useCallback(async () => {
     setBusy(true)
     const result = await randomizeTeams()
     setBusy(false)
     if (result.kind !== "ok") {
-      Alert.alert(translate("matchesScreen:actionError"), describeRandomizeProblem(result))
+      showAlert(translate("matchesScreen:actionError"), describeRandomizeProblem(result))
       return
     }
     if (result.warnings.length > 0) {
-      Alert.alert(
+      showAlert(
         translate("matchesScreen:randomizeWarningsTitle"),
         result.warnings.map(warningLine).join("\n"),
       )
     }
-  }, [randomizeTeams])
+  }, [randomizeTeams, showAlert])
 
   const handleRandomizeTeams = useCallback(() => {
     if (!hasTeams) {
       runRandomizeTeams()
       return
     }
-    Alert.alert(
+    showAlert(
       translate("matchesScreen:reRandomizeConfirmTitle"),
       translate("matchesScreen:reRandomizeConfirmMessage"),
       [
@@ -444,7 +446,7 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
         },
       ],
     )
-  }, [hasTeams, runRandomizeTeams])
+  }, [hasTeams, runRandomizeTeams, showAlert])
 
   const handleReserveVenue = useCallback(() => {
     if (!match) return
@@ -460,7 +462,7 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
   )
 
   const handleCancelGuestRequest = useCallback(() => {
-    Alert.alert(
+    showAlert(
       translate("matchesScreen:guestCancelConfirmTitle"),
       translate("matchesScreen:guestCancelConfirmMessage"),
       [
@@ -473,13 +475,13 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
             const result = await guestRequest.cancel()
             setBusy(false)
             if (result.kind !== "ok") {
-              Alert.alert(translate("matchesScreen:actionError"), describeProblem(result))
+              showAlert(translate("matchesScreen:actionError"), describeProblem(result))
             }
           },
         },
       ],
     )
-  }, [guestRequest])
+  }, [guestRequest, showAlert])
 
   const handleAcceptApplicant = useCallback(
     async (applicationId: string) => {
@@ -488,22 +490,22 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
         await refresh()
         return true
       }
-      Alert.alert(translate("matchesScreen:actionError"), describeProblem(result))
+      showAlert(translate("matchesScreen:actionError"), describeProblem(result))
       return false
     },
-    [guestRequest, refresh],
+    [guestRequest, refresh, showAlert],
   )
 
   const handleRejectApplicant = useCallback(
     async (applicationId: string) => {
       const result = await guestRequest.reject(applicationId)
       if (result.kind !== "ok") {
-        Alert.alert(translate("matchesScreen:actionError"), describeProblem(result))
+        showAlert(translate("matchesScreen:actionError"), describeProblem(result))
         return false
       }
       return true
     },
-    [guestRequest],
+    [guestRequest, showAlert],
   )
 
   return (

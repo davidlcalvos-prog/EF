@@ -1,8 +1,9 @@
 import { useCallback, useState } from "react"
-import { ActivityIndicator, Alert, Pressable, ScrollView, StatusBar } from "react-native"
+import { ActivityIndicator, Pressable, ScrollView, StatusBar } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
+import { useAppAlert } from "@/components/AppAlert"
 import { useAuth } from "@/context/AuthContext"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
@@ -34,6 +35,7 @@ function describeProblem(problem: GeneralApiProblem): string {
 export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"GroupDetail">) {
   const { groupId } = route.params
   const { authUserId } = useAuth()
+  const showAlert = useAppAlert()
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
   const {
     group,
@@ -68,7 +70,7 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
   const handleToggleRole = useCallback(
     (member: GroupMemberApiDto) => {
       const nextRole = member.role === "admin" ? "member" : "admin"
-      Alert.alert(
+      showAlert(
         nextRole === "admin"
           ? translate("groupsScreen:promoteAdminConfirmTitle")
           : translate("groupsScreen:demoteAdminConfirmTitle"),
@@ -82,19 +84,19 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
               const result = await updateMemberRole(member.userId, nextRole)
               setBusy(false)
               if (result.kind !== "ok") {
-                Alert.alert(translate("groupsScreen:actionError"), describeProblem(result))
+                showAlert(translate("groupsScreen:actionError"), describeProblem(result))
               }
             },
           },
         ],
       )
     },
-    [updateMemberRole],
+    [updateMemberRole, showAlert],
   )
 
   const handleRemoveMember = useCallback(
     (member: GroupMemberApiDto) => {
-      Alert.alert(
+      showAlert(
         translate("groupsScreen:removeMemberConfirmTitle"),
         translate("groupsScreen:removeMemberConfirmMessage", { name: member.name }),
         [
@@ -107,19 +109,19 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
               const result = await removeMember(member.userId)
               setBusy(false)
               if (result.kind !== "ok") {
-                Alert.alert(translate("groupsScreen:actionError"), describeProblem(result))
+                showAlert(translate("groupsScreen:actionError"), describeProblem(result))
               }
             },
           },
         ],
       )
     },
-    [removeMember],
+    [removeMember, showAlert],
   )
 
   const handleLeaveGroup = useCallback(() => {
     if (!authUserId) return
-    Alert.alert(
+    showAlert(
       translate("groupsScreen:leaveGroupConfirmTitle"),
       translate("groupsScreen:leaveGroupConfirmMessage"),
       [
@@ -135,15 +137,15 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
               navigation.goBack()
               return
             }
-            Alert.alert(translate("groupsScreen:actionError"), describeProblem(result))
+            showAlert(translate("groupsScreen:actionError"), describeProblem(result))
           },
         },
       ],
     )
-  }, [authUserId, navigation, removeMember])
+  }, [authUserId, navigation, removeMember, showAlert])
 
   const handleDeleteGroup = useCallback(() => {
-    Alert.alert(
+    showAlert(
       translate("groupsScreen:deleteGroupConfirmTitle"),
       translate("groupsScreen:deleteGroupConfirmMessage"),
       [
@@ -159,12 +161,12 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
               navigation.goBack()
               return
             }
-            Alert.alert(translate("groupsScreen:actionError"), describeProblem(result))
+            showAlert(translate("groupsScreen:actionError"), describeProblem(result))
           },
         },
       ],
     )
-  }, [deleteGroup, navigation])
+  }, [deleteGroup, navigation, showAlert])
 
   return (
     <YStack flex={1} backgroundColor={eliteForgeColors.carbon}>

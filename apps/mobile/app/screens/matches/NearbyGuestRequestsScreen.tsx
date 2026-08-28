@@ -1,15 +1,9 @@
 import { useCallback, useEffect, useState } from "react"
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  StatusBar,
-} from "react-native"
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StatusBar } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
+import { useAppAlert } from "@/components/AppAlert"
 import { useAuth } from "@/context/AuthContext"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
@@ -36,6 +30,7 @@ export function NearbyGuestRequestsScreen({
   navigation,
 }: AppStackScreenProps<"NearbyGuestRequests">) {
   const { authUserId } = useAuth()
+  const showAlert = useAppAlert()
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
   const { requests, loading, refreshing, error, refresh, apply } = useNearbyGuestRequests()
   const [hasLocation, setHasLocation] = useState<boolean | null>(null)
@@ -59,10 +54,10 @@ export function NearbyGuestRequestsScreen({
       const result = await apply(requestId)
       setApplyingId(null)
       if (result.kind !== "ok") {
-        Alert.alert(translate("matchesScreen:actionError"), describeProblem(result))
+        showAlert(translate("matchesScreen:actionError"), describeProblem(result))
       }
     },
-    [apply],
+    [apply, showAlert],
   )
 
   const noLocation = !loading && !error && requests.length === 0 && hasLocation === false

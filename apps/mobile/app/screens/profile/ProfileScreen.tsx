@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Alert, Pressable, ScrollView, StatusBar } from "react-native"
+import { Pressable, ScrollView, StatusBar } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useFocusEffect } from "@react-navigation/native"
 import { Text, XStack, YStack } from "tamagui"
 
+import { useAppAlert } from "@/components/AppAlert"
 import { useAuth } from "@/context/AuthContext"
 import {
   getTagIdFromEmail,
@@ -62,6 +63,7 @@ function getUserColor(seed: string) {
 
 export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
   const { authEmail, authToken, authUserId } = useAuth()
+  const showAlert = useAppAlert()
   const userKey = authEmail ?? "guest"
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
   const {
@@ -119,11 +121,11 @@ export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
   }, [navigation])
 
   const handlePickAvatar = useCallback(async () => {
-    const picked = await pickProfileImageFromGallery(userKey, profile.avatarUri)
+    const picked = await pickProfileImageFromGallery(userKey, profile.avatarUri, showAlert)
     if (!picked) return
     updateProfile({ avatarUri: picked.uri })
     syncAvatarToBackend(picked.base64)
-  }, [profile.avatarUri, updateProfile, userKey])
+  }, [profile.avatarUri, updateProfile, userKey, showAlert])
 
   const handleQuickLink = useCallback(
     (id: ProfileQuickLinkId) => {
@@ -188,7 +190,7 @@ export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
   )
 
   const handleDevResetTests = useCallback(() => {
-    Alert.alert(
+    showAlert(
       translate("profileScreen:devResetTestsTitle"),
       translate("profileScreen:devResetTestsMessage"),
       [
@@ -199,7 +201,7 @@ export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
           onPress: () => {
             resetAllTests()
             resetPsychTest()
-            Alert.alert(
+            showAlert(
               translate("profileScreen:devResetTestsDone"),
               translate("profileScreen:devResetTestsDoneMessage"),
             )
@@ -207,7 +209,7 @@ export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
         },
       ],
     )
-  }, [resetAllTests, resetPsychTest])
+  }, [resetAllTests, resetPsychTest, showAlert])
 
   return (
     <YStack flex={1} backgroundColor={eliteForgeColors.carbon}>

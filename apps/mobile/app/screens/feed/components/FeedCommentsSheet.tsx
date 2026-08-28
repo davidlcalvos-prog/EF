@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react"
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, View } from "react-native"
+import { ActivityIndicator, Modal, Pressable, ScrollView, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
+import { useAppAlert } from "@/components/AppAlert"
 import { TextField } from "@/components/TextField"
 import { useAuth } from "@/context/AuthContext"
 import type { FeedPost } from "@/data/mockFeedPosts"
@@ -39,6 +40,7 @@ export function FeedCommentsSheet({
 }: FeedCommentsSheetProps) {
   const { authUserId } = useAuth()
   const { insets } = useResponsiveLayout()
+  const showAlert = useAppAlert()
 
   const [comments, setComments] = useState<CommentApiDto[]>([])
   const [loading, setLoading] = useState(false)
@@ -93,18 +95,18 @@ export function FeedCommentsSheet({
     setSending(false)
 
     if (result.kind !== "ok") {
-      Alert.alert(translate("feedScreen:commentsErrorTitle"), translate("feedScreen:commentsError"))
+      showAlert(translate("feedScreen:commentsErrorTitle"), translate("feedScreen:commentsError"))
       return
     }
 
     setComments((prev) => [result.comment, ...prev])
     setDraft("")
     onCommentsCountChange?.(postId, 1)
-  }, [draft, postId, sending, onCommentsCountChange])
+  }, [draft, postId, sending, onCommentsCountChange, showAlert])
 
   const handleDeleteComment = useCallback(
     (comment: CommentApiDto) => {
-      Alert.alert(
+      showAlert(
         translate("feedScreen:deleteCommentConfirmTitle"),
         translate("feedScreen:deleteCommentConfirmMessage"),
         [
@@ -122,7 +124,7 @@ export function FeedCommentsSheet({
         ],
       )
     },
-    [postId, onCommentsCountChange],
+    [postId, onCommentsCountChange, showAlert],
   )
 
   const handleClose = () => {

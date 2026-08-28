@@ -1,16 +1,10 @@
 import { useCallback, useEffect, useState } from "react"
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StatusBar,
-} from "react-native"
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StatusBar } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useFocusEffect } from "@react-navigation/native"
 import { Text, XStack, YStack } from "tamagui"
 
+import { useAppAlert } from "@/components/AppAlert"
 import { MunicipalityPicker, type MunicipalityValue } from "@/components/MunicipalityPicker"
 import { Button, Input, Toggle } from "@/components/ui"
 import { useAuth } from "@/context/AuthContext"
@@ -34,6 +28,7 @@ function getUserColor(seed: string) {
 
 export function ProfileEditScreen({ navigation }: AppStackScreenProps<"ProfileEdit">) {
   const { authEmail, authUserId } = useAuth()
+  const showAlert = useAppAlert()
   const userKey = authEmail ?? "guest"
   const { profile, saveFullProfile } = usePlayerProfile(userKey, authEmail)
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
@@ -84,13 +79,13 @@ export function ProfileEditScreen({ navigation }: AppStackScreenProps<"ProfileEd
   }, [])
 
   const handlePickImage = useCallback(async () => {
-    const picked = await pickProfileImageFromGallery(userKey, form.avatarUri)
+    const picked = await pickProfileImageFromGallery(userKey, form.avatarUri, showAlert)
     if (picked) patchForm({ avatarUri: picked.uri })
-  }, [form.avatarUri, patchForm, userKey])
+  }, [form.avatarUri, patchForm, userKey, showAlert])
 
   const handleSave = useCallback(() => {
     if (!form.displayName.trim()) {
-      Alert.alert(
+      showAlert(
         translate("profileScreen:editValidationTitle"),
         translate("profileScreen:editNameRequired"),
       )
@@ -103,7 +98,7 @@ export function ProfileEditScreen({ navigation }: AppStackScreenProps<"ProfileEd
     }
     navigation.goBack()
     // handleSave solo se invoca onPress — agregar estas deps no re-renderiza nada.
-  }, [form, navigation, saveFullProfile, municipality?.code, municipalityDirty])
+  }, [form, navigation, saveFullProfile, municipality?.code, municipalityDirty, showAlert])
 
   const displaySeed = form.displayName || form.email || authEmail || "player"
 

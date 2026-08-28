@@ -1,8 +1,9 @@
 import { useCallback, useState } from "react"
-import { ActivityIndicator, Alert, Pressable, ScrollView, StatusBar } from "react-native"
+import { ActivityIndicator, Pressable, ScrollView, StatusBar } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
+import { useAppAlert } from "@/components/AppAlert"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
 import type { AppStackScreenProps } from "@/navigators/navigationTypes"
@@ -31,6 +32,7 @@ export function ReservationDetailScreen({
 }: AppStackScreenProps<"ReservationDetail">) {
   const { reservationId } = route.params
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
+  const showAlert = useAppAlert()
   const { reservation, loading, error, refresh, cancel } = useReservationDetail(reservationId)
   const [busy, setBusy] = useState(false)
 
@@ -40,7 +42,7 @@ export function ReservationDetailScreen({
     new Date(reservation.startsAt) > new Date()
 
   const handleCancel = useCallback(() => {
-    Alert.alert(
+    showAlert(
       translate("reservationsScreen:cancelConfirmTitle"),
       translate("reservationsScreen:cancelConfirmMessage"),
       [
@@ -53,13 +55,13 @@ export function ReservationDetailScreen({
             const result = await cancel()
             setBusy(false)
             if (result.kind !== "ok") {
-              Alert.alert(translate("reservationsScreen:actionError"), describeProblem(result))
+              showAlert(translate("reservationsScreen:actionError"), describeProblem(result))
             }
           },
         },
       ],
     )
-  }, [cancel])
+  }, [cancel, showAlert])
 
   return (
     <YStack flex={1} backgroundColor={eliteForgeColors.carbon}>
