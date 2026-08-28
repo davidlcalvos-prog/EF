@@ -140,9 +140,11 @@ export function MemberProfileModal({
   // Stats solo cuando corresponde — incluye pasar a accepted con el modal
   // abierto (aceptación desde acá): recién ahí se carga el radar.
   useEffect(() => {
-    if (!visible || !canShowStats || profile || loading || error || forbidden) return
+    if (!visible || !canShowStats || profile) return
     let cancelled = false
     setLoading(true)
+    setError(false)
+    setForbidden(false)
     api.getPublicMemberProfile(userId).then((result) => {
       if (cancelled) return
       setLoading(false)
@@ -158,7 +160,7 @@ export function MemberProfileModal({
     return () => {
       cancelled = true
     }
-  }, [visible, canShowStats, userId, profile, loading, error, forbidden])
+  }, [visible, canShowStats, userId, profile])
 
   const runFriendshipAction = useCallback(
     async (action: () => Promise<{ kind: string }>, next: () => void) => {
