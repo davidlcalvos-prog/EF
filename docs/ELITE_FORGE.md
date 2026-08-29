@@ -205,11 +205,12 @@ El dueño del perfil podrá **administrar qué ven sus amigos** (visibilidad de 
 
 | Funcionalidad | Descripción | App móvil |
 |---------------|-------------|-----------|
-| **Feed principal** | Pantalla central tipo Facebook: actividad, publicaciones y novedades de la red | **Implementado** (UI mock, sin backend) |
-| **Acceso al perfil** | Desde avatar del navbar o menú lateral | **Implementado** |
-| **Amistades** | Enviar, aceptar y **eliminar** solicitudes de amistad | Pendiente |
-| **Perfil de amigos** | Ver partidos y desempeño de amigos ya añadidos (según permisos de privacidad) | Pendiente |
-| **Tag ID** | Buscar y agregar jugadores por identificador único | Tag visible; búsqueda pendiente |
+| **Feed principal** | Pantalla central tipo Facebook: actividad, publicaciones y novedades — **filtrado por red**, no global: solo se ven posts propios, de amigos aceptados y de compañeros de cualquier grupo | **Implementado**, conectado al backend |
+| **Acceso al perfil** | Desde avatar del navbar (foto real si el jugador tiene una) o menú lateral | **Implementado** |
+| **Amistades** | Enviar, aceptar, rechazar y **eliminar** solicitudes de amistad; búsqueda por alias o correo (correo siempre coincidencia exacta, nunca parcial, por privacidad) | **Implementado** |
+| **Perfil de amigos** | Ver estadísticas de un amigo desde su ficha — la ficha de un jugador solo muestra el radar si hay amistad aceptada, o si se abrió desde un grupo compartido/rankings | **Implementado** (regla `canShowStats`) |
+| **Fotos de perfil reales** | La foto real del jugador se ve en el feed, comentarios y donde antes solo había iniciales con color | **Implementado** |
+| **Tag ID** | Buscar y agregar jugadores por identificador único | Búsqueda por alias/correo implementada |
 
 ---
 
@@ -260,18 +261,25 @@ Los grupos son comunidades de jugadores que organizan partidos juntos.
 
 Tras cada partido, el sistema registra desempeño individual (goles, pases, etc.) y recopila **votaciones y calificaciones** de otros jugadores, alimentando el perfil inteligente.
 
+#### Comodín — cubrir un cupo faltante
+
+Si a un partido interno programado le falta gente, el líder o vicelíder puede publicar una **vacante de comodín** (con posición buscada opcional y radio de búsqueda). Otros jugadores cerca de su zona guardada la ven y se postulan; el líder/vice acepta o rechaza. El jugador que entra así queda marcado como comodín en el roster del partido, distinto de un miembro del grupo. Cada jugador puede optar (desde su perfil) por recibir un aviso push cuando se publica una vacante cerca de su zona.
+
 ---
 
 ### 5. Reservas de canchas
 
 | Aspecto | Descripción |
 |---------|-------------|
-| **App móvil** | Sección dedicada para reservar la cancha donde se jugará el partido |
-| **Dashboard web** | Plataforma para **dueños de canchas** |
+| **App móvil** | El jugador elige complejo y **tamaño de cancha** (no una cancha específica por nombre) — ve cuántas canchas de ese tamaño están libres antes de poder confirmar |
+| **Asignación** | El sistema asigna automáticamente una cancha puntual de ese tamaño, sin solape; el dueño ve en su calendario cuál le tocó a cada reserva y puede reasignarla manualmente a otra del mismo tamaño (ej. mantenimiento) |
+| **Aprobación del dueño** | Una reserva creada desde la app nace pendiente — el dueño la confirma o rechaza desde el dashboard web |
+| **Reservas telefónicas** | El dueño también puede cargar reservas gestionadas por llamada, con nombre y teléfono del cliente — estas quedan confirmadas de inmediato, sin paso de aprobación |
+| **Dashboard web** | Plataforma para **dueños de canchas**: administra sus canchas por tamaño y precio propio, y su calendario de reservas |
 | **Tiempo real** | Los dueños ven reservas y cancelaciones al instante |
 | **Perfil** | El usuario ve sus reservas activas en una sección del perfil |
 
-Flujo: crear partido → reservar cancha → dueño confirma / gestiona desde el dashboard web.
+Flujo: crear partido (opcional) → jugador elige complejo + tamaño + reserva → sistema asigna cancha → dueño confirma o rechaza desde el dashboard web.
 
 ---
 
@@ -307,37 +315,41 @@ flowchart LR
 ```
 Usuario
 ├── Perfil (foto, nombre, apodo, posición favorita, tagId, bio, edad)
+├── Ubicación (municipio, centroide o pin — Fase L.0)
 ├── Estadísticas (6 ejes: ataque, defensa, resistencia, velocidad, pases, regate)
 ├── Tests físicos[] (id, raw, score, lastCompletedAt — máx. 1×/mes por test)
 ├── Evaluación psicológica (teamwork, mindset, rasgos, answers — 1×/mes)
 ├── Sugerencia de posición (inferida; puede diferir de favorita)
-├── Amistades (solicitudes enviadas / recibidas) — pendiente
-└── Grupos[] (membresía, rol) — pendiente
+├── Amistades[] (UserFriendship: enviadas / recibidas, pending o accepted)
+└── Grupos[] (membresía, rol)
 
 Grupo
 ├── Líder
 ├── Administradores[]
 ├── Miembros[]
+├── Ubicación (municipio — Fase L.0)
 └── Partidos[]
 
 Partido
-├── Grupo (origen)
+├── Grupo (origen), rival (si es VS)
 ├── Formato (8v8, 11v11, etc.)
 ├── Cupo máximo
-├── Jugadores confirmados[]
+├── Jugadores confirmados[] (miembros del grupo o comodines)
+├── Vacante de comodín (opcional, si falta gente — MatchGuestRequest + postulaciones)
 ├── Cancha / Reserva
 ├── Estadísticas por jugador
 └── Votaciones / calificaciones
 
 Reserva
-├── Cancha
-├── Partido (vinculado)
+├── Cancha específica (asignada por tamaño, o elegida directo si es telefónica)
+├── Origen (app / teléfono / torneo / bloqueo)
+├── Partido (vinculado, opcional)
 ├── Fecha / hora
-└── Estado (confirmada, cancelada, etc.)
+└── Estado (pendiente de aprobación, confirmada, cancelada)
 
 Cancha (gestión web)
-├── Dueño
-├── Disponibilidad
+├── Complejo (Venue) — dueño, ubicación (municipio o pin propio)
+├── Canchas[] (Court: tamaño y precio propios, activa/inactiva)
 └── Reservas en tiempo real
 ```
 
@@ -370,4 +382,4 @@ La guía completa de colores y distribución UI está en el [README principal](.
 
 ---
 
-*Última actualización: perfil de jugador implementado en mobile (rama `Dev-David`) — tests físicos in-app, evaluación psicológica, radar, avatar y sugerencia de posición.*
+*Última actualización: 2026-08-29 — red social filtrada por amigos/grupo, comodín para partidos, canchas por tamaño con aprobación del dueño, ubicación real y fotos de perfil en el feed.*

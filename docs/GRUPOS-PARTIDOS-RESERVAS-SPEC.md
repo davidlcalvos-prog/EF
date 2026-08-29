@@ -39,3 +39,7 @@ Para el MVP se calcula con el promedio de las 6 estadísticas físicas (con el m
 - Datos visibles solo para amigos/grupo (sujeto a la privacidad granular ya marcada como pendiente en el producto): estadísticas detalladas, historial de partidos, evaluación psicológica.
 - Datos potencialmente comercializables a futuro: deben ser agregados/anonimizados por defecto, nunca datos personales identificables sin consentimiento explícito adicional.
 - Acción recomendada en el registro: checkbox de consentimiento separado del de términos y condiciones, del tipo "Autorizo el uso de mis estadísticas de forma anonimizada/agregada para fines de análisis y scouting deportivo".
+
+---
+
+Ver la implementación real en [`docs/BACKEND.md`](./BACKEND.md) y [`docs/FRONTEND.md`](./FRONTEND.md), que puede diferir de esta especificación original en detalles.

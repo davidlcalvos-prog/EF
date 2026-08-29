@@ -33,7 +33,9 @@ Cliente (web / mobile)
 
 **Importante:** el frontend **nunca** debe llamar directamente a `auth-service`, `users-service` ni `venues-service`. Siempre consume el API Gateway en `/api/*`.
 
-El dominio activo del jugador en backend es **auth + users** (incluye perfil "rico": stats, tests físicos, evaluación psicológica, Grupos, Partidos) **+ el lado jugador de venues-service** (buscar cancha y reservar, opcionalmente vinculado a un partido).
+El dominio activo del jugador en backend es **auth + users** (incluye perfil "rico": stats, tests físicos, evaluación psicológica, Grupos, Partidos, Amistades, comodín) **+ el lado jugador de venues-service** (buscar cancha por tamaño y reservar, opcionalmente vinculado a un partido, Torneos/Copa Elite Forge).
+
+**Despliegue de referencia** (Fase D.0): Docker Compose + Caddy sobre un único VPS Ubuntu — ver [`infrastructure/docker/DEPLOY.md`](../infrastructure/docker/DEPLOY.md). Los manifiestos de Kubernetes/AWS/Terraform quedaron archivados en `infrastructure/_legacy/` (referencia histórica, no se mantienen ni reflejan el despliegue real).
 
 ---
 
@@ -224,6 +226,52 @@ Partidos (Fase 3 del roadmap — bloqueador de Reservas del jugador y Campeonato
 
 Modelos Prisma `Match` y `MatchParticipant` (`matches`, `match_participants`), enums `MatchType` (`internal`/`vs`) y `MatchStatus` (`draft`/`pending_opponent`/`scheduled`/`played`/`cancelled`). `reservationId` en el `MatchDto` se resuelve desde la relación inversa `Match.reservation` (FK real en `Reservation.matchId`, ver [Reservations (lado jugador) → venues-service](#reservations-lado-jugador--venues-service)).
 
+### User Friendships → users-service
+
+Amistad entre jugadores (Fase 10) y búsqueda/sugerencias (Fase 10.1). Sin rol especial, `JwtAuthGuard` en todas.
+
+| Método | Ruta | Notas |
+|--------|------|--------|
+| GET | `/api/friendships` | Lista amistades del usuario autenticado. `?filter=accepted\|pending_received\|pending_sent` (default `accepted`) |
+| GET | `/api/friendships/search` | Busca jugadores para agregar. `?q=` — ver regla de privacidad abajo |
+| GET | `/api/friendships/suggestions` | Sugerencias (amigos en común, compañeros de grupo) |
+| GET | `/api/friendships/status/:userId` | Estado de relación con otro usuario (`none`/`pending_sent`/`pending_received`/`accepted`) — usado por la ficha de miembro |
+| POST | `/api/friendships` | Envía solicitud (body `{ userId }`). Si el otro ya había solicitado, se acepta directo en vez de crear una segunda fila |
+| POST | `/api/friendships/:id/accept` | Acepta una solicitud recibida |
+| DELETE | `/api/friendships/:id` | Rechaza, cancela o elimina una amistad (mismo endpoint para los tres casos según el estado) |
+
+**Regla de privacidad de la búsqueda:** si `q` tiene forma de correo (`@` + `.` después), la búsqueda es **exacta** (`findActiveUserByEmail`) — nunca lista resultados parciales por email. Si no, busca por alias/nombre con coincidencia parcial (`@alias` o nombre), alias exacto primero.
+
+Modelo Prisma `UserFriendship` (`user_friendships`) — ver [Modelos nuevos desde el 18/08](#modelos-nuevos-desde-el-1808).
+
+**Feed filtrado por red** (Fase 10): `FeedRepository.visibleAuthorIds` calcula, para cada request, el propio usuario + sus amigos aceptados + todos los miembros de todos sus grupos — reemplaza el feed global de la Fase 5 (ver [Feed → users-service](#feed--users-service) abajo).
+
+### Match Guest Requests → users-service
+
+Comodín (Fase 11): el líder/vice de un partido `internal` `scheduled` al que le falta gente publica una vacante; otros jugadores cerca (por municipio) se postulan. Sin rol especial más allá de la validación server-side de liderazgo del partido.
+
+| Método | Ruta | Notas |
+|--------|------|--------|
+| POST | `/api/matches/:matchId/guest-requests` | Publica la vacante (líder/vice). **409** si ya hay una `open` para ese partido |
+| DELETE | `/api/matches/:matchId/guest-requests/current` | Cancela la vacante vigente |
+| GET | `/api/matches/:matchId/guest-requests/current` | Vacante vigente de ese partido (o 404) |
+| GET | `/api/guest-requests/nearby` | Vacantes abiertas cerca de la zona guardada del usuario autenticado (`Profile.municipalityCode`) |
+| POST | `/api/guest-requests/:id/applications` | Se postula a una vacante |
+| GET | `/api/guest-requests/:id/applications` | Lista postulaciones (líder/vice) |
+| DELETE | `/api/guest-requests/applications/:id` | Retira una postulación propia |
+| POST | `/api/guest-requests/applications/:id/accept` | Acepta una postulación — agrega al partido con `MatchParticipant.isGuest = true` |
+| POST | `/api/guest-requests/applications/:id/reject` | Rechaza una postulación |
+
+Modelos Prisma `MatchGuestRequest`/`MatchGuestApplication` (`match_guest_requests`/`match_guest_applications`). `Profile.notifyNearbyGuestRequests` (opt-in, default `false`) controla si el jugador recibe push cuando se publica una vacante cerca — no afecta qué ve en `nearby`, que siempre se calcula por zona.
+
+### Geo → api-gateway (sin microservicio)
+
+| Método | Ruta | Notas |
+|--------|------|--------|
+| GET | `/api/geo/municipalities` | `?q=&limit=` (máx. 30, default 10). Dataset estático de municipios de Colombia (código DANE, nombre, departamento, centroide) servido directo desde `libs/common` — no hay tabla ni microservicio detrás |
+
+Base de la Fase L.0 (ubicación de perfil, grupo, cancha y partido) — ver [Modelos nuevos desde el 18/08](#modelos-nuevos-desde-el-1808).
+
 ### Venues → venues-service
 
 Gestión de canchas y reservas para el **dueño de cancha**. Todos los endpoints requieren JWT y rol **Empresario** o **Administrador**.
@@ -233,9 +281,14 @@ Gestión de canchas y reservas para el **dueño de cancha**. Todos los endpoints
 | GET | `/api/venues/mine` | **JWT** (Empresario/Administrador) | Lista las canchas del dueño autenticado |
 | PUT | `/api/venues/mine` | **JWT** (Empresario/Administrador) | Crea o actualiza (upsert) una cancha propia |
 | GET | `/api/reservations/mine` | **JWT** (Empresario/Administrador) | Lista las reservas recibidas en las canchas del dueño |
-| PATCH | `/api/reservations/:id/status` | **JWT** (Empresario/Administrador) | Cambia el estado de una reserva propia (`pending` / `confirmed` / `cancelled`) |
+| PATCH | `/api/reservations/:id/status` | **JWT** (Empresario/Administrador) | Confirma o rechaza una reserva `pending` de la app, o cancela cualquiera (`pending` / `confirmed` / `cancelled`) |
+| POST | `/api/venues/:id/courts` | **JWT** (Empresario/Administrador) | Crea una cancha (`Court`) del complejo: nombre, `size`, `pricePerHourCents` propio, `surfaceType` opcional (Fase W.1) |
+| PATCH | `/api/venues/:id/courts/:courtId` | **JWT** (Empresario/Administrador) | Edita una cancha propia |
+| DELETE | `/api/venues/:id/courts/:courtId` | **JWT** (Empresario/Administrador) | Desactiva una cancha (`isActive = false`, no borra — puede tener reservas históricas) |
+| POST | `/api/venues/reservations/phone` | **JWT** (Empresario/Administrador) | Carga una reserva telefónica (`source: phone`) eligiendo la cancha directo por `courtId`; nace `confirmed`. Requiere `customerName`, `customerPhone` opcional |
+| PATCH | `/api/venues/reservations/:id/court` | **JWT** (Empresario/Administrador) | Reasigna manualmente una reserva de la app a otra cancha **activa del mismo tamaño** (ej. mantenimiento de último momento). **409** si la cancha destino es de otro tamaño o ya está ocupada en ese horario |
 
-Modelos Prisma `Venue` y `Reservation` (`venues`, `reservations`), relacionados por `venueId`.
+Modelos Prisma `Venue`, `Court` y `Reservation` (`venues`, `courts`, `reservations`) — ver [Modelos nuevos desde el 18/08](#modelos-nuevos-desde-el-1808).
 
 ### Reservations (lado jugador) → venues-service
 
@@ -243,19 +296,32 @@ Buscar cancha y reservar — cualquier usuario autenticado, sin rol especial. En
 
 | Método | Ruta | Auth | Notas |
 |--------|------|------|--------|
-| GET | `/api/venues` | **JWT** | Lista todas las canchas (`PublicVenueDto`, sin `ownerId` ni `updatedAt`) |
-| POST | `/api/my-reservations` | **JWT** | Crea una reserva. **409** si se solapa con otra `pending`/`confirmed` en el mismo venue. `matchId` opcional — ver reglas abajo |
+| GET | `/api/venues` | **JWT** | Lista todas las canchas (`PublicVenueDto`): ya no expone canchas individuales, agrupa `courtSizes: [{ size, count, pricePerHourCents }]` por complejo (Fase W.1.1) — el jugador elige tamaño, no una cancha por nombre |
+| GET | `/api/venues/:id/availability` | **JWT** | `?size=&startsAt=&endsAt=` → `{ totalCourts, availableCourts }` de ese tamaño en ese horario. Se consulta **antes** de dejar confirmar, para nunca chocar con un error de solape al final (Fase W.1.1) |
+| POST | `/api/my-reservations` | **JWT** | Crea una reserva por `venueId` + `size` (ya no `courtId` directo). El backend **auto-asigna** una cancha activa de ese tamaño sin solape, dentro de una transacción con lock de fila (mismo patrón que la Fase 8.2) sobre todas las canchas candidatas — orden determinístico por `createdAt`. **409** si ninguna está libre. `matchId` opcional — ver reglas abajo. Nace `pending` (requiere aprobación del dueño, Fase W.1) |
 | GET | `/api/my-reservations` | **JWT** | Reservas propias del usuario autenticado |
 | GET | `/api/my-reservations/:id` | **JWT** | Detalle de una reserva propia. **403** si no es el dueño |
 | PATCH | `/api/my-reservations/:id/cancel` | **JWT** | Cancela una reserva propia. **403** si no es el dueño, **409** si ya está `cancelled` o si `startsAt` ya pasó |
+
+**Aprobación del dueño** (Fase W.1): una reserva creada desde la app (`source: app`) nace `pending` — el dueño la confirma o rechaza desde el portal (`PATCH /api/reservations/:id/status`, ver [Venues → venues-service](#venues--venues-service)). Las reservas telefónicas que carga el propio dueño (`source: phone`) nacen `confirmed` directo, sin este paso.
 
 **Vincular una reserva a un partido** (`matchId` en el body de `POST /api/my-reservations`): solo `creator`/`admin` de `originGroupId` (o de `opponentGroupId` en un `vs`) puede vincular — **403** si no. **409** si el match ya tiene una reserva vinculada. `Reservation.matchId` es único y opcional (`@relation` real con `Match`, Fase 4 — antes era un `Match.reservationId` suelto sin relación, de la Fase 3).
 
 El chequeo de liderazgo de grupo consulta `group_memberships` directo desde `venues-service` (mismo Postgres compartido) en vez de importar `GroupRepository` de `users-service`: son apps de monorepo independientes (`nest-cli.json`), sin alias de path entre `apps/*` — solo entre `libs/*`.
 
+### Rankings → venues-service
+
+Rankings de un campeonato de Copa Elite Forge (Fases 9 y 9.1) — **solo con los datos de ESE torneo**, no hay rankings globales/históricos ni tablas basadas en `PlayerStats`.
+
+| Método | Ruta | Auth | Notas |
+|--------|------|------|--------|
+| GET | `/api/tournaments/:id/rankings` | **JWT** | `TournamentRankingsResponse`: cuatro tablas — `topScorers` (goleadores), `bestGoalkeepers` (menos goles recibidos por partido), `bestDefenders` (recuperos/dfr), `topAssisters` (asistencias). Cada entrada trae `displayName`, `favoritePosition`, `value` y `secondary` (partidos jugados) — sin avatar, la ficha del jugador al tocar una fila ya lo trae por `getPublicMemberProfile` |
+
+Contrato en `libs/contracts/src/rankings/index.ts`. El acceso en mobile vive dentro de la sección de Campeonatos, no en el drawer.
+
 ### Feed → users-service
 
-Posts, likes y comentarios. **Feed global entre todos los usuarios autenticados** (decisión de alcance explícita: no hay módulo de Amistades en el MVP todavía — el mock del mobile ya muestra un feed global sin filtrar; cuando exista `Friendship`, filtrar por amigos es un cambio aislado sobre `listPosts`, no un rediseño). Sin rol especial, `JwtAuthGuard` en todos.
+Posts, likes y comentarios. **Feed filtrado por red (Fase 10)** — ya no es global: `listPosts` solo trae posts del propio usuario, sus amigos aceptados (`UserFriendship`) y los miembros de todos sus grupos (`visibleAuthorIds`, ver [User Friendships → users-service](#user-friendships--users-service)). Sin rol especial, `JwtAuthGuard` en todos.
 
 | Método | Ruta | Notas |
 |--------|------|--------|
@@ -268,7 +334,7 @@ Posts, likes y comentarios. **Feed global entre todos los usuarios autenticados*
 | POST | `/api/feed/posts/:id/comments` | Comenta en cualquier post existente. `content` 1–500 chars. **404** si el post no existe |
 | DELETE | `/api/feed/comments/:id` | Borra un comentario. Puede el autor del comentario **o** el autor del post (moderación básica). **403** si no eres ninguno de los dos |
 
-Modelos Prisma `Post`, `PostLike`, `PostComment` (`posts`, `post_likes`, `post_comments`), enum `PostMediaType` (`none`/`image`/`video`). `PostDto`/`CommentDto` están pensados para calzar directo con `FeedPost` del mobile (`authorName`, `authorHandle`, `mediaType`/`mediaUrl`, contadores, `likedByMe`) para que conectar la Fase 6 sea directo. `authorHandle` usa `@` + `Profile.alias`, o `@` + el local-part del email como fallback si el usuario no tiene `Profile` todavía (mismo patrón que `email.split("@")[0]` en `FeedComposeModal.tsx` del mobile).
+Modelos Prisma `Post`, `PostLike`, `PostComment` (`posts`, `post_likes`, `post_comments`), enum `PostMediaType` (`none`/`image`/`video`). `PostDto`/`CommentDto` están pensados para calzar directo con `FeedPost` del mobile (`authorName`, `authorHandle`, `authorAvatarBase64`, `mediaType`/`mediaUrl`, contadores, `likedByMe`) para que conectar la Fase 6 sea directo. `authorHandle` usa `@` + `Profile.alias`, o `@` + el local-part del email como fallback si el usuario no tiene `Profile` todavía (mismo patrón que `email.split("@")[0]` en `FeedComposeModal.tsx` del mobile). `authorAvatarBase64` (foto real del autor, foto de perfil ya mergeada) sale del mismo `include` que ya traía `alias` — sin consulta extra.
 
 **No hay upload real de media** (sin S3/storage configurado) — `mediaUrl` solo acepta URLs externas ya alojadas. No se implementa: adjuntar un `Match` al post (chip "Partido" del compose modal), anuncios "Elite Forge" (siguen siendo contenido curado a mano en el frontend), notificaciones, ni editar posts/comentarios ya publicados.
 
@@ -286,6 +352,15 @@ Modelos Prisma `Post`, `PostLike`, `PostComment` (`posts`, `post_likes`, `post_c
 | ORM | Prisma (`apps/backend/prisma/schema.prisma`) |
 
 Migraciones en `apps/backend/prisma/migrations/`. Seed de roles: `npm run prisma:seed` desde `apps/backend`.
+
+### Modelos nuevos desde el 18/08
+
+- **`UserFriendship`** (Fase 10) — amistad entre jugadores. Direccional en datos (`requesterId` → `addresseeId`) pero única lógicamente: `@@unique([requesterId, addresseeId])` y el service impide que existan a la vez `A→B` y `B→A` (si B solicita habiendo ya una `A→B` pendiente, se acepta esa). Estados `pending`/`accepted`.
+- **`Court`** (Fase W.1) — cancha real dentro de un `Venue`, con `size` propio (`CourtSize`: `five`/`six`/`seven`/`eight`/`eleven`), `pricePerHourCents` propio (ya no un precio único de todo el complejo) e `isActive`. Un venue puede tener 0 canchas (no migrado, se completan desde "Mi cancha") o varias.
+- **`MatchGuestRequest`** / **`MatchGuestApplication`** (Fase 11) — vacante de comodín publicada por el líder/vice de un partido `internal` `scheduled` al que le falta gente, y las postulaciones de otros jugadores a esa vacante. Solo una `open` por partido a la vez (validado en el servicio).
+- **Ubicación** (Fase L.0) — `municipalityCode`/`city`/`department`/`latitude`/`longitude` agregados a `Profile`, `Group`, `Venue` (+ `locationSource`: `municipality` si es el centroide del municipio DANE, `pin` si el dueño ajustó un pin propio) y `Match` (+ `venueText` para sede sin cancha de la app; lat/lng se copian de la cancha o del grupo origen).
+- **`Reservation.courtId`/`source`/`customerName`/`customerPhone`** (Fase W.1) — `courtId` vincula la reserva a una cancha específica del venue (null en reservas previas a esta fase); `source` (`app`/`phone`/`tournament`/`block`) distingue quién la originó — `app` nace `pending` (requiere aprobación del dueño), `phone` nace `confirmed` directo; `customerName`/`customerPhone` solo se llenan en reservas `phone`.
+- **`UserPreferences`** (Fase D.0) — migrada desde MongoDB, ver [Preferencias (PostgreSQL)](#preferencias-postgresql) arriba.
 
 ---
 
@@ -332,22 +407,74 @@ Validado en el entorno de desarrollo (modo híbrido):
 
 ## Próximos pasos
 
+Ya completado desde la última revisión de esta lista (no repetir como pendiente): mobile de Grupos/Partidos/Reservas/Feed conectado al backend real, Amistades + feed filtrado por red (Fase 10/10.1), Campeonatos/Copa Elite Forge (Fase 7) con rankings de 4 tablas (Fase 9/9.1), avatar de perfil sincronizado al backend y ahora visible en el feed (Fase 12), canchas reales por tamaño con aprobación y auto-asignación (Fase W.1/W.1.1), ubicación (Fase L.0), comodín para partidos internos (Fase 11), MongoDB eliminado (Fase D.0).
+
 Pendientes (no implementados aún):
 
-- Conectar el frontend móvil con las rutas de perfil/preferencias.
-- Evolucionar **Profile** solo cuando existan necesidades reales de producto (campos ya modelados en Prisma).
-- **Reintento automático / cola offline** para el sync de profile-stats: hoy el `PUT` al completar un test es best-effort (si falla, el resultado queda solo en MMKV hasta la próxima vez que el usuario complete otro test o entre a Profile con red).
-- Sincronizar el **avatar/foto de perfil** al backend (sigue siendo local por ahora).
-- **Pantallas de Grupos, Partidos, Reservas y Feed en mobile** (Fase 6) — el backend de los cuatro ya existe (ver [Groups](#groups--users-service), [Matches](#matches--users-service), [Reservations (lado jugador)](#reservations-lado-jugador--venues-service) y [Feed](#feed--users-service)), pero el Feed del mobile sigue con `MOCK_FEED_POSTS` y no hay UI de Grupos/Partidos/Reservas todavía.
+- **Reintento automático / cola offline** para el sync de profile-stats: hoy el `PUT` al completar un test sigue siendo best-effort (si falla, el resultado queda solo en MMKV hasta la próxima vez que el usuario complete otro test o entre a Profile con red).
 - **Flujo de invitación** para unirse a un grupo (con aceptación/rechazo) — hoy `POST /api/groups/:id/members` agrega directo, sin confirmación del invitado.
 - **Transferencia de liderazgo** de un grupo (que el creador ceda su rol `creator` a otro miembro) — hoy el creador es fijo de por vida del grupo.
-- **Amistades (`Friendship`)** — el Feed es global por ahora (decisión de alcance explícita); filtrar por amigos cuando exista `Friendship` es un cambio aislado sobre `listPosts`.
 - **Upload real de media** para el Feed (necesita S3/storage, no configurado) — hoy `mediaUrl` solo acepta URLs externas ya alojadas.
-- Adjuntar un `Match` a un post del Feed, anuncios "Elite Forge" desde backend, notificaciones (likes/comentarios/reservas), Campeonatos (Fase 7), disponibilidad avanzada por horarios configurables del venue (`Venue.availability` existe pero no se valida contra el rango pedido todavía), pagos, estadísticas post-partido que alimentan el perfil — ver [docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md](./GRUPOS-PARTIDOS-RESERVAS-SPEC.md).
+- Adjuntar un `Match` a un post del Feed, anuncios "Elite Forge" desde backend, notificaciones de likes/comentarios del Feed (sí existen push de partidos VS y reservas), disponibilidad avanzada por horarios configurables del venue (`Venue.availability` existe pero no se valida contra el rango pedido todavía), pagos, estadísticas post-partido que alimentan el perfil — ver [docs/GRUPOS-PARTIDOS-RESERVAS-SPEC.md](./GRUPOS-PARTIDOS-RESERVAS-SPEC.md).
+- **Backlog de producto sin iniciar:** Retos, ranking global (hoy los rankings son solo por torneo), Schools.
+- **En curso, sin mergear a `Dev-David` todavía:** comodín múltiple (`feature/comodin-multiple`) — no documentar hasta que mergee.
 
 ---
 
 ## Registro de cambios
+
+### 2026-08-29 — Fotos de perfil reales en el feed
+
+- `PostDto`/`CommentDto` ganan `authorAvatarBase64: string | null` — sale del mismo `include` de `Profile` que ya traía `alias` (`feed.repository.ts`), sin consulta extra.
+
+### 2026-08-27 — Canchas reales y reservas por tamaño (Fase W.1 + W.1.1)
+
+- Nuevo modelo Prisma `Court` (`courts`): cancha real dentro de un `Venue`, con `size`, `pricePerHourCents` propio e `isActive`. `Reservation` gana `courtId`, `source` (`app`/`phone`/`tournament`/`block`), `customerName`, `customerPhone`.
+- **Fase W.1:** nuevos endpoints `POST/PATCH/DELETE /api/venues/:id/courts` (gestión de canchas del dueño) y `POST /api/venues/reservations/phone` (reserva telefónica, nace `confirmed`). Las reservas de la app (`source: app`) pasan a nacer `pending` y requieren aprobación del dueño (`PATCH /api/reservations/:id/status`, ya existente).
+- **Fase W.1.1:** el jugador ya no elige una cancha por nombre — elige complejo + **tamaño**. Nuevo `GET /api/venues/:id/availability` para chequear cupo antes de confirmar. `POST /api/my-reservations` pasa a recibir `venueId` + `size` (no `courtId`); el backend auto-asigna una cancha activa sin solape dentro de una transacción con lock de fila (mismo patrón de concurrencia de la Fase 8.2), orden determinístico por `createdAt`. Nuevo `PATCH /api/venues/reservations/:id/court` para que el dueño reasigne manualmente a otra cancha del mismo tamaño (ej. mantenimiento).
+- Ver [Venues → venues-service](#venues--venues-service) y [Reservations (lado jugador) → venues-service](#reservations-lado-jugador--venues-service).
+
+### 2026-08-26 — Comodín para partidos internos (Fase 11)
+
+- Nuevos modelos Prisma `MatchGuestRequest`/`MatchGuestApplication` (`match_guest_requests`/`match_guest_applications`), enums `MatchGuestRequestStatus` y `MatchGuestApplicationStatus`. `MatchParticipant.isGuest` marca a quien entró como comodín en vez de por membresía de grupo.
+- Nuevos endpoints: `POST/DELETE /api/matches/:matchId/guest-requests`, `GET /api/matches/:matchId/guest-requests/current`, `GET /api/guest-requests/nearby`, `POST/GET /api/guest-requests/:id/applications`, `DELETE /api/guest-requests/applications/:id`, `POST /api/guest-requests/applications/:id/{accept,reject}` — ver [Match Guest Requests → users-service](#match-guest-requests--users-service).
+- `Profile.notifyNearbyGuestRequests` (opt-in, default `false`): controla el push cuando se publica una vacante cerca; no afecta qué trae `nearby`.
+
+### 2026-08-26 — Fundaciones de ubicación (Fase L.0)
+
+- Campos `municipalityCode`/`city`/`department`/`latitude`/`longitude` agregados a `Profile`, `Group`, `Venue` (+ `locationSource`: `municipality` o `pin`) y `Match` (+ `venueText`, sede sin cancha de la app).
+- Nuevo endpoint `GET /api/geo/municipalities` (`?q=&limit=`) — dataset estático de municipios de Colombia servido directo desde el gateway (`libs/common`), sin microservicio ni tabla — ver [Geo → api-gateway](#geo--api-gateway-sin-microservicio).
+- lat/lng se resuelven siempre server-side (centroide del municipio, o pin del dueño validado a <50 km del centroide) — nunca se aceptan coordenadas sueltas del cliente sin validar.
+
+### 2026-08-26 — Búsqueda y sugerencias de amigos (Fase 10.1)
+
+- Nuevos endpoints `GET /api/friendships/search` y `GET /api/friendships/suggestions` — ver [User Friendships → users-service](#user-friendships--users-service).
+- Regla de privacidad: búsqueda por correo es **siempre exacta** (nunca lista resultados parciales por email); por alias/nombre admite coincidencia parcial.
+
+### 2026-08-26 — Amistad entre jugadores y feed filtrado (Fase 10)
+
+- Nuevo modelo Prisma `UserFriendship` (`user_friendships`), estados `pending`/`accepted`, único por par direccional.
+- Nuevos endpoints `GET/POST/DELETE /api/friendships`, `POST /api/friendships/:id/accept`, `GET /api/friendships/status/:userId` — ver [User Friendships → users-service](#user-friendships--users-service).
+- **`GET /api/feed/posts` deja de ser global**: filtra por `visibleAuthorIds` (propio usuario + amigos aceptados + compañeros de cualquier grupo) — ver [Feed → users-service](#feed--users-service).
+
+### 2026-08-25 — Deploy en VPS con Docker Compose + Caddy, MongoDB eliminado (Fase D.0)
+
+- **MongoDB eliminado.** `UserPreferences` (única colección) migra a PostgreSQL/Prisma (`user_preferences`) — ni mobile ni web lo consumían todavía, no hubo datos que migrar.
+- Despliegue de referencia: VPS Ubuntu + Docker Compose + Caddy (HTTPS automático) — ver [`infrastructure/docker/DEPLOY.md`](../infrastructure/docker/DEPLOY.md). Manifiestos de Kubernetes/AWS/Terraform archivados en `infrastructure/_legacy/` (ya no se mantienen).
+- CI: la rama `Dev-David` se agrega a los triggers de `push`/`pull_request` (antes la rama de trabajo real no corría CI).
+
+### 2026-08-25 — Rankings completos: mejor defensa y mejor distribuidor (Fase 9.1)
+
+- `TournamentRankingsResponse` pasa de 2 a **4 tablas**: se agregan `bestDefenders` (recuperos/dfr) y `topAssisters` (asistencias), junto a `topScorers` y `bestGoalkeepers` ya existentes de la Fase 9.
+- Sin cambios de modelo — todo sale de `TournamentPlayer`/`playerStats` (JSON) ya existentes por partido de torneo.
+- Ver [Rankings → venues-service](#rankings--venues-service).
+
+### 2026-08-25 — Hardening de concurrencia (Fase 8.2)
+
+- `MatchRepository.addParticipant`/`addVsParticipant`: chequeo de cupo + insert en la **misma transacción**, serializados con `SELECT ... FOR UPDATE` sobre la fila del `Match` — dos `join()` concurrentes al mismo partido ya no pueden pasar ambos el chequeo de cupo (antes eran dos statements sueltos).
+- `markAlertSent` pasa a `updateMany` con guard `{ [field]: false }` en el `where` — idempotente ante dos corridas concurrentes del cron de alertas.
+- `TournamentRepository`/`TournamentsService`: generación de fixture transaccional; rankings agrupados por `userId` (antes podían duplicar filas de un jugador con más de una entrada de stats).
+- Mismo patrón de lock de fila reutilizado después en la Fase W.1.1 para la auto-asignación de cancha por tamaño.
 
 ### 2026-08-18 — Backend del Feed (Fase 5)
 

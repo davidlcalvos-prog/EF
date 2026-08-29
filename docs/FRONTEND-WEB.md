@@ -26,9 +26,9 @@ Los jugadores usan principalmente la **app móvil**. La web sirve como landing, 
 | Landing | Implementada |
 | `/auth/sign-up` · `/auth/login` | NestJS `auth/register` · `auth/login` |
 | Portal admin | Cookie `ef_token` + roles NestJS |
-| Resumen | Ocupación en vivo por inventario 6/8/11 |
-| Reservas | Calendario Día/Semana/Mes + API + demo/local |
-| Mi cancha | Identidad API + inventario/tarifas/amenities locales |
+| Resumen | Ocupación en vivo por tamaño real de cancha (API) |
+| Reservas | Calendario Día/Semana/Mes — 100% API (aprobación, teléfono, reasignar cancha) |
+| Mi cancha | Identidad + canchas (`Court`) por tamaño y precio propio + ubicación con pin — todo API |
 | Analíticas | Dashboard ocupación y clientes (frontend) |
 | Torneos | Crear, agenda, equipos, partidos, rankings (localStorage) |
 | Métricas (Administrador) | Placeholder |
@@ -96,6 +96,7 @@ Registro móvil → web:
 | `lucide-react` | Iconos |
 | `recharts` | Preparado para métricas |
 | `@vercel/analytics` | Telemetría prod |
+| `leaflet`, `react-leaflet`, `@types/leaflet` | Mapa con pin arrastrable para la ubicación de la cancha (Fase L.0) — OpenStreetMap, sin API key |
 
 ---
 
@@ -239,13 +240,14 @@ Campos: nombre, email, contraseña ×2 → `{ name, email, password }` → `/aut
 
 ## Persistencia local (browser)
 
-Muchas capacidades B2B son **solo frontend** hasta existir modelo en API:
+**El portal ya no usa `localStorage` para nada de canchas ni reservas** (Fase W.1). Hasta esa fase, `lib/dal/admin/mock-reservations.ts` y `venue-extras.ts` guardaban inventario por tamaño, tarifas, amenities, reservas telefónicas y ediciones directo en el navegador del dueño — ambos archivos se eliminaron por completo. Motivo: esos datos se perdían al cambiar de navegador o de equipo, y el mobile nunca los veía (el jugador reservaba contra un inventario que no existía del lado del dueño). Todo — canchas, precios, reservas, su estado y su origen — vive en Postgres desde entonces (`Court`, `Reservation`, ver [BACKEND.md](./BACKEND.md#modelos-nuevos-desde-el-1808)).
+
+**Nota:** en el mismo rediseño se dejó de administrar amenities del complejo (cafetería, transferencias, baños) — no se migraron a la API, el formulario de "Mi cancha" ya no tiene esa sección. Confirmar con producto si es descope intencional o pendiente.
+
+Lo que sigue siendo `localStorage` (fuera del alcance de la Fase W.1, sin cambios):
 
 | Clave `localStorage` | Contenido |
 |----------------------|-----------|
-| `ef-venue-extras:{venueId}` | Inventario 6/8/11, tarifas 8/11, amenities |
-| `ef-admin-phone-reservations` | Reservas añadidas por llamada |
-| `ef-admin-edited-reservations` | Ediciones locales de reservas |
 | `ef-admin-tournaments` | Torneos completos |
 | `ef-admin-tournament-reservations` | Bloques de cancha del fixture en calendario |
 
@@ -278,10 +280,12 @@ Administrador: saludo + CTA a Métricas.
 |----------|----------------|
 | Vistas | Día / Semana / Mes |
 | Timeline | 8 AM – 10 PM |
-| Concurrencia | Hasta 5 chips/hora |
-| Chip | Nombre; color por estado |
-| Modal | Confirmar / Cancelar / Editar |
-| Fuentes | API + demo (`mock-reservations`) + teléfono + ediciones + **torneos** |
+| Filtro | Por cancha específica del complejo, además de "todas" |
+| Chip | Nombre; color por estado; ícono de origen (app / teléfono / torneo / bloqueo) |
+| Reservas de la app (`source: app`) | Nacen `pending` — el modal tiene **Confirmar** / **Rechazar** (Fase W.1) |
+| Reservas telefónicas (`source: phone`) | Las carga el dueño desde "Nueva reserva telefónica" con nombre y teléfono del cliente; nacen `confirmed` directo |
+| Reasignar cancha | Botón en el detalle de una reserva de la app: lista canchas **activas del mismo tamaño**, marca cuáles están libres en ese horario contra las reservas ya cargadas, y llama `PATCH /api/venues/reservations/:id/court` — rechaza tamaño distinto u ocupada (Fase W.1.1) |
+| Fuentes | 100% API — canchas reales, reservas de la app, telefónicas y de torneos |
 | Colores | Confirmada `#00CEC8` · Pendiente gris · Cancelada `#FF8C00` |
 
 ### Mi cancha (`/admin/mi-cancha`) — `venue-settings-form.tsx`
@@ -289,9 +293,8 @@ Administrador: saludo + CTA a Métricas.
 | Sección | Persistencia |
 |---------|--------------|
 | Nombre / dirección | API `saveVenue` |
-| Inventario 6vs6 / 8vs8 / 11vs11 | `localStorage` |
-| Tarifas por formato | 6vs6 → API `price_per_hour`; resto local |
-| Cafetería / transferencias / baños | `localStorage` |
+| Ubicación (Fase L.0) | Buscador de municipio (centroide) o pin arrastrable sobre mapa — `VenueLocationMap` (Leaflet + OpenStreetMap, sin API key, `next/dynamic` con `ssr:false` porque Leaflet toca `window`) |
+| Canchas (`Court`) | `VenueCourtsSection` — alta/edición/baja de canchas individuales: nombre, **tamaño**, **precio propio por hora**, superficie (opcional, hereda la del complejo si no se define), activa/inactiva. Reemplaza el inventario 6/8/11 con tarifas por formato de antes de la Fase W.1 |
 
 ### Analíticas (`/admin/analiticas`) — `analytics-dashboard.tsx`
 
@@ -463,6 +466,11 @@ Tras cambiar `NEXT_PUBLIC_*`: Redeploy. Si ves versión vieja: Cache Manager →
 - [x] Torneos: modalidades, agenda→calendario, equipos manuales, W, goles/GC/tarjetas.
 - [x] Rankings podio: Goleadores + Valla menos vencida (sin asistencias/DFR/mejor defensa en UI).
 
+### 2026-08 — CI y lint
+
+- [x] `apps/web/.lintstagedrc.json` — pre-commit con lint-staged también en web (2026-08-26, mismo cambio que agregó el wrapper de `TextInput` en mobile).
+- [x] La rama `Dev-David` se agrega a los triggers de `push`/`pull_request` de CI (Fase D.0, 2026-08-25) — antes la rama de trabajo real no corría CI.
+
 ### Pendiente
 
 - [ ] Métricas reales para Administrador.
@@ -492,8 +500,23 @@ Rama `feature/web-w0-colorimetria-navegacion`. Alcance final de la fase:
 
 1. **David revisó y aprobó los cambios de esta fase** (2026-08-26).
 2. **La web puede recibir más cambios a futuro** — este rediseño no es
-   definitivo; las fases W.1–W.4 (persistencia real, registro de dueños,
-   contenido legal, etc.) siguen pendientes.
+   definitivo; la Fase W.1 (persistencia real de canchas/reservas) ya se
+   completó justo después (ver abajo); registro de dueños, contenido legal,
+   etc. siguen pendientes.
+
+---
+
+## Fase W.1 — Canchas reales y reservas por tamaño (2026-08-27)
+
+Rama `feature/web-w1-canchas-reservas` (incluye W.1 y W.1.1, mergeadas juntas). Reemplaza el modelo de canchas/reservas 100% frontend de antes por uno real en Postgres.
+
+- **Eliminado `localStorage` para canchas y reservas** (`mock-reservations.ts`, `venue-extras.ts`) — ver [Persistencia local](#persistencia-local-browser).
+- **Modelo `Court`**: cada complejo pasa de tener un precio único a canchas individuales con su propio tamaño y precio (`VenueCourtsSection` en "Mi cancha").
+- **Ubicación con mapa** (Fase L.0, mergeada junto con esta): buscador de municipio + pin arrastrable (Leaflet/OpenStreetMap) para la ubicación precisa del complejo.
+- **Aprobación de reservas**: las reservas creadas desde la app nacen `pending` — el dueño confirma o rechaza desde el calendario. Las telefónicas que carga el propio dueño siguen naciendo `confirmed` directo.
+- **W.1.1, en el mismo ciclo**: el jugador pasó de elegir una cancha por nombre a elegir un **tamaño** — el backend auto-asigna la cancha puntual sin solape. El dueño ve en el calendario qué cancha le tocó a cada reserva y puede **reasignarla manualmente** a otra cancha activa del mismo tamaño (ej. mantenimiento de último momento) — ver [Reservas](#reservas-adminreservas--reservations-calendartsx).
+
+Ver [BACKEND.md → Modelos nuevos desde el 18/08](./BACKEND.md#modelos-nuevos-desde-el-1808) y [FRONTEND.md → Reservas — selección por tamaño](./FRONTEND.md#reservas--selección-por-tamaño-fase-w11) para el lado backend y mobile de la misma fase.
 
 ---
 
@@ -510,4 +533,4 @@ Rama `feature/web-w0-colorimetria-navegacion`. Alcance final de la fase:
 
 ---
 
-*Última actualización: 2026-08-26 — Fase W.0: paleta, navegación y rediseño visual futurista, revisada y aprobada por David.*
+*Última actualización: 2026-08-29 — Fase W.0 (paleta/navegación) y Fase W.1/W.1.1 (canchas reales, reservas por tamaño, sin `localStorage` para canchas/reservas).*
