@@ -1,15 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StatusBar,
-} from "react-native"
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StatusBar } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
+import { useAppAlert } from "@/components/AppAlert"
 import { TextField } from "@/components/TextField"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
@@ -145,6 +139,7 @@ function ActionButton({
 /** Amistades del jugador (Fase 10): pestañas Amigos y Solicitudes. */
 export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
+  const showAlert = useAppAlert()
   const { friends, incoming, outgoing, loading, error, reload, accept, remove } = useFriends()
   const [tab, setTab] = useState<FriendsTab>("friends")
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -221,29 +216,32 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
   }, [reload, tab, loadSuggestions])
 
   /** Agregar desde un resultado de búsqueda — actualiza esa fila en memoria. */
-  const handleSearchRequest = useCallback((row: PlayerSearchResultApiDto) => {
-    setBusyId(row.user.id)
-    api.requestFriendship(row.user.id).then((result) => {
-      setBusyId(null)
-      if (result.kind === "ok") {
-        setResults((prev) =>
-          prev.map((r) =>
-            r.user.id === row.user.id
-              ? {
-                  ...r,
-                  friendship: {
-                    status: result.friendship.status === "accepted" ? "accepted" : "pending_sent",
-                    friendshipId: result.friendship.id,
-                  },
-                }
-              : r,
-          ),
-        )
-      } else {
-        Alert.alert(translate("friendsScreen:actionError"), describeProblem(result))
-      }
-    })
-  }, [])
+  const handleSearchRequest = useCallback(
+    (row: PlayerSearchResultApiDto) => {
+      setBusyId(row.user.id)
+      api.requestFriendship(row.user.id).then((result) => {
+        setBusyId(null)
+        if (result.kind === "ok") {
+          setResults((prev) =>
+            prev.map((r) =>
+              r.user.id === row.user.id
+                ? {
+                    ...r,
+                    friendship: {
+                      status: result.friendship.status === "accepted" ? "accepted" : "pending_sent",
+                      friendshipId: result.friendship.id,
+                    },
+                  }
+                : r,
+            ),
+          )
+        } else {
+          showAlert(translate("friendsScreen:actionError"), describeProblem(result))
+        }
+      })
+    },
+    [showAlert],
+  )
 
   /** Aceptar desde un resultado de búsqueda (pending_received). */
   const handleSearchAccept = useCallback(
@@ -263,11 +261,11 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
           )
           reload()
         } else {
-          Alert.alert(translate("friendsScreen:actionError"), describeProblem(result))
+          showAlert(translate("friendsScreen:actionError"), describeProblem(result))
         }
       })
     },
-    [reload],
+    [reload, showAlert],
   )
 
   /** Agregar desde una sugerencia — quita la fila al éxito. */
@@ -280,11 +278,11 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
           setSuggestions((prev) => prev.filter((s) => s.user.id !== suggestion.user.id))
           reload()
         } else {
-          Alert.alert(translate("friendsScreen:actionError"), describeProblem(result))
+          showAlert(translate("friendsScreen:actionError"), describeProblem(result))
         }
       })
     },
-    [reload],
+    [reload, showAlert],
   )
 
   const handleAccept = useCallback(
@@ -293,11 +291,11 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
       accept(friendship).then((result) => {
         setBusyId(null)
         if (result.kind !== "ok") {
-          Alert.alert(translate("friendsScreen:actionError"), describeProblem(result))
+          showAlert(translate("friendsScreen:actionError"), describeProblem(result))
         }
       })
     },
-    [accept],
+    [accept, showAlert],
   )
 
   /** Rechazar o cancelar — acción directa, sin confirmación (la eliminación
@@ -308,11 +306,11 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
       remove(friendship).then((result) => {
         setBusyId(null)
         if (result.kind !== "ok") {
-          Alert.alert(translate("friendsScreen:actionError"), describeProblem(result))
+          showAlert(translate("friendsScreen:actionError"), describeProblem(result))
         }
       })
     },
-    [remove],
+    [remove, showAlert],
   )
 
   const requestsCount = incoming.length

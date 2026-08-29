@@ -1,7 +1,7 @@
-import { Alert } from "react-native"
 import { Directory, File, Paths } from "expo-file-system"
 import * as ImagePicker from "expo-image-picker"
 
+import type { ShowAppAlert } from "@/components/AppAlert"
 import { translate } from "@/i18n/translate"
 
 /** Debe coincidir con MAX_AVATAR_BASE64_LENGTH del backend (libs/contracts/src/users). */
@@ -67,12 +67,13 @@ export interface PickedProfileImage {
 
 export async function pickProfileImageFromGallery(
   userKey: string,
-  previousUri?: string | null,
+  previousUri: string | null | undefined,
+  showAlert: ShowAppAlert,
 ): Promise<PickedProfileImage | null> {
   try {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
-      Alert.alert(
+      showAlert(
         translate("profileScreen:avatarPermissionTitle"),
         translate("profileScreen:avatarPermissionMessage"),
       )
@@ -97,7 +98,7 @@ export async function pickProfileImageFromGallery(
 
     return { uri: persistedUri, base64: result.assets[0].base64 ?? null }
   } catch {
-    Alert.alert(
+    showAlert(
       translate("profileScreen:avatarNativeMissingTitle"),
       translate("profileScreen:avatarNativeMissingMessage"),
     )

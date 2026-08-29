@@ -1,7 +1,8 @@
-import { Alert, Image, Pressable } from "react-native"
+import { Image, Pressable } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
+import { useAppAlert } from "@/components/AppAlert"
 import { useAuth } from "@/context/AuthContext"
 import type { FeedPost } from "@/data/mockFeedPosts"
 import { useInteractiveMotion } from "@/hooks/useInteractiveMotion"
@@ -60,6 +61,7 @@ export function FeedPostCard({
   onOpenComments,
 }: FeedPostCardProps) {
   const { authUserId } = useAuth()
+  const showAlert = useAppAlert()
   const isAd = post.kind === "eliteAd"
   const isOwnPost = !isAd && !!post.authorId && post.authorId === authUserId
   const content = post.contentIsTranslationKey ? translate(post.content as TxKeyPath) : post.content
@@ -69,7 +71,7 @@ export function FeedPostCard({
   const motion = useInteractiveMotion("card")
 
   const handleDeletePress = () => {
-    Alert.alert(
+    showAlert(
       translate("feedScreen:deletePostConfirmTitle"),
       translate("feedScreen:deletePostConfirmMessage"),
       [

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react"
-import { ActivityIndicator, Alert, Modal, Pressable, View } from "react-native"
+import { ActivityIndicator, Modal, Pressable, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
+import { useAppAlert } from "@/components/AppAlert"
 import { useAuth } from "@/context/AuthContext"
 import { STAT_ORDER } from "@/data/mockPlayerProfile"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
@@ -97,6 +98,7 @@ export function MemberProfileModal({
 }: MemberProfileModalProps) {
   const { insets } = useResponsiveLayout()
   const { authUserId } = useAuth()
+  const showAlert = useAppAlert()
   const [profile, setProfile] = useState<PublicMemberProfileApiDto | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(false)
@@ -215,7 +217,7 @@ export function MemberProfileModal({
   const showMain = headerName != null
 
   const handleRemoveWithConfirm = useCallback(() => {
-    Alert.alert(
+    showAlert(
       translate("groupsScreen:friendRemoveConfirmTitle"),
       translate("groupsScreen:friendRemoveConfirmMessage", {
         name: headerName ?? "",
@@ -229,7 +231,7 @@ export function MemberProfileModal({
         },
       ],
     )
-  }, [handleRemove, headerName])
+  }, [handleRemove, headerName, showAlert])
 
   const radarData: RadarAxis[] = STAT_ORDER.map((key) => ({
     key,
