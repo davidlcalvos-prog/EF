@@ -16,6 +16,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
+import { getUserColor } from "@/utils/avatarColor"
 
 import { FeedAvatar } from "./FeedAvatar"
 
@@ -45,13 +46,6 @@ function getUserInitial(email?: string) {
   return email.trim().charAt(0).toUpperCase()
 }
 
-function getUserColor(email?: string) {
-  if (!email) return "#00CEC8"
-  const hash = email.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  const palette = ["#00CEC8", "#FF8C00", "#7B68EE", "#2ECC71", "#E74C3C"]
-  return palette[hash % palette.length]
-}
-
 function AttachChip({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label: string }) {
   return (
     <XStack
@@ -75,7 +69,7 @@ function AttachChip({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; lab
 }
 
 export function FeedComposeModal({ visible, onClose, onPost }: FeedComposeModalProps) {
-  const { authEmail } = useAuth()
+  const { authEmail, authAvatarBase64 } = useAuth()
   const { insets, isSmallScreen } = useResponsiveLayout()
   const [draft, setDraft] = useState("")
   const [keyboardHeight, setKeyboardHeight] = useState(0)
@@ -257,6 +251,7 @@ export function FeedComposeModal({ visible, onClose, onPost }: FeedComposeModalP
               <FeedAvatar
                 label={getUserInitial(authEmail)}
                 color={getUserColor(authEmail)}
+                photoBase64={authAvatarBase64}
                 size={32}
               />
               <Text color="#FFFFFF" fontWeight="700" fontSize={13} flex={1} numberOfLines={1}>

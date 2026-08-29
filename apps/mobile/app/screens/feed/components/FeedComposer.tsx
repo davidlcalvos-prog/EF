@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useInteractiveMotion } from "@/hooks/useInteractiveMotion"
 import { translate } from "@/i18n/translate"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
+import { getUserColor } from "@/utils/avatarColor"
 
 import { FeedAvatar } from "./FeedAvatar"
 
@@ -16,13 +17,6 @@ export interface FeedComposerProps {
 function getUserInitial(email?: string) {
   if (!email) return "?"
   return email.trim().charAt(0).toUpperCase()
-}
-
-function getUserColor(email?: string) {
-  if (!email) return "#00CEC8"
-  const hash = email.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  const palette = ["#00CEC8", "#FF8C00", "#7B68EE", "#2ECC71", "#E74C3C"]
-  return palette[hash % palette.length]
 }
 
 function ComposerAction({
@@ -47,7 +41,7 @@ function ComposerAction({
 }
 
 export function FeedComposer({ onPress }: FeedComposerProps) {
-  const { authEmail } = useAuth()
+  const { authEmail, authAvatarBase64 } = useAuth()
   const motion = useInteractiveMotion("card")
 
   return (
@@ -69,7 +63,12 @@ export function FeedComposer({ onPress }: FeedComposerProps) {
         marginBottom={18}
       >
         <XStack alignItems="center" gap={12}>
-          <FeedAvatar label={getUserInitial(authEmail)} color={getUserColor(authEmail)} size={44} />
+          <FeedAvatar
+            label={getUserInitial(authEmail)}
+            color={getUserColor(authEmail)}
+            photoBase64={authAvatarBase64}
+            size={44}
+          />
           <YStack
             flex={1}
             backgroundColor="#2e2e2e"

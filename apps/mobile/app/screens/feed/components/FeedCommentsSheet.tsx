@@ -196,6 +196,7 @@ export function FeedCommentsSheet({
                     <FeedAvatar
                       label={comment.authorName}
                       color={pickAvatarColor(comment.authorId)}
+                      photoBase64={comment.authorAvatarBase64}
                       size={32}
                     />
                     <YStack flex={1} gap={2}>

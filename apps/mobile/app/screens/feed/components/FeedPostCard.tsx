@@ -109,7 +109,12 @@ export function FeedPostCard({
 
         <YStack padding={14} gap={12}>
           <XStack alignItems="center" gap={12}>
-            <FeedAvatar label={post.authorName} color={post.authorAvatarColor} size={44} />
+            <FeedAvatar
+              label={post.authorName}
+              color={post.authorAvatarColor}
+              photoBase64={post.authorAvatarPhoto}
+              size={44}
+            />
             <YStack flex={1} gap={2}>
               <XStack alignItems="center" gap={8}>
                 <Text color="#FFFFFF" fontWeight="700" fontSize={15}>

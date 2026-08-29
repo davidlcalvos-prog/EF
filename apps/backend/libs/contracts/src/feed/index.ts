@@ -21,6 +21,7 @@ export interface PostDto {
   authorId: string;
   authorName: string;
   authorHandle: string;
+  authorAvatarBase64: string | null;
   content: string;
   mediaType: PostMediaType;
   mediaUrl: string | null;
@@ -37,6 +38,7 @@ export interface CommentDto {
   authorId: string;
   authorName: string;
   authorHandle: string;
+  authorAvatarBase64: string | null;
   content: string;
   createdAt: string;
 }
