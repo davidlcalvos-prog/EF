@@ -279,7 +279,7 @@ Gestión de canchas y reservas para el **dueño de cancha**. Todos los endpoints
 | Método | Ruta | Auth | Notas |
 |--------|------|------|--------|
 | GET | `/api/venues/mine` | **JWT** (Empresario/Administrador) | Lista las canchas del dueño autenticado |
-| PUT | `/api/venues/mine` | **JWT** (Empresario/Administrador) | Crea o actualiza (upsert) una cancha propia |
+| PUT | `/api/venues/mine` | **JWT** (Empresario/Administrador) | Crea o actualiza (upsert) una cancha propia. Acepta `amenities` (`cafeteria`/`transfers`/`bathroom`, **400** si viene otro valor); omitirlo no pisa lo guardado |
 | GET | `/api/reservations/mine` | **JWT** (Empresario/Administrador) | Lista las reservas recibidas en las canchas del dueño |
 | PATCH | `/api/reservations/:id/status` | **JWT** (Empresario/Administrador) | Confirma o rechaza una reserva `pending` de la app, o cancela cualquiera (`pending` / `confirmed` / `cancelled`) |
 | POST | `/api/venues/:id/courts` | **JWT** (Empresario/Administrador) | Crea una cancha (`Court`) del complejo: nombre, `size`, `pricePerHourCents` propio, `surfaceType` opcional (Fase W.1) |
@@ -296,7 +296,7 @@ Buscar cancha y reservar — cualquier usuario autenticado, sin rol especial. En
 
 | Método | Ruta | Auth | Notas |
 |--------|------|------|--------|
-| GET | `/api/venues` | **JWT** | Lista todas las canchas (`PublicVenueDto`): ya no expone canchas individuales, agrupa `courtSizes: [{ size, count, pricePerHourCents }]` por complejo (Fase W.1.1) — el jugador elige tamaño, no una cancha por nombre |
+| GET | `/api/venues` | **JWT** | Lista todas las canchas (`PublicVenueDto`): ya no expone canchas individuales, agrupa `courtSizes: [{ size, count, pricePerHourCents }]` por complejo (Fase W.1.1) — el jugador elige tamaño, no una cancha por nombre. Incluye `amenities` del complejo, para que el jugador vea sus servicios antes de reservar (dato que el `localStorage` viejo nunca le dio a mobile) |
 | GET | `/api/venues/:id/availability` | **JWT** | `?size=&startsAt=&endsAt=` → `{ totalCourts, availableCourts }` de ese tamaño en ese horario. Se consulta **antes** de dejar confirmar, para nunca chocar con un error de solape al final (Fase W.1.1) |
 | POST | `/api/my-reservations` | **JWT** | Crea una reserva por `venueId` + `size` (ya no `courtId` directo). El backend **auto-asigna** una cancha activa de ese tamaño sin solape, dentro de una transacción con lock de fila (mismo patrón que la Fase 8.2) sobre todas las canchas candidatas — orden determinístico por `createdAt`. **409** si ninguna está libre. `matchId` opcional — ver reglas abajo. Nace `pending` (requiere aprobación del dueño, Fase W.1) |
 | GET | `/api/my-reservations` | **JWT** | Reservas propias del usuario autenticado |
@@ -361,6 +361,7 @@ Migraciones en `apps/backend/prisma/migrations/`. Seed de roles: `npm run prisma
 - **Ubicación** (Fase L.0) — `municipalityCode`/`city`/`department`/`latitude`/`longitude` agregados a `Profile`, `Group`, `Venue` (+ `locationSource`: `municipality` si es el centroide del municipio DANE, `pin` si el dueño ajustó un pin propio) y `Match` (+ `venueText` para sede sin cancha de la app; lat/lng se copian de la cancha o del grupo origen).
 - **`Reservation.courtId`/`source`/`customerName`/`customerPhone`** (Fase W.1) — `courtId` vincula la reserva a una cancha específica del venue (null en reservas previas a esta fase); `source` (`app`/`phone`/`tournament`/`block`) distingue quién la originó — `app` nace `pending` (requiere aprobación del dueño), `phone` nace `confirmed` directo; `customerName`/`customerPhone` solo se llenan en reservas `phone`.
 - **`UserPreferences`** (Fase D.0) — migrada desde MongoDB, ver [Preferencias (PostgreSQL)](#preferencias-postgresql) arriba.
+- **`Venue.amenities`** — servicios del complejo (`cafeteria`/`transfers`/`bathroom`), `String[]` con default `[]`. La misma lista que administraba `venue-extras.ts` en `localStorage` antes de la W.1 — se perdió en esa migración (descope no intencional) y se recuperó después contra Postgres. Valores validados en `@ef/contracts` (`VENUE_AMENITY_VALUES`), no con enum de DB, para poder sumar servicios sin migración.
 
 ---
 
@@ -422,6 +423,12 @@ Pendientes (no implementados aún):
 ---
 
 ## Registro de cambios
+
+### 2026-08-31 — Servicios del complejo (`Venue.amenities`)
+
+- Nuevo campo `Venue.amenities` (`String[]`, default `[]`, migración `venue_amenities`) — recupera los servicios que `venue-extras.ts` administraba en `localStorage` antes de la W.1 y que esa migración perdió sin querer: `cafeteria`, `transfers` (pagos por transferencia bancaria), `bathroom`.
+- `VenueDto`/`PublicVenueDto` ganan `amenities`; `UpsertVenueDto` lo acepta opcional (validado contra `VENUE_AMENITY_VALUES`, omitirlo no pisa lo guardado).
+- Se expone en el endpoint público `GET /api/venues` — valor nuevo para mobile, que nunca vio estos datos cuando vivían en el navegador del dueño.
 
 ### 2026-08-29 — Fotos de perfil reales en el feed
 

@@ -522,6 +522,8 @@ El jugador elige complejo y **tamaño de cancha** (5v5/6v6/7v7/8v8/11v11) — ya
 
 Las reservas telefónicas que carga el dueño desde el portal web siguen sin cambios: ahí sí elige la cancha directo por nombre (es el dueño quien gestiona su propio inventario).
 
+**Servicios del complejo (2026-08-31):** la tarjeta de cada complejo en el selector muestra chips con sus servicios (`PublicVenueApiDto.amenities`: cafetería, transferencias, baños — claves i18n `reservationsScreen:amenity_*` en los 7 idiomas), para que el jugador los vea antes de elegir dónde reservar. Si el complejo no tiene servicios marcados, no se muestra nada (sin hueco).
+
 ## AppAlert (reemplazo de `Alert.alert` nativo)
 
 **Archivo:** `app/components/AppAlert.tsx` — `Alert.alert(...)` de `react-native` dibuja el diálogo del sistema operativo: no hereda nada de la identidad visual de la app y es imposible repintarlo. Se reemplazó en los 16 puntos del código que lo usaban por un modal propio con la paleta Elite Forge.
@@ -531,7 +533,7 @@ Las reservas telefónicas que carga el dueño desde el portal web siguen sin cam
 - Modal centrado, fade + scale al aparecer; botón `default` (emerald), `cancel` (neutral) o `destructive` (borde/texto rojo) según `style`. Tocar afuera cierra solo si hay un botón `cancel` — igual que el `Alert.alert` nativo.
 - Dos utilidades que no son componentes React (`pickProfileImage.ts`, `pickGroupPhoto.ts`) reciben `showAlert` como **parámetro** en vez de usar el hook directo, pasado por el componente que las llama.
 
-**Convención del proyecto:** ningún archivo debe importar `Alert` de `react-native` directamente — usar `useAppAlert()`. A diferencia de la regla ya existente para `TextInput`/`Text`/`Button` (bloqueada por `no-restricted-imports` en `eslint.config.js`, ver más abajo en Registro de cambios, entrada *"Fix lint CI"*), **esta convención todavía no está enforced por ESLint** — es manual, verificada con `grep -rn "Alert\.alert(" apps/mobile/app` antes de cerrar cualquier cambio que toque una alerta.
+**Convención del proyecto:** ningún archivo debe importar `Alert` de `react-native` directamente — usar `useAppAlert()`. Desde el 2026-08-31 la convención está **reforzada por ESLint**: `no-restricted-imports` en `eslint.config.js` bloquea el import de `Alert` desde `react-native` con el mensaje "No uses Alert.alert directo — usá useAppAlert() de '@/components/AppAlert'", junto a la regla ya existente para `Text`/`Button`/`TextInput`. `AppAlert.tsx` no importa `Alert` (es un modal propio sobre `Modal`/`Animated`), así que la regla no lo afecta.
 
 ## Fotos de perfil reales en el feed
 
@@ -542,6 +544,11 @@ El feed (drawer, composer, navbar, tarjetas de post, comentarios) mostraba únic
 - **Avatar de otros** — `PostDto`/`CommentDto` ya traen `authorAvatarBase64` desde el backend (ver [BACKEND.md](./BACKEND.md#feed--users-service)); `useFeed.ts` lo mapea a `authorAvatarPhoto` en `FeedPost`.
 
 ## Registro de cambios (sesión de implementación)
+
+### 2026-08-31 — Servicios del complejo en el selector de reservas + regla ESLint para `Alert`
+
+- Chips de servicios (cafetería/transferencias/baños) en la tarjeta de cada complejo del `CreateReservationModal` (`PublicVenueApiDto.amenities`, ver [BACKEND.md](./BACKEND.md#reservations-lado-jugador--venues-service)); 3 claves i18n nuevas (`amenity_*`) en los 7 idiomas.
+- `no-restricted-imports` en `eslint.config.js` ahora bloquea importar `Alert` de `react-native` — la convención de `useAppAlert()` deja de ser manual, ver [AppAlert](#appalert-reemplazo-de-alertalert-nativo).
 
 ### 2026-08-29 — Fotos de perfil reales en el feed
 
@@ -710,7 +717,6 @@ Ya completado (no repetir como pendiente): API real del Feed + fotos de perfil r
 - [ ] Formulario completo de Register in-app
 - [ ] OAuth real (Google / Facebook SDK)
 - [ ] Eliminar o aislar pantallas demo de Ignite
-- [ ] Convención "sin `Alert.alert` nativo" todavía no está reforzada por ESLint (`no-restricted-imports`) — hoy es manual, ver [AppAlert](#appalert-reemplazo-de-alertalert-nativo)
 - [ ] Reintento automático / cola offline para el sync de profile-stats cuando falla por red
 - [ ] En curso, sin mergear a `Dev-David` todavía: comodín múltiple (`feature/comodin-multiple`) — no documentar hasta que mergee
 
