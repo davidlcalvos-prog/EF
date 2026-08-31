@@ -73,6 +73,12 @@ module.exports = [
               importNames: ["Text", "Button", "TextInput"],
               message: "Use the custom wrapper component from '@/components'.",
             },
+            {
+              name: "react-native",
+              importNames: ["Alert"],
+              message:
+                "No uses Alert.alert directo — usá useAppAlert() de '@/components/AppAlert'.",
+            },
           ],
         },
       ],
