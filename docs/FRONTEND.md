@@ -505,12 +505,18 @@ Vacante para cubrir un cupo faltante en un partido `internal` `scheduled`, publi
 | Pantalla / componente | Rol |
 |---|---|
 | `NearbyGuestRequestsScreen.tsx` + `useNearbyGuestRequests.ts` | Lista de vacantes abiertas cerca de tu municipio (acceso "Cerca de mí" del drawer) |
-| `GuestRequestModal.tsx` | El líder/vice publica la vacante (posición buscada opcional, radio en km) |
+| `GuestRequestModal.tsx` | El líder/vice publica la vacante (posiciones multi-selección, cantidad de cupos, radio en km) |
 | `GuestApplicantsModal.tsx` | El líder/vice revisa postulaciones y acepta/rechaza |
 | `GuestRequestCard.tsx` | Tarjeta de una vacante en la lista de "Cerca de mí" |
 | `useMatchGuestRequest.ts` | Ciclo de vida de la vacante de UN partido (abrir, cancelar, postulaciones) |
 
 En el roster del partido, un participante que entró como comodín (no por membresía de grupo) lleva el badge **"Comodín"** (`MatchParticipant.isGuest`).
+
+**Comodín múltiple (Fase 11.1):** una búsqueda pide hasta 5 cupos y acepta varias posiciones (o ninguna = cualquiera):
+
+- `GuestRequestModal`: los chips de posición pasaron a multi-selección (toggle por chip; ninguno = "cualquier posición"), y se agregó el selector de cantidad (chips `1..N`, con `N = min(5, cupos libres del partido)` — la prop `freeSpots` viene de `MatchDetailScreen`). Envía `requestedPositions` (array) y `slotsTotal`.
+- Banner "Buscando comodín" en `MatchDetailScreen`: además de posiciones (lista separada por comas) y radio, muestra el progreso `X/Y cupos · N postulantes` (`guestOpenBannerProgress`). Aceptar un postulante con cupos restantes deja la búsqueda `open` y a los demás pendientes visibles — solo al llenar el último cupo pasa a `filled` y el backend rechaza el resto.
+- `GuestRequestCard` ("Cerca de mí"): chip naranja con las posiciones pedidas (o "Cualquiera") + chip emerald "Faltan N jugador(es)" (`guestSlotsRemaining`, `slotsTotal - slotsFilled`).
 
 **Preferencia de perfil:** `ProfileEditScreen` tiene el toggle "avisarme si falta un jugador cerca" (`Profile.notifyNearbyGuestRequests`, opt-in, guardado al toque — no espera al botón Guardar general). Solo controla si se recibe **push** cuando se publica una vacante cerca; no afecta qué aparece en "Cerca de mí", que siempre se calcula por zona.
 
@@ -592,6 +598,13 @@ Auditoría posterior a la Fase 12: los dos lugares que seguían mostrando solo i
 - `FriendsScreen` y `GuestApplicantsModal` ya mostraban la foto real — confirmado, sin cambios.
 
 ## Registro de cambios (sesión de implementación)
+
+### 2026-08-31 — Comodín múltiple (Fase 11.1)
+
+- `GuestRequestModal`: posiciones multi-selección + selector de cupos (1..min(5, lugares libres), prop `freeSpots`); envía `requestedPositions` y `slotsTotal`.
+- Banner de `MatchDetailScreen` muestra progreso "X/Y cupos · N postulantes"; `GuestRequestCard` muestra posiciones pedidas y "Faltan N jugador(es)".
+- 4 claves i18n nuevas/ajustadas (`guestSlotsLabel`, `guestOpenBannerProgress`, `guestSlotsRemaining`, `guestPositionLabel` en plural) en los 7 idiomas.
+- Ver [Comodín](#comodín-fase-11).
 
 ### 2026-08-31 — Fotos de perfil reales en miembros de grupo y roster de partidos
 

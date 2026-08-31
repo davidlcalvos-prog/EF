@@ -19,9 +19,13 @@ export function GuestRequestCard({ request, applying, onApply }: GuestRequestCar
   const dateLabel = request.match.scheduledAt
     ? formatDate(request.match.scheduledAt, "d MMM yyyy, HH:mm")
     : translate("matchesScreen:noDate")
-  const positionLabel = request.requestedPosition
-    ? translate(`profileScreen:position_${request.requestedPosition}` as never)
-    : translate("matchesScreen:guestAnyPosition")
+  const positionLabel =
+    request.requestedPositions.length > 0
+      ? request.requestedPositions
+          .map((position) => translate(`profileScreen:position_${position}` as never))
+          .join(", ")
+      : translate("matchesScreen:guestAnyPosition")
+  const slotsRemaining = Math.max(0, request.slotsTotal - request.slotsFilled)
 
   return (
     <Pressable
@@ -81,6 +85,16 @@ export function GuestRequestCard({ request, applying, onApply }: GuestRequestCar
           >
             <Text color={eliteForgeColors.orange} fontSize={11} fontWeight="700">
               {positionLabel}
+            </Text>
+          </XStack>
+          <XStack
+            backgroundColor="rgba(0,206,200,0.12)"
+            borderRadius={6}
+            paddingHorizontal={8}
+            paddingVertical={2}
+          >
+            <Text color={eliteForgeColors.emerald} fontSize={11} fontWeight="700">
+              {translate("matchesScreen:guestSlotsRemaining", { count: slotsRemaining })}
             </Text>
           </XStack>
           <Text color="rgba(255,255,255,0.45)" fontSize={12}>

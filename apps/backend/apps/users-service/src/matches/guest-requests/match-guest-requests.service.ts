@@ -38,7 +38,7 @@ export class MatchGuestRequestsService {
   ) {}
 
   async open(payload: OpenGuestRequestPayload): Promise<MatchGuestRequestDto> {
-    const { matchId, requesterId, requestedPosition, radiusKm } = payload;
+    const { matchId, requesterId, requestedPositions, slotsTotal, radiusKm } = payload;
     const match = await this.requireMatch(matchId);
     await this.requireLeader(match.originGroupId, requesterId);
 
@@ -63,6 +63,16 @@ export class MatchGuestRequestsService {
       throw new ConflictException('This match already has a full roster');
     }
 
+    // Fase 11.1: el rango 1..5 lo valida class-validator; acá solo se chequea
+    // contra el cupo realmente libre del roster.
+    const slots = slotsTotal ?? 1;
+    const freeSpots = match.maxPlayers - participantCount;
+    if (slots > freeSpots) {
+      throw new BadRequestException(
+        `Cannot request ${slots} guest slots — the match only has ${freeSpots} free spot(s)`,
+      );
+    }
+
     const existingOpen = await this.guestRequestRepository.findOpenForMatch(matchId);
     if (existingOpen) {
       throw new ConflictException(
@@ -77,7 +87,8 @@ export class MatchGuestRequestsService {
     const created = await this.guestRequestRepository.create({
       matchId,
       requestedBy: requesterId,
-      requestedPosition: requestedPosition ?? null,
+      requestedPositions: requestedPositions ?? [],
+      slotsTotal: slots,
       radiusKm: radiusKm ?? DEFAULT_GUEST_REQUEST_RADIUS_KM,
       expiresAt,
     });
@@ -88,7 +99,7 @@ export class MatchGuestRequestsService {
       matchLat: match.latitude,
       matchLng: match.longitude,
       originGroupId: match.originGroupId,
-      requestedPosition: created.requestedPosition,
+      requestedPositions: created.requestedPositions,
       radiusKm: created.radiusKm,
     });
 
@@ -304,7 +315,7 @@ export class MatchGuestRequestsService {
     matchLat: number;
     matchLng: number;
     originGroupId: string;
-    requestedPosition: string | null;
+    requestedPositions: string[];
     radiusKm: number;
   }): Promise<void> {
     const candidateIds = await this.guestRequestRepository.findNotifyCandidates({
@@ -312,7 +323,7 @@ export class MatchGuestRequestsService {
       matchLng: params.matchLng,
       radiusKm: params.radiusKm,
       originGroupId: params.originGroupId,
-      requestedPosition: params.requestedPosition,
+      requestedPositions: params.requestedPositions,
     });
     await Promise.all(
       candidateIds.map((userId) =>

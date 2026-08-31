@@ -682,8 +682,11 @@ model MatchGuestRequest {
   match       Match                   @relation(fields: [matchId], references: [id], onDelete: Cascade)
   requestedBy String                  @db.Uuid
   requester   User                    @relation("MatchGuestRequestRequester", fields: [requestedBy], references: [id], onDelete: Cascade)
-  /// Una de PlayerPositionId, o null = cualquier posición.
-  requestedPosition String?
+  /// Posiciones aceptadas (PlayerPositionId). Array vacío = cualquier posición (Fase 11.1).
+  requestedPositions String[]         @default([])
+  /// Cupos pedidos (1 a 5, tope duro) y cuántos ya se llenaron (Fase 11.1).
+  slotsTotal  Int                     @default(1)
+  slotsFilled Int                     @default(0)
   radiusKm    Int                     @default(15)
   status      MatchGuestRequestStatus @default(open)
   /// scheduledAt del partido, o now()+6h si el partido no tiene hora.

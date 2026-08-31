@@ -43,7 +43,8 @@ export function useMatchGuestRequest(matchId: string, canManage: boolean) {
 
   const open = useCallback(
     async (payload: {
-      requestedPosition?: PlayerPositionId
+      requestedPositions?: PlayerPositionId[]
+      slotsTotal?: number
       radiusKm?: number
     }): Promise<{ kind: "ok" } | GeneralApiProblem> => {
       const result = await api.openGuestRequest(matchId, payload)

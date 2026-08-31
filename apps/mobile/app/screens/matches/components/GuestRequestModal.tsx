@@ -3,11 +3,10 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, View } from "react-nat
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
-import type { PlayerPositionId } from "@/data/suggestPlayerPosition"
+import { ALL_PLAYER_POSITIONS, type PlayerPositionId } from "@/data/suggestPlayerPosition"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
-import { PositionPicker } from "@/screens/profile/components/PositionPicker"
-import { DEFAULT_GUEST_REQUEST_RADIUS_KM } from "@/services/api"
+import { DEFAULT_GUEST_REQUEST_RADIUS_KM, MAX_GUEST_REQUEST_SLOTS } from "@/services/api"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
 const RADIUS_OPTIONS = [5, 10, 15, 20, 25]
@@ -46,22 +45,39 @@ function Chip({
 export interface GuestRequestModalProps {
   visible: boolean
   onClose: () => void
+  /** Cupos realmente libres del partido — acota el selector (tope duro 5, Fase 11.1). */
+  freeSpots: number
   onSubmit: (payload: {
-    requestedPosition?: PlayerPositionId
+    requestedPositions?: PlayerPositionId[]
+    slotsTotal?: number
     radiusKm?: number
   }) => Promise<boolean>
 }
 
-/** Formulario para abrir la búsqueda de comodín (Fase 11) — posición opcional + radio. */
-export function GuestRequestModal({ visible, onClose, onSubmit }: GuestRequestModalProps) {
+/** Formulario para abrir la búsqueda de comodín (Fase 11 / 11.1) — posiciones multi, cupos y radio. */
+export function GuestRequestModal({
+  visible,
+  onClose,
+  freeSpots,
+  onSubmit,
+}: GuestRequestModalProps) {
   const { insets } = useResponsiveLayout()
-  const [position, setPosition] = useState<PlayerPositionId | null>(null)
+  const [positions, setPositions] = useState<PlayerPositionId[]>([])
+  const [slots, setSlots] = useState(1)
   const [radiusKm, setRadiusKm] = useState(DEFAULT_GUEST_REQUEST_RADIUS_KM)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(false)
 
+  const maxSlots = Math.max(1, Math.min(MAX_GUEST_REQUEST_SLOTS, freeSpots))
+  const slotOptions = Array.from({ length: maxSlots }, (_, i) => i + 1)
+
+  const togglePosition = (id: PlayerPositionId) => {
+    setPositions((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]))
+  }
+
   const reset = () => {
-    setPosition(null)
+    setPositions([])
+    setSlots(1)
     setRadiusKm(DEFAULT_GUEST_REQUEST_RADIUS_KM)
     setError(false)
   }
@@ -77,7 +93,8 @@ export function GuestRequestModal({ visible, onClose, onSubmit }: GuestRequestMo
     setSubmitting(true)
     setError(false)
     const success = await onSubmit({
-      requestedPosition: position ?? undefined,
+      requestedPositions: positions,
+      slotsTotal: Math.min(slots, maxSlots),
       radiusKm,
     })
     setSubmitting(false)
@@ -187,7 +204,55 @@ export function GuestRequestModal({ visible, onClose, onSubmit }: GuestRequestMo
               <Text color="rgba(255,255,255,0.4)" fontSize={11} lineHeight={16}>
                 {translate("matchesScreen:guestPositionHint")}
               </Text>
-              <PositionPicker selectedId={position} onSelect={setPosition} />
+              <XStack flexWrap="wrap" gap={8}>
+                {ALL_PLAYER_POSITIONS.map((id) => {
+                  const isSelected = positions.includes(id)
+                  return (
+                    <Pressable
+                      key={id}
+                      onPress={() => togglePosition(id)}
+                      accessibilityRole="button"
+                    >
+                      <XStack
+                        paddingHorizontal={12}
+                        paddingVertical={8}
+                        borderRadius={999}
+                        backgroundColor={
+                          isSelected ? "rgba(0,206,200,0.18)" : "rgba(255,255,255,0.06)"
+                        }
+                        borderWidth={1}
+                        borderColor={
+                          isSelected ? eliteForgeColors.emerald : eliteForgeColors.carbonBorder
+                        }
+                      >
+                        <Text
+                          color={isSelected ? eliteForgeColors.emerald : "rgba(255,255,255,0.75)"}
+                          fontSize={12}
+                          fontWeight="700"
+                        >
+                          {translate(`profileScreen:position_${id}` as never)}
+                        </Text>
+                      </XStack>
+                    </Pressable>
+                  )
+                })}
+              </XStack>
+            </YStack>
+
+            <YStack gap={8} marginBottom={16}>
+              <Text color="rgba(255,255,255,0.6)" fontSize={12} fontWeight="700">
+                {translate("matchesScreen:guestSlotsLabel")}
+              </Text>
+              <XStack flexWrap="wrap" gap={8}>
+                {slotOptions.map((option) => (
+                  <Chip
+                    key={option}
+                    label={String(option)}
+                    selected={slots === option}
+                    onPress={() => setSlots(option)}
+                  />
+                ))}
+              </XStack>
             </YStack>
 
             <YStack gap={8} marginBottom={16}>

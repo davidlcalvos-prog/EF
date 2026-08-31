@@ -35,7 +35,9 @@ type ApplicationWithUser = Prisma.MatchGuestApplicationGetPayload<typeof applica
 interface NearbyRow {
   id: string;
   matchId: string;
-  requestedPosition: string | null;
+  requestedPositions: string[];
+  slotsTotal: number;
+  slotsFilled: number;
   radiusKm: number;
   status: string;
   expiresAt: Date;
@@ -57,7 +59,9 @@ function toRequestDto(
   return {
     id: row.id,
     matchId: row.matchId,
-    requestedPosition: row.requestedPosition as PlayerPositionId | null,
+    requestedPositions: row.requestedPositions as PlayerPositionId[],
+    slotsTotal: row.slotsTotal,
+    slotsFilled: row.slotsFilled,
     radiusKm: row.radiusKm,
     status: row.status as MatchGuestRequestStatus,
     expiresAt: row.expiresAt.toISOString(),
@@ -89,7 +93,8 @@ export class MatchGuestRequestRepository {
   async create(data: {
     matchId: string;
     requestedBy: string;
-    requestedPosition: string | null;
+    requestedPositions: string[];
+    slotsTotal: number;
     radiusKm: number;
     expiresAt: Date;
   }): Promise<RequestWithMatch> {
@@ -227,6 +232,12 @@ export class MatchGuestRequestRepository {
    * de solicitudes del mismo partido: el segundo, ya con el lock tomado,
    * relee el estado fresco de la request/application y aborta si el primero
    * ya las cambió, en vez de confiar en lo que leyó antes de esperar el lock.
+   *
+   * Fase 11.1 (multi-cupo): incrementa `slotsFilled`; solo cuando alcanza
+   * `slotsTotal` la búsqueda pasa a `filled` y se rechazan las pendientes
+   * restantes — mientras queden cupos, las demás postulaciones no se tocan.
+   * Devuelve los userId rechazados para avisarles por push ([] si la
+   * búsqueda sigue abierta).
    */
   async acceptApplication(params: {
     applicationId: string;
@@ -242,7 +253,7 @@ export class MatchGuestRequestRepository {
       const [freshRequest, freshApplication] = await Promise.all([
         tx.matchGuestRequest.findUniqueOrThrow({
           where: { id: requestId },
-          select: { status: true },
+          select: { status: true, slotsTotal: true, slotsFilled: true },
         }),
         tx.matchGuestApplication.findUniqueOrThrow({
           where: { id: applicationId },
@@ -255,6 +266,11 @@ export class MatchGuestRequestRepository {
       if (freshApplication.status !== 'pending') {
         throw new ConflictException('This application is no longer pending');
       }
+      if (freshRequest.slotsFilled >= freshRequest.slotsTotal) {
+        // No debería pasar (al llenarse pasa a filled), pero el lock permite
+        // afirmarlo con datos frescos en vez de confiar en el estado.
+        throw new ConflictException('This guest request has no slots left');
+      }
 
       await assertRosterHasCapacity(tx, matchId, maxPlayers);
       await tx.matchParticipant.create({ data: { matchId, userId, isGuest: true } });
@@ -262,8 +278,15 @@ export class MatchGuestRequestRepository {
         where: { id: applicationId },
         data: { status: 'accepted' },
       });
-      await tx.matchGuestRequest.update({ where: { id: requestId }, data: { status: 'filled' } });
 
+      const newFilled = freshRequest.slotsFilled + 1;
+      const nowFull = newFilled >= freshRequest.slotsTotal;
+      await tx.matchGuestRequest.update({
+        where: { id: requestId },
+        data: { slotsFilled: newFilled, ...(nowFull ? { status: 'filled' } : {}) },
+      });
+
+      if (!nowFull) return [];
       return this.rejectOtherPendingApplications(requestId, applicationId, tx);
     });
   }
@@ -273,20 +296,21 @@ export class MatchGuestRequestRepository {
   /**
    * userId de perfiles activos con `notifyNearbyGuestRequests`, dentro del
    * radio del partido, que no sean ya miembros del originGroup, y — si se
-   * pidió una posición — que jueguen ahí o no tengan preferencia. Todo el
-   * filtro se resuelve en SQL (no se trae todo a memoria).
+   * pidieron posiciones — que jueguen en alguna de ellas o no tengan
+   * preferencia. Todo el filtro se resuelve en SQL (no se trae todo a memoria).
    */
   async findNotifyCandidates(params: {
     matchLat: number;
     matchLng: number;
     radiusKm: number;
     originGroupId: string;
-    requestedPosition: string | null;
+    requestedPositions: string[];
   }): Promise<string[]> {
-    const { matchLat, matchLng, radiusKm, originGroupId, requestedPosition } = params;
-    const positionFilter = requestedPosition
-      ? Prisma.sql`AND (p."favoritePosition" IS NULL OR p."favoritePosition" = ${requestedPosition})`
-      : Prisma.empty;
+    const { matchLat, matchLng, radiusKm, originGroupId, requestedPositions } = params;
+    const positionFilter =
+      requestedPositions.length > 0
+        ? Prisma.sql`AND (p."favoritePosition" IS NULL OR p."favoritePosition" IN (${Prisma.join(requestedPositions)}))`
+        : Prisma.empty;
 
     const rows = await this.prisma.$queryRaw<{ userId: string }[]>(Prisma.sql`
       SELECT p."userId" AS "userId"
@@ -318,7 +342,9 @@ export class MatchGuestRequestRepository {
       SELECT
         mgr.id AS "id",
         mgr."matchId" AS "matchId",
-        mgr."requestedPosition" AS "requestedPosition",
+        mgr."requestedPositions" AS "requestedPositions",
+        mgr."slotsTotal" AS "slotsTotal",
+        mgr."slotsFilled" AS "slotsFilled",
         mgr."radiusKm" AS "radiusKm",
         mgr.status AS "status",
         mgr."expiresAt" AS "expiresAt",
@@ -354,7 +380,9 @@ export class MatchGuestRequestRepository {
     return rows.map((row) => ({
       id: row.id,
       matchId: row.matchId,
-      requestedPosition: row.requestedPosition as PlayerPositionId | null,
+      requestedPositions: row.requestedPositions as PlayerPositionId[],
+      slotsTotal: row.slotsTotal,
+      slotsFilled: row.slotsFilled,
       radiusKm: row.radiusKm,
       status: row.status as MatchGuestRequestStatus,
       expiresAt: row.expiresAt.toISOString(),

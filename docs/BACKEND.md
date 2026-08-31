@@ -268,6 +268,8 @@ Comodín (Fase 11): el líder/vice de un partido `internal` `scheduled` al que l
 
 Modelos Prisma `MatchGuestRequest`/`MatchGuestApplication` (`match_guest_requests`/`match_guest_applications`). `Profile.notifyNearbyGuestRequests` (opt-in, default `false`) controla si el jugador recibe push cuando se publica una vacante cerca — no afecta qué ve en `nearby`, que siempre se calcula por zona.
 
+**Comodín múltiple (Fase 11.1, 2026-08-31):** una búsqueda pide hasta **5 cupos** (`slotsTotal`, tope duro en `MAX_GUEST_REQUEST_SLOTS`, nunca más que los lugares realmente libres del roster — 400 claro si se pide de más) y acepta **varias posiciones** a la vez (`requestedPositions: String[]`, array vacío = cualquiera — reemplaza al viejo `requestedPosition` único, migración `match_guest_requests_multi_slot` con backfill `ARRAY[requestedPosition]`). Aceptar una postulación incrementa `slotsFilled` dentro de la misma transacción con lock de la Fase 8.2 (releyendo `slotsFilled`/`slotsTotal` frescos con el lock tomado); **solo al llenarse el último cupo** la búsqueda pasa a `filled` y se rechazan (con push) las pendientes restantes — mientras queden cupos sigue `open` y las demás postulaciones quedan intactas. El push de apertura filtra por `favoritePosition IN (requestedPositions)` (o sin preferencia, o array vacío = todos).
+
 ### Geo → api-gateway (sin microservicio)
 
 | Método | Ruta | Notas |
@@ -427,6 +429,12 @@ Pendientes (no implementados aún):
 ---
 
 ## Registro de cambios
+
+### 2026-08-31 — Comodín múltiple (Fase 11.1)
+
+- `MatchGuestRequest` gana `requestedPositions String[]` (vacío = cualquier posición), `slotsTotal` (1–5) y `slotsFilled`; se elimina `requestedPosition` (migración `match_guest_requests_multi_slot`, backfill: posición única → array de una, `slotsFilled = 1` si estaba `filled`).
+- `open` valida `slotsTotal` ≤ lugares libres del roster (400 si no); `accept` incrementa `slotsFilled` bajo el lock de la 8.2 y solo marca `filled` (rechazando pendientes con push) al llenar el último cupo.
+- `OpenGuestRequestDto`/`MatchGuestRequestDto` actualizados; sin rutas nuevas en el gateway.
 
 ### 2026-08-31 — Fotos de perfil reales en miembros de grupo y roster de partidos
 

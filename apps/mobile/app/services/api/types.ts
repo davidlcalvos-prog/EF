@@ -339,11 +339,17 @@ export type MatchGuestApplicationStatusApi = "pending" | "accepted" | "rejected"
 export const MIN_GUEST_REQUEST_RADIUS_KM = 1
 export const MAX_GUEST_REQUEST_RADIUS_KM = 25
 export const DEFAULT_GUEST_REQUEST_RADIUS_KM = 15
+/** Fase 11.1: tope duro de cupos por búsqueda de comodín. */
+export const MAX_GUEST_REQUEST_SLOTS = 5
 
 export interface MatchGuestRequestApiDto {
   id: string
   matchId: string
-  requestedPosition: PlayerPositionId | null
+  /** Posiciones aceptadas — array vacío = cualquier posición (Fase 11.1). */
+  requestedPositions: PlayerPositionId[]
+  /** Cupos pedidos (1 a 5) y cuántos ya se llenaron (Fase 11.1). */
+  slotsTotal: number
+  slotsFilled: number
   radiusKm: number
   status: MatchGuestRequestStatusApi
   expiresAt: string
