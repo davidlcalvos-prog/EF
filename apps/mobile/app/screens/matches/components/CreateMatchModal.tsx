@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react"
 import { ActivityIndicator, Keyboard, Modal, Pressable, ScrollView, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
-import { addDays } from "date-fns/addDays"
-import { nextSaturday } from "date-fns/nextSaturday"
-import { setHours } from "date-fns/setHours"
-import { setMinutes } from "date-fns/setMinutes"
-import { startOfDay } from "date-fns/startOfDay"
 import { Text, XStack, YStack } from "tamagui"
 
+import {
+  buildDateOptions,
+  combineDateTime,
+  DateTimeRangePicker,
+} from "@/components/DateTimeRangePicker"
 import { TextField } from "@/components/TextField"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
@@ -19,6 +19,7 @@ import {
   type PublicVenueApiDto,
 } from "@/services/api"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
+import { courtSizeLabel, courtSizeToFormat, mostCommonCourtSize } from "@/utils/courtSize"
 
 export interface CreateMatchModalProps {
   visible: boolean
@@ -42,8 +43,6 @@ type VenueOption = "none" | "app" | "text"
 const FORMAT_CHIPS = ["5v5", "6v6", "7v7", "8v8", "9v9", "11v11"]
 const FORMAT_REGEX = /^\d{1,2}v\d{1,2}$/
 
-type DateOption = "none" | "today" | "tomorrow" | "saturday"
-
 function suggestedMaxPlayers(format: string): number | null {
   const match = FORMAT_REGEX.exec(format.trim())
   if (!match) return null
@@ -51,13 +50,6 @@ function suggestedMaxPlayers(format: string): number | null {
   if (Number.isNaN(a) || Number.isNaN(b)) return null
   const total = a + b
   return total >= 2 && total <= 30 ? total : null
-}
-
-function getBaseDate(option: DateOption): Date {
-  const now = new Date()
-  if (option === "tomorrow") return startOfDay(addDays(now, 1))
-  if (option === "saturday") return startOfDay(nextSaturday(now))
-  return startOfDay(now)
 }
 
 function Chip({
@@ -106,8 +98,10 @@ export function CreateMatchModal({
   const [type, setType] = useState<MatchTypeApi>("internal")
   const [opponentGroupId, setOpponentGroupId] = useState("")
   const [format, setFormat] = useState("")
+  const [formatAutoFilled, setFormatAutoFilled] = useState(false)
   const [maxPlayers, setMaxPlayers] = useState("")
-  const [dateOption, setDateOption] = useState<DateOption>("none")
+  const dateOptions = useMemo(() => buildDateOptions(), [])
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [hour, setHour] = useState("19")
   const [minute, setMinute] = useState("00")
   const [creating, setCreating] = useState(false)
@@ -188,6 +182,24 @@ export function CreateMatchModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [originGroupId])
 
+  const selectedVenue = venues.find((v) => v.id === venueId)
+  const venueSizes = selectedVenue?.courtSizes ?? []
+  const suggestedSize = venueOption === "app" ? mostCommonCourtSize(venueSizes) : null
+
+  // Al elegir una cancha de la app, sugiere el formato más común de ese
+  // complejo (editable) — no se sugiere nada si no se eligió cancha de la app.
+  useEffect(() => {
+    if (!suggestedSize) return
+    const suggested = courtSizeToFormat(suggestedSize)
+    if (format === "" || formatAutoFilled) {
+      setFormat(suggested)
+      setFormatAutoFilled(true)
+      const suggestedPlayers = suggestedMaxPlayers(suggested)
+      if (suggestedPlayers) setMaxPlayers(String(suggestedPlayers))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestedSize])
+
   const isFormatValid = FORMAT_REGEX.test(format.trim())
   const maxPlayersNum = Number(maxPlayers)
   const isMaxPlayersValid =
@@ -207,19 +219,20 @@ export function CreateMatchModal({
     isVsSelectionValid
 
   const scheduledAtIso = useMemo(() => {
-    if (dateOption === "none") return undefined
-    const hourNum = Number(hour)
-    const minuteNum = Number(minute)
-    if (!Number.isInteger(hourNum) || hourNum < 0 || hourNum > 23) return undefined
-    if (!Number.isInteger(minuteNum) || minuteNum < 0 || minuteNum > 59) return undefined
-    const base = getBaseDate(dateOption)
-    return setMinutes(setHours(base, hourNum), minuteNum).toISOString()
-  }, [dateOption, hour, minute])
+    if (!selectedDate) return undefined
+    return combineDateTime(selectedDate, hour, minute) ?? undefined
+  }, [selectedDate, hour, minute])
 
   const handleFormatChip = (chip: string) => {
     setFormat(chip)
+    setFormatAutoFilled(false)
     const suggested = suggestedMaxPlayers(chip)
     if (suggested) setMaxPlayers(String(suggested))
+  }
+
+  const handleFormatChange = (text: string) => {
+    setFormat(text)
+    setFormatAutoFilled(false)
   }
 
   const reset = () => {
@@ -227,8 +240,9 @@ export function CreateMatchModal({
     setType("internal")
     setOpponentGroupId("")
     setFormat("")
+    setFormatAutoFilled(false)
     setMaxPlayers("")
-    setDateOption("none")
+    setSelectedDate(null)
     setHour("19")
     setMinute("00")
     setVenueOption("none")
@@ -424,6 +438,103 @@ export function CreateMatchModal({
 
             <YStack gap={8} marginBottom={16}>
               <Text color="rgba(255,255,255,0.6)" fontSize={12} fontWeight="700">
+                {translate("matchesScreen:venueLabel")}
+              </Text>
+              <XStack flexWrap="wrap" gap={8}>
+                <Chip
+                  label={translate("matchesScreen:venueNone")}
+                  selected={venueOption === "none"}
+                  onPress={() => setVenueOption("none")}
+                />
+                <Chip
+                  label={translate("matchesScreen:venueFromApp")}
+                  selected={venueOption === "app"}
+                  onPress={() => setVenueOption("app")}
+                />
+                <Chip
+                  label={translate("matchesScreen:venueFreeText")}
+                  selected={venueOption === "text"}
+                  onPress={() => setVenueOption("text")}
+                />
+              </XStack>
+
+              {venueOption === "app" ? (
+                loadingVenues ? (
+                  <XStack paddingVertical={10} justifyContent="center">
+                    <ActivityIndicator color={eliteForgeColors.emerald} />
+                  </XStack>
+                ) : venues.length === 0 ? (
+                  <Text color="rgba(255,255,255,0.45)" fontSize={12}>
+                    {translate("matchesScreen:venueEmpty")}
+                  </Text>
+                ) : (
+                  <XStack flexWrap="wrap" gap={8} marginTop={4}>
+                    {venues.map((venue) => (
+                      <Chip
+                        key={venue.id}
+                        label={venue.city ? `${venue.name} · ${venue.city}` : venue.name}
+                        selected={venueId === venue.id}
+                        onPress={() => setVenueId(venue.id)}
+                      />
+                    ))}
+                  </XStack>
+                )
+              ) : null}
+
+              {venueOption === "app" && selectedVenue ? (
+                <YStack
+                  gap={6}
+                  marginTop={8}
+                  padding={10}
+                  borderRadius={10}
+                  backgroundColor={eliteForgeColors.carbonInput}
+                  borderWidth={1}
+                  borderColor={eliteForgeColors.carbonBorder}
+                >
+                  <Text color="rgba(255,255,255,0.6)" fontSize={11} fontWeight="700">
+                    {translate("matchesScreen:venueSizesTitle")}
+                  </Text>
+                  {venueSizes.length === 0 ? (
+                    <Text color="rgba(255,255,255,0.45)" fontSize={12}>
+                      {translate("matchesScreen:venueSizesEmpty")}
+                    </Text>
+                  ) : (
+                    venueSizes.map((entry) => (
+                      <XStack key={entry.size} justifyContent="space-between">
+                        <Text color="#FFFFFF" fontSize={13}>
+                          {courtSizeLabel(entry.size)}
+                        </Text>
+                        <Text color="rgba(255,255,255,0.6)" fontSize={13}>
+                          {translate("matchesScreen:venueSizesCount", { count: entry.count })}
+                        </Text>
+                      </XStack>
+                    ))
+                  )}
+                </YStack>
+              ) : null}
+
+              {venueOption === "text" ? (
+                <TextField
+                  value={venueText}
+                  onChangeText={setVenueText}
+                  placeholder={translate("matchesScreen:venueTextPlaceholder")}
+                  placeholderTextColor="rgba(255,255,255,0.35)"
+                  maxLength={120}
+                  inputWrapperStyle={{
+                    borderWidth: 1,
+                    borderColor: eliteForgeColors.carbonBorder,
+                    borderRadius: 12,
+                    backgroundColor: eliteForgeColors.carbonInput,
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                  }}
+                  style={{ color: "#FFFFFF", fontSize: 15 }}
+                />
+              ) : null}
+            </YStack>
+
+            <YStack gap={8} marginBottom={16}>
+              <Text color="rgba(255,255,255,0.6)" fontSize={12} fontWeight="700">
                 {translate("matchesScreen:formatLabel")}
               </Text>
               <XStack flexWrap="wrap" gap={8}>
@@ -438,7 +549,7 @@ export function CreateMatchModal({
               </XStack>
               <TextField
                 value={format}
-                onChangeText={setFormat}
+                onChangeText={handleFormatChange}
                 placeholder={translate("matchesScreen:formatPlaceholder")}
                 placeholderTextColor="rgba(255,255,255,0.35)"
                 autoCapitalize="none"
@@ -490,142 +601,20 @@ export function CreateMatchModal({
               ) : null}
             </YStack>
 
-            <YStack gap={8} marginBottom={8}>
-              <Text color="rgba(255,255,255,0.6)" fontSize={12} fontWeight="700">
-                {translate("matchesScreen:dateLabel")}
-              </Text>
-              <XStack flexWrap="wrap" gap={8}>
-                <Chip
-                  label={translate("matchesScreen:dateToday")}
-                  selected={dateOption === "today"}
-                  onPress={() => setDateOption("today")}
-                />
-                <Chip
-                  label={translate("matchesScreen:dateTomorrow")}
-                  selected={dateOption === "tomorrow"}
-                  onPress={() => setDateOption("tomorrow")}
-                />
-                <Chip
-                  label={translate("matchesScreen:dateSaturday")}
-                  selected={dateOption === "saturday"}
-                  onPress={() => setDateOption("saturday")}
-                />
-                <Chip
-                  label={translate("matchesScreen:dateNone")}
-                  selected={dateOption === "none"}
-                  onPress={() => setDateOption("none")}
-                />
-              </XStack>
-
-              {dateOption !== "none" ? (
-                <XStack alignItems="center" gap={8} marginTop={4}>
-                  <TextField
-                    value={hour}
-                    onChangeText={setHour}
-                    placeholder="HH"
-                    placeholderTextColor="rgba(255,255,255,0.35)"
-                    keyboardType="number-pad"
-                    maxLength={2}
-                    containerStyle={{ width: 64 }}
-                    inputWrapperStyle={{
-                      borderWidth: 1,
-                      borderColor: eliteForgeColors.carbonBorder,
-                      borderRadius: 12,
-                      backgroundColor: eliteForgeColors.carbonInput,
-                      paddingHorizontal: 10,
-                      paddingVertical: 10,
-                    }}
-                    style={{ color: "#FFFFFF", fontSize: 15, textAlign: "center" }}
-                  />
-                  <Text color="#FFFFFF" fontSize={18} fontWeight="700">
-                    :
-                  </Text>
-                  <TextField
-                    value={minute}
-                    onChangeText={setMinute}
-                    placeholder="MM"
-                    placeholderTextColor="rgba(255,255,255,0.35)"
-                    keyboardType="number-pad"
-                    maxLength={2}
-                    containerStyle={{ width: 64 }}
-                    inputWrapperStyle={{
-                      borderWidth: 1,
-                      borderColor: eliteForgeColors.carbonBorder,
-                      borderRadius: 12,
-                      backgroundColor: eliteForgeColors.carbonInput,
-                      paddingHorizontal: 10,
-                      paddingVertical: 10,
-                    }}
-                    style={{ color: "#FFFFFF", fontSize: 15, textAlign: "center" }}
-                  />
-                </XStack>
-              ) : null}
-            </YStack>
-
-            <YStack gap={8} marginBottom={8}>
-              <Text color="rgba(255,255,255,0.6)" fontSize={12} fontWeight="700">
-                {translate("matchesScreen:venueLabel")}
-              </Text>
-              <XStack flexWrap="wrap" gap={8}>
-                <Chip
-                  label={translate("matchesScreen:venueNone")}
-                  selected={venueOption === "none"}
-                  onPress={() => setVenueOption("none")}
-                />
-                <Chip
-                  label={translate("matchesScreen:venueFromApp")}
-                  selected={venueOption === "app"}
-                  onPress={() => setVenueOption("app")}
-                />
-                <Chip
-                  label={translate("matchesScreen:venueFreeText")}
-                  selected={venueOption === "text"}
-                  onPress={() => setVenueOption("text")}
-                />
-              </XStack>
-
-              {venueOption === "app" ? (
-                loadingVenues ? (
-                  <XStack paddingVertical={10} justifyContent="center">
-                    <ActivityIndicator color={eliteForgeColors.emerald} />
-                  </XStack>
-                ) : venues.length === 0 ? (
-                  <Text color="rgba(255,255,255,0.45)" fontSize={12}>
-                    {translate("matchesScreen:venueEmpty")}
-                  </Text>
-                ) : (
-                  <XStack flexWrap="wrap" gap={8} marginTop={4}>
-                    {venues.map((venue) => (
-                      <Chip
-                        key={venue.id}
-                        label={venue.city ? `${venue.name} · ${venue.city}` : venue.name}
-                        selected={venueId === venue.id}
-                        onPress={() => setVenueId(venue.id)}
-                      />
-                    ))}
-                  </XStack>
-                )
-              ) : null}
-
-              {venueOption === "text" ? (
-                <TextField
-                  value={venueText}
-                  onChangeText={setVenueText}
-                  placeholder={translate("matchesScreen:venueTextPlaceholder")}
-                  placeholderTextColor="rgba(255,255,255,0.35)"
-                  maxLength={120}
-                  inputWrapperStyle={{
-                    borderWidth: 1,
-                    borderColor: eliteForgeColors.carbonBorder,
-                    borderRadius: 12,
-                    backgroundColor: eliteForgeColors.carbonInput,
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                  }}
-                  style={{ color: "#FFFFFF", fontSize: 15 }}
-                />
-              ) : null}
-            </YStack>
+            <DateTimeRangePicker
+              mode="single"
+              allowUnset
+              unsetLabel={translate("matchesScreen:dateNone")}
+              dateOptions={dateOptions}
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              dateLabel={translate("matchesScreen:dateLabel")}
+              startTimeLabel={translate("matchesScreen:startTimeLabel")}
+              startHour={hour}
+              startMinute={minute}
+              onStartHourChange={setHour}
+              onStartMinuteChange={setMinute}
+            />
 
             {error ? (
               <Text color="#E74C3C" fontSize={12} marginTop={4}>

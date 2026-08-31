@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { ActivityIndicator, Keyboard, Modal, Pressable, ScrollView, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
-import { addDays } from "date-fns/addDays"
-import { setHours } from "date-fns/setHours"
-import { setMinutes } from "date-fns/setMinutes"
-import { startOfDay } from "date-fns/startOfDay"
 import { Text, XStack, YStack } from "tamagui"
 
+import {
+  buildDateOptions,
+  combineDateTime,
+  DateTimeRangePicker,
+} from "@/components/DateTimeRangePicker"
 import { TextField } from "@/components/TextField"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
@@ -18,7 +19,7 @@ import {
 } from "@/services/api"
 import type { GeneralApiProblem } from "@/services/api/apiProblem"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
-import { formatDate } from "@/utils/formatDate"
+import { courtSizeLabel } from "@/utils/courtSize"
 
 export interface CreateReservationModalProps {
   visible: boolean
@@ -36,13 +37,6 @@ export interface CreateReservationModalProps {
 }
 
 const AVAILABILITY_DEBOUNCE_MS = 350
-
-const DAYS_AHEAD = 14
-
-function buildDateOptions(): Date[] {
-  const today = startOfDay(new Date())
-  return Array.from({ length: DAYS_AHEAD }, (_, i) => addDays(today, i))
-}
 
 function describeProblem(problem: GeneralApiProblem): string {
   switch (problem.kind) {
@@ -63,91 +57,8 @@ function formatPrice(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`
 }
 
-function courtSizeLabel(size: string): string {
-  return translate(`reservationsScreen:courtSize_${size}` as never)
-}
-
 function amenityLabel(amenity: string): string {
   return translate(`reservationsScreen:amenity_${amenity}` as never)
-}
-
-function isValidTime(hour: string, minute: string): boolean {
-  const hourNum = Number(hour)
-  const minuteNum = Number(minute)
-  return (
-    Number.isInteger(hourNum) &&
-    hourNum >= 0 &&
-    hourNum <= 23 &&
-    Number.isInteger(minuteNum) &&
-    minuteNum >= 0 &&
-    minuteNum <= 59
-  )
-}
-
-function DayCard({
-  date,
-  selected,
-  onPress,
-}: {
-  date: Date
-  selected: boolean
-  onPress: () => void
-}) {
-  const weekday = formatDate(date.toISOString(), "EEE")
-  const dayNumber = formatDate(date.toISOString(), "d")
-  return (
-    <Pressable onPress={onPress} accessibilityRole="button">
-      <YStack
-        width={52}
-        paddingVertical={10}
-        borderRadius={12}
-        backgroundColor={selected ? "rgba(0,206,200,0.15)" : eliteForgeColors.carbonInput}
-        borderWidth={1}
-        borderColor={selected ? eliteForgeColors.emerald : eliteForgeColors.carbonBorder}
-        alignItems="center"
-        gap={4}
-      >
-        <Text
-          color={selected ? eliteForgeColors.emerald : "rgba(255,255,255,0.6)"}
-          fontSize={11}
-          fontWeight="700"
-          textTransform="capitalize"
-        >
-          {weekday}
-        </Text>
-        <Text
-          color={selected ? eliteForgeColors.emerald : "#FFFFFF"}
-          fontSize={16}
-          fontWeight="800"
-        >
-          {dayNumber}
-        </Text>
-      </YStack>
-    </Pressable>
-  )
-}
-
-function TimeField({ value, onChange }: { value: string; onChange: (text: string) => void }) {
-  return (
-    <TextField
-      value={value}
-      onChangeText={onChange}
-      placeholder="HH"
-      placeholderTextColor="rgba(255,255,255,0.35)"
-      keyboardType="number-pad"
-      maxLength={2}
-      containerStyle={{ width: 64 }}
-      inputWrapperStyle={{
-        borderWidth: 1,
-        borderColor: eliteForgeColors.carbonBorder,
-        borderRadius: 12,
-        backgroundColor: eliteForgeColors.carbonInput,
-        paddingHorizontal: 10,
-        paddingVertical: 10,
-      }}
-      style={{ color: "#FFFFFF", fontSize: 15, textAlign: "center" }}
-    />
-  )
 }
 
 export function CreateReservationModal({
@@ -175,15 +86,12 @@ export function CreateReservationModal({
   const [availabilityError, setAvailabilityError] = useState(false)
   const availabilitySeqRef = useRef(0)
 
-  const startTimeValid = isValidTime(startHour, startMinute)
-  const endTimeValid = isValidTime(endHour, endMinute)
-
   const { startsAtIso, endsAtIso } = useMemo(() => {
-    if (!startTimeValid || !endTimeValid) return { startsAtIso: null, endsAtIso: null }
-    const starts = setMinutes(setHours(selectedDate, Number(startHour)), Number(startMinute))
-    const ends = setMinutes(setHours(selectedDate, Number(endHour)), Number(endMinute))
-    return { startsAtIso: starts.toISOString(), endsAtIso: ends.toISOString() }
-  }, [selectedDate, startHour, startMinute, endHour, endMinute, startTimeValid, endTimeValid])
+    return {
+      startsAtIso: combineDateTime(selectedDate, startHour, startMinute),
+      endsAtIso: combineDateTime(selectedDate, endHour, endMinute),
+    }
+  }, [selectedDate, startHour, startMinute, endHour, endMinute])
 
   const selectedVenue = venues.find((v) => v.id === venueId)
   const venueSizes = selectedVenue?.courtSizes ?? []
@@ -493,56 +401,25 @@ export function CreateReservationModal({
               </YStack>
             ) : null}
 
-            <YStack gap={8} marginBottom={16}>
-              <Text color="rgba(255,255,255,0.6)" fontSize={12} fontWeight="700">
-                {translate("reservationsScreen:dateLabel")}
-              </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 8 }}
-              >
-                {dateOptions.map((date) => (
-                  <DayCard
-                    key={date.toISOString()}
-                    date={date}
-                    selected={date.getTime() === selectedDate.getTime()}
-                    onPress={() => setSelectedDate(date)}
-                  />
-                ))}
-              </ScrollView>
-            </YStack>
-
-            <YStack gap={8} marginBottom={16}>
-              <Text color="rgba(255,255,255,0.6)" fontSize={12} fontWeight="700">
-                {translate("reservationsScreen:startTimeLabel")}
-              </Text>
-              <XStack alignItems="center" gap={8}>
-                <TimeField value={startHour} onChange={setStartHour} />
-                <Text color="#FFFFFF" fontSize={18} fontWeight="700">
-                  :
-                </Text>
-                <TimeField value={startMinute} onChange={setStartMinute} />
-              </XStack>
-            </YStack>
-
-            <YStack gap={8} marginBottom={16}>
-              <Text color="rgba(255,255,255,0.6)" fontSize={12} fontWeight="700">
-                {translate("reservationsScreen:endTimeLabel")}
-              </Text>
-              <XStack alignItems="center" gap={8}>
-                <TimeField value={endHour} onChange={setEndHour} />
-                <Text color="#FFFFFF" fontSize={18} fontWeight="700">
-                  :
-                </Text>
-                <TimeField value={endMinute} onChange={setEndMinute} />
-              </XStack>
-              {startTimeValid && endTimeValid && !isRangeValid ? (
-                <Text color="#E74C3C" fontSize={12}>
-                  {translate("reservationsScreen:createInvalidRange")}
-                </Text>
-              ) : null}
-            </YStack>
+            <DateTimeRangePicker
+              mode="range"
+              dateOptions={dateOptions}
+              selectedDate={selectedDate}
+              onSelectDate={(date) => date && setSelectedDate(date)}
+              dateLabel={translate("reservationsScreen:dateLabel")}
+              startTimeLabel={translate("reservationsScreen:startTimeLabel")}
+              startHour={startHour}
+              startMinute={startMinute}
+              onStartHourChange={setStartHour}
+              onStartMinuteChange={setStartMinute}
+              endTimeLabel={translate("reservationsScreen:endTimeLabel")}
+              endHour={endHour}
+              endMinute={endMinute}
+              onEndHourChange={setEndHour}
+              onEndMinuteChange={setEndMinute}
+              invalidRangeError={translate("reservationsScreen:createInvalidRange")}
+              isRangeValid={isRangeValid}
+            />
 
             {venueId && size && isRangeValid ? (
               <YStack gap={8} marginBottom={16}>
