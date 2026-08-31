@@ -13,7 +13,7 @@ import {
   searchMunicipalities,
 } from '@/app/admin/(portal)/mi-cancha/actions'
 import type { MunicipalityDto } from '@/lib/dal/admin/venues'
-import type { CourtRow } from '@/lib/dal/admin/types'
+import type { CourtRow, VenueAmenity } from '@/lib/dal/admin/types'
 import { VenueCourtsSection } from '@/components/admin/venue-courts-section'
 
 // Leaflet toca window al importarse — solo en cliente.
@@ -28,6 +28,7 @@ export type VenueFormBase = {
   price_per_hour_cents: number
   surface_type: 'natural_grass' | 'synthetic_grass' | 'dirt_gravel' | 'futsal_concrete' | null
   courts: CourtRow[]
+  amenities: VenueAmenity[]
   /** Ubicación (Fase L.0). */
   municipality_code: string | null
   city: string | null
@@ -43,6 +44,25 @@ const SURFACE_TYPE_OPTIONS = [
   { value: 'dirt_gravel', label: 'Tierra o gravilla' },
   { value: 'futsal_concrete', label: 'Cancha de sala / cemento' },
 ] as const
+
+/** Servicios del complejo — misma lista (y textos) que el venue-extras.ts pre-W.1. */
+const AMENITY_OPTIONS: { value: VenueAmenity; label: string; description: string }[] = [
+  {
+    value: 'cafeteria',
+    label: 'Cafetería',
+    description: 'Snack bar o cafetería dentro del complejo',
+  },
+  {
+    value: 'transfers',
+    label: 'Transferencias',
+    description: 'Acepta pagos por transferencia bancaria',
+  },
+  {
+    value: 'bathroom',
+    label: 'Baños',
+    description: 'Baños disponibles para jugadores y acompañantes',
+  },
+]
 
 export function VenueSettingsForm({ venue }: { venue: VenueFormBase | null }) {
   const [name, setName] = useState(venue?.name ?? '')
@@ -71,6 +91,7 @@ export function VenueSettingsForm({ venue }: { venue: VenueFormBase | null }) {
       : null,
   )
   const [pinDirty, setPinDirty] = useState(false)
+  const [amenities, setAmenities] = useState<VenueAmenity[]>(venue?.amenities ?? [])
   const searchSeqRef = useRef(0)
 
   // Recarga el formulario cuando cambia la cancha mostrada (p. ej. tras
@@ -99,6 +120,7 @@ export function VenueSettingsForm({ venue }: { venue: VenueFormBase | null }) {
         : null,
     )
     setPinDirty(false)
+    setAmenities(venue?.amenities ?? [])
     setMunicipalityQuery('')
     setMunicipalityResults([])
   }
@@ -293,6 +315,45 @@ export function VenueSettingsForm({ venue }: { venue: VenueFormBase | null }) {
               heredan si no especifican una. Solo las canchas de césped
               sintético entran al sorteo de partidos de Copa Elite Forge.
             </p>
+          </div>
+        </section>
+
+        <section className="space-y-4 rounded-2xl ef-card p-5">
+          <div>
+            <h2 className="font-heading text-lg font-bold uppercase italic tracking-tight text-foreground">
+              Servicios
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Lo que ofrece tu complejo — los jugadores lo ven antes de reservar.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {AMENITY_OPTIONS.map((opt) => (
+              <label
+                key={opt.value}
+                className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-input/30 px-4 py-3 transition-colors hover:border-primary/50"
+              >
+                <input
+                  type="checkbox"
+                  name="amenities"
+                  value={opt.value}
+                  checked={amenities.includes(opt.value)}
+                  onChange={(e) =>
+                    setAmenities((prev) =>
+                      e.target.checked
+                        ? [...prev, opt.value]
+                        : prev.filter((a) => a !== opt.value),
+                    )
+                  }
+                  className="mt-1 accent-[var(--color-emerald)]"
+                />
+                <span className="flex flex-col gap-0.5">
+                  <span className="text-sm font-semibold text-foreground">{opt.label}</span>
+                  <span className="text-xs text-muted-foreground">{opt.description}</span>
+                </span>
+              </label>
+            ))}
           </div>
         </section>
 

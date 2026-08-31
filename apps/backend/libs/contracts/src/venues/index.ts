@@ -1,7 +1,9 @@
 import {
+  IsArray,
   IsBoolean,
   IsDateString,
   IsEnum,
+  IsIn,
   IsInt,
   IsLatitude,
   IsLongitude,
@@ -33,6 +35,14 @@ export const COURT_SIZE_VALUES: CourtSizeDto[] = ['five', 'six', 'seven', 'eight
 /** Quién originó una reserva (Fase W.1). */
 export type ReservationSourceDto = 'app' | 'phone' | 'tournament' | 'block';
 
+/**
+ * Servicios del complejo — la misma lista que administraba venue-extras.ts
+ * en localStorage antes de la Fase W.1 (cafetería, pagos por transferencia,
+ * baños); se perdió en esa migración y se recupera ahora contra Postgres.
+ */
+export type VenueAmenityDto = 'cafeteria' | 'transfers' | 'bathroom';
+export const VENUE_AMENITY_VALUES: VenueAmenityDto[] = ['cafeteria', 'transfers', 'bathroom'];
+
 export interface VenueDto {
   id: string;
   ownerId: string;
@@ -45,6 +55,8 @@ export interface VenueDto {
   surfaceType: VenueSurfaceTypeDto | null;
   /** Fase W.1: canchas reales del complejo. [] si el owner todavía no cargó ninguna. */
   courts: CourtDto[];
+  /** Servicios del complejo. [] hasta que el owner los marque desde "Mi cancha". */
+  amenities: VenueAmenityDto[];
   /** Ubicación (Fase L.0). Una cancha es pública: lat/lng sí se exponen. */
   municipalityCode: string | null;
   city: string | null;
@@ -77,6 +89,12 @@ export class UpsertVenueDto {
   @IsOptional()
   @IsEnum(['natural_grass', 'synthetic_grass', 'dirt_gravel', 'futsal_concrete'])
   surfaceType?: VenueSurfaceTypeDto;
+
+  /** Servicios del complejo; enviar la lista completa (reemplaza, no agrega). */
+  @IsOptional()
+  @IsArray()
+  @IsIn(VENUE_AMENITY_VALUES, { each: true })
+  amenities?: VenueAmenityDto[];
 
   /** Código DANE (Fase L.0); null limpia la ubicación. */
   @IsOptional()
@@ -265,6 +283,8 @@ export interface PublicVenueDto {
   pricePerHourCents: number;
   availability: Record<string, unknown>;
   courtSizes: Array<{ size: CourtSizeDto; count: number; pricePerHourCents: number }>;
+  /** Servicios del complejo — el jugador los ve antes de reservar. */
+  amenities: VenueAmenityDto[];
   /** Ubicación (Fase L.0) — pública para canchas. */
   municipalityCode: string | null;
   city: string | null;
