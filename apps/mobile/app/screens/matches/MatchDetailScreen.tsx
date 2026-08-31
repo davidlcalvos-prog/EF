@@ -443,7 +443,11 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
   }, [match, navigation])
 
   const handleSubmitGuestRequest = useCallback(
-    async (payload: { requestedPosition?: PlayerPositionId; radiusKm?: number }) => {
+    async (payload: {
+      requestedPositions?: PlayerPositionId[]
+      slotsTotal?: number
+      radiusKm?: number
+    }) => {
       const result = await guestRequest.open(payload)
       return result.kind === "ok"
     },
@@ -735,12 +739,22 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
                 </XStack>
                 <Text color="rgba(255,255,255,0.7)" fontSize={13}>
                   {translate("matchesScreen:guestOpenBannerBody", {
-                    position: guestRequest.request.requestedPosition
-                      ? translate(
-                          `profileScreen:position_${guestRequest.request.requestedPosition}` as never,
-                        )
-                      : translate("matchesScreen:guestAnyPosition"),
+                    position:
+                      guestRequest.request.requestedPositions.length > 0
+                        ? guestRequest.request.requestedPositions
+                            .map((position) =>
+                              translate(`profileScreen:position_${position}` as never),
+                            )
+                            .join(", ")
+                        : translate("matchesScreen:guestAnyPosition"),
                     radius: guestRequest.request.radiusKm,
+                  })}
+                </Text>
+                <Text color={eliteForgeColors.emerald} fontSize={13} fontWeight="700">
+                  {translate("matchesScreen:guestOpenBannerProgress", {
+                    filled: guestRequest.request.slotsFilled,
+                    total: guestRequest.request.slotsTotal,
+                    count: guestRequest.request.applicationsCount,
                   })}
                 </Text>
                 {canManageGuestRequest ? (
@@ -1065,6 +1079,7 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
       <GuestRequestModal
         visible={guestModalVisible}
         onClose={() => setGuestModalVisible(false)}
+        freeSpots={match ? match.maxPlayers - match.participants.length : 1}
         onSubmit={handleSubmitGuestRequest}
       />
       <GuestApplicantsModal

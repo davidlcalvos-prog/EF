@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
+import { IsArray, IsIn, IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
 import { PLAYER_POSITION_IDS, PlayerPositionId } from '../profile-stats';
 
 export type MatchGuestRequestStatus = 'open' | 'filled' | 'expired' | 'cancelled';
@@ -11,13 +11,19 @@ export type MatchGuestApplicationStatus =
 export const MIN_GUEST_REQUEST_RADIUS_KM = 1;
 export const MAX_GUEST_REQUEST_RADIUS_KM = 25;
 export const DEFAULT_GUEST_REQUEST_RADIUS_KM = 15;
+/** Fase 11.1: tope duro de cupos por búsqueda, sin importar el cupo libre del partido. */
+export const MAX_GUEST_REQUEST_SLOTS = 5;
 /** Si el partido no tiene scheduledAt, la vacante vence a las N horas de abrirse. */
 export const GUEST_REQUEST_DEFAULT_TTL_HOURS = 6;
 
 export interface MatchGuestRequestDto {
   id: string;
   matchId: string;
-  requestedPosition: PlayerPositionId | null;
+  /** Posiciones aceptadas — array vacío = cualquier posición (Fase 11.1). */
+  requestedPositions: PlayerPositionId[];
+  /** Cupos pedidos (1 a 5) y cuántos ya se llenaron (Fase 11.1). */
+  slotsTotal: number;
+  slotsFilled: number;
   radiusKm: number;
   status: MatchGuestRequestStatus;
   expiresAt: string;
@@ -50,9 +56,17 @@ export interface MatchGuestApplicationDto {
 }
 
 export class OpenGuestRequestDto {
+  /** Array vacío u omitido = cualquier posición. */
   @IsOptional()
-  @IsIn(PLAYER_POSITION_IDS)
-  requestedPosition?: PlayerPositionId;
+  @IsArray()
+  @IsIn(PLAYER_POSITION_IDS, { each: true })
+  requestedPositions?: PlayerPositionId[];
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(MAX_GUEST_REQUEST_SLOTS)
+  slotsTotal?: number;
 
   @IsOptional()
   @IsInt()

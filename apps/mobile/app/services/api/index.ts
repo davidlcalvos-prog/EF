@@ -93,6 +93,7 @@ export {
   MIN_GUEST_REQUEST_RADIUS_KM,
   MAX_GUEST_REQUEST_RADIUS_KM,
   DEFAULT_GUEST_REQUEST_RADIUS_KM,
+  MAX_GUEST_REQUEST_SLOTS,
 } from "./types"
 export type {
   TournamentCourtSizeApi,
@@ -1034,7 +1035,7 @@ export class Api {
   /** Solo líder/vice de un partido internal `scheduled` con cupo libre (409 si no). */
   async openGuestRequest(
     matchId: string,
-    payload: { requestedPosition?: PlayerPositionId; radiusKm?: number },
+    payload: { requestedPositions?: PlayerPositionId[]; slotsTotal?: number; radiusKm?: number },
   ): Promise<{ kind: "ok"; request: MatchGuestRequestApiDto } | GeneralApiProblem> {
     const response = await this.apisauce.post<MatchGuestRequestApiDto>(
       `matches/${matchId}/guest-requests`,
