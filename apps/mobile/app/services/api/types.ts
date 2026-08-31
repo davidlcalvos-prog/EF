@@ -371,6 +371,9 @@ export type ReservationStatusApi = "pending" | "confirmed" | "cancelled"
 /** Fase W.1: tamaño de una cancha real dentro de un complejo — distinto de PositionCategoryApi. */
 export type CourtSizeApi = "five" | "six" | "seven" | "eight" | "eleven"
 
+/** Servicios del complejo — calcado de VenueAmenityDto del backend. */
+export type VenueAmenityApi = "cafeteria" | "transfers" | "bathroom"
+
 /**
  * Fase W.1.1: al jugador no le importa CUÁL cancha, le importa si hay una
  * libre de ese tamaño — agrupado por size, ya no lista plana de canchas.
@@ -382,6 +385,8 @@ export interface PublicVenueApiDto {
   pricePerHourCents: number
   availability: Record<string, unknown>
   courtSizes: Array<{ size: CourtSizeApi; count: number; pricePerHourCents: number }>
+  /** Servicios del complejo — se muestran al elegir dónde reservar. */
+  amenities: VenueAmenityApi[]
   /** Ubicación (Fase L.0) — pública para canchas. */
   municipalityCode: string | null
   city: string | null

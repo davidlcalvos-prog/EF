@@ -77,6 +77,7 @@ export type {
   TeamAssignmentWarningApiDto,
   ReservationStatusApi,
   CourtSizeApi,
+  VenueAmenityApi,
   AvailabilityApiDto,
   PublicVenueApiDto,
   MyReservationApiDto,
