@@ -232,7 +232,14 @@ export class MatchRepository {
         reservation: { select: { id: true } },
         participants: {
           include: {
-            user: { select: { email: true, firstname: true, lastname: true } },
+            user: {
+              select: {
+                email: true,
+                firstname: true,
+                lastname: true,
+                profile: { select: { avatarBase64: true } },
+              },
+            },
           },
           orderBy: { confirmedAt: 'asc' },
         },
@@ -247,6 +254,7 @@ export class MatchRepository {
         .map((part) => part.trim())
         .filter(Boolean)
         .join(' '),
+      avatarBase64: p.user.profile?.avatarBase64 ?? null,
       confirmedAt: p.confirmedAt.toISOString(),
       team: (p.team as MatchTeam | null) ?? null,
       side: (p.side as MatchSide | null) ?? null,

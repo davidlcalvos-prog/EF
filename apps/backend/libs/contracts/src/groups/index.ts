@@ -19,6 +19,8 @@ export interface GroupMemberDto {
   userId: string;
   email: string;
   name: string;
+  /** Foto real de perfil (Profile.avatarBase64); null si el usuario no cargó una. */
+  avatarBase64: string | null;
   role: GroupMemberRole;
   joinedAt: string;
 }

@@ -214,7 +214,14 @@ export class GroupRepository {
       include: {
         members: {
           include: {
-            user: { select: { email: true, firstname: true, lastname: true } },
+            user: {
+              select: {
+                email: true,
+                firstname: true,
+                lastname: true,
+                profile: { select: { avatarBase64: true } },
+              },
+            },
           },
           orderBy: { joinedAt: 'asc' },
         },
@@ -229,6 +236,7 @@ export class GroupRepository {
         .map((part) => part.trim())
         .filter(Boolean)
         .join(' '),
+      avatarBase64: membership.user.profile?.avatarBase64 ?? null,
       role: membership.role as GroupMemberRole,
       joinedAt: membership.joinedAt.toISOString(),
     }));
