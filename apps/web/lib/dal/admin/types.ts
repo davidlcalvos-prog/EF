@@ -6,6 +6,9 @@ export type VenueSurfaceType =
 
 export type CourtSize = 'five' | 'six' | 'seven' | 'eight' | 'eleven'
 
+/** Servicios del complejo — misma lista que el venue-extras.ts pre-W.1, ahora en API. */
+export type VenueAmenity = 'cafeteria' | 'transfers' | 'bathroom'
+
 export type CourtRow = {
   id: string
   name: string
@@ -28,6 +31,8 @@ export type VenueRow = {
   surface_type: VenueSurfaceType | null
   /** Canchas del complejo (Fase W.1) — [] hasta que el owner agregue alguna. */
   courts: CourtRow[]
+  /** Servicios del complejo — [] hasta que el owner los marque. */
+  amenities: VenueAmenity[]
   /** Ubicación (Fase L.0): municipio DANE + centroide o pin del dueño. */
   municipality_code: string | null
   city: string | null

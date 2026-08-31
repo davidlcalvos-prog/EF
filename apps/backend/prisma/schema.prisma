@@ -202,6 +202,12 @@ model Venue {
   /// el owner lo completa desde "Mi cancha" cuando quiera). Solo synthetic_grass es
   /// elegible para el pool aleatorio de Copa Elite Forge.
   surfaceType               VenueSurfaceType?
+  /// Servicios del complejo ('cafeteria' | 'transfers' | 'bathroom') — la misma
+  /// lista que venue-extras.ts manejaba en localStorage antes de la W.1, perdida
+  /// en esa migración y recuperada acá. Valores validados en @ef/contracts
+  /// (VENUE_AMENITY_VALUES), no con un enum de DB, para poder sumar servicios
+  /// sin migración.
+  amenities                 String[]          @default([])
   /// Fase W.1: canchas reales del complejo (tamaño + precio propios). Un venue
   /// migrado desde antes de esta fase empieza sin courts — el owner las carga
   /// desde "Mi cancha"; mismo criterio que surfaceType arriba.

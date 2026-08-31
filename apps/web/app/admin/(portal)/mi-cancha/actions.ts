@@ -10,7 +10,9 @@ import {
   upsertMyVenue,
   type MunicipalityDto,
 } from '@/lib/dal/admin/venues'
-import type { CourtSize, VenueSurfaceType } from '@/lib/dal/admin/types'
+import type { CourtSize, VenueAmenity, VenueSurfaceType } from '@/lib/dal/admin/types'
+
+const AMENITY_VALUES: VenueAmenity[] = ['cafeteria', 'transfers', 'bathroom']
 
 export async function saveVenue(formData: FormData) {
   const session = await requireAdminSession()
@@ -25,6 +27,11 @@ export async function saveVenue(formData: FormData) {
   const longitudeRaw = String(formData.get('longitude') || '').trim()
   const latitude = latitudeRaw ? Number(latitudeRaw) : undefined
   const longitude = longitudeRaw ? Number(longitudeRaw) : undefined
+  // Servicios: checkboxes con name="amenities" — solo llegan los marcados.
+  const amenities = formData
+    .getAll('amenities')
+    .map(String)
+    .filter((v): v is VenueAmenity => (AMENITY_VALUES as string[]).includes(v))
 
   if (!name) {
     throw new Error('El nombre de la cancha es obligatorio')
@@ -41,6 +48,7 @@ export async function saveVenue(formData: FormData) {
       | 'dirt_gravel'
       | 'futsal_concrete'
       | null,
+    amenities,
     ...(municipalityCode ? { municipality_code: municipalityCode } : {}),
     ...(municipalityCode &&
     latitude !== undefined &&

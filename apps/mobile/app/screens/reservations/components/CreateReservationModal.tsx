@@ -67,6 +67,10 @@ function courtSizeLabel(size: string): string {
   return translate(`reservationsScreen:courtSize_${size}` as never)
 }
 
+function amenityLabel(amenity: string): string {
+  return translate(`reservationsScreen:amenity_${amenity}` as never)
+}
+
 function isValidTime(hour: string, minute: string): boolean {
   const hourNum = Number(hour)
   const minuteNum = Number(minute)
@@ -392,6 +396,29 @@ export function CreateReservationModal({
                               <Text color="rgba(255,255,255,0.5)" fontSize={12} numberOfLines={1}>
                                 {venue.address}
                               </Text>
+                            ) : null}
+                            {venue.amenities.length > 0 ? (
+                              <XStack gap={6} flexWrap="wrap" marginTop={2}>
+                                {venue.amenities.map((amenity) => (
+                                  <XStack
+                                    key={amenity}
+                                    paddingHorizontal={8}
+                                    paddingVertical={2}
+                                    borderRadius={999}
+                                    backgroundColor="rgba(0,206,200,0.1)"
+                                    borderWidth={1}
+                                    borderColor="rgba(0,206,200,0.35)"
+                                  >
+                                    <Text
+                                      color={eliteForgeColors.emerald}
+                                      fontSize={10}
+                                      fontWeight="700"
+                                    >
+                                      {amenityLabel(amenity)}
+                                    </Text>
+                                  </XStack>
+                                ))}
+                              </XStack>
                             ) : null}
                           </YStack>
                           <Text color={eliteForgeColors.emerald} fontWeight="700" fontSize={13}>

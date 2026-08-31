@@ -7,6 +7,7 @@ import {
   MyReservationDto,
   PublicVenueDto,
   ReservationDto,
+  VenueAmenityDto,
   VenueDto,
 } from '@ef/contracts';
 import {
@@ -65,6 +66,7 @@ export class VenueRepository {
       address?: string | null;
       pricePerHourCents?: number;
       surfaceType?: VenueSurfaceType;
+      amenities?: VenueAmenityDto[];
     },
     location?: VenueLocationData | null,
   ): Promise<VenueDto> {
@@ -91,6 +93,8 @@ export class VenueRepository {
           address: payload.address ?? null,
           pricePerHourCents: payload.pricePerHourCents ?? 0,
           surfaceType: payload.surfaceType,
+          // undefined = no tocar lo guardado (mismo criterio que surfaceType).
+          amenities: payload.amenities,
           ...locationData,
         },
         ...venueWithCourts,
@@ -105,6 +109,7 @@ export class VenueRepository {
         address: payload.address ?? null,
         pricePerHourCents: payload.pricePerHourCents ?? 0,
         surfaceType: payload.surfaceType,
+        amenities: payload.amenities,
         ...locationData,
       },
       ...venueWithCourts,
@@ -674,6 +679,7 @@ export class VenueRepository {
         count,
         pricePerHourCents: minPrice,
       })),
+      amenities: row.amenities as VenueAmenityDto[],
       municipalityCode: row.municipalityCode,
       city: row.city,
       department: row.department,
@@ -722,6 +728,7 @@ export class VenueRepository {
       availability: (row.availability as Record<string, unknown>) ?? {},
       surfaceType: row.surfaceType,
       courts: row.courts.map((c) => this.toCourtDto(c)),
+      amenities: row.amenities as VenueAmenityDto[],
       municipalityCode: row.municipalityCode,
       city: row.city,
       department: row.department,

@@ -1,5 +1,11 @@
 import { apiFetchAuth } from '@/lib/api/server-client'
-import type { CourtRow, CourtSize, VenueRow, VenueSurfaceType } from '@/lib/dal/admin/types'
+import type {
+  CourtRow,
+  CourtSize,
+  VenueAmenity,
+  VenueRow,
+  VenueSurfaceType,
+} from '@/lib/dal/admin/types'
 
 interface CourtApiDto {
   id: string
@@ -19,6 +25,7 @@ interface VenueApiDto {
   availability: Record<string, unknown>
   surfaceType: VenueSurfaceType | null
   courts: CourtApiDto[]
+  amenities: VenueAmenity[]
   municipalityCode: string | null
   city: string | null
   department: string | null
@@ -50,6 +57,7 @@ function toVenueRow(dto: VenueApiDto): VenueRow {
     availability: dto.availability,
     surface_type: dto.surfaceType,
     courts: (dto.courts ?? []).map(toCourtRow),
+    amenities: dto.amenities ?? [],
     municipality_code: dto.municipalityCode,
     city: dto.city,
     department: dto.department,
@@ -81,6 +89,7 @@ export async function upsertMyVenue(
     address?: string | null
     price_per_hour_cents?: number
     surface_type?: VenueSurfaceType | null
+    amenities?: VenueAmenity[]
     municipality_code?: string | null
     latitude?: number
     longitude?: number
@@ -94,6 +103,7 @@ export async function upsertMyVenue(
       address: payload.address,
       pricePerHourCents: payload.price_per_hour_cents,
       surfaceType: payload.surface_type || undefined,
+      ...(payload.amenities !== undefined ? { amenities: payload.amenities } : {}),
       ...(payload.municipality_code !== undefined
         ? { municipalityCode: payload.municipality_code }
         : {}),

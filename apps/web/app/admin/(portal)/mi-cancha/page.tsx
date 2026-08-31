@@ -46,6 +46,7 @@ export default async function MiCanchaPage() {
                 price_per_hour_cents: venue.price_per_hour_cents,
                 surface_type: venue.surface_type,
                 courts: venue.courts,
+                amenities: venue.amenities,
                 municipality_code: venue.municipality_code,
                 city: venue.city,
                 department: venue.department,

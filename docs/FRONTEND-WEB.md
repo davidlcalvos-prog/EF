@@ -242,7 +242,7 @@ Campos: nombre, email, contraseña ×2 → `{ name, email, password }` → `/aut
 
 **El portal ya no usa `localStorage` para nada de canchas ni reservas** (Fase W.1). Hasta esa fase, `lib/dal/admin/mock-reservations.ts` y `venue-extras.ts` guardaban inventario por tamaño, tarifas, amenities, reservas telefónicas y ediciones directo en el navegador del dueño — ambos archivos se eliminaron por completo. Motivo: esos datos se perdían al cambiar de navegador o de equipo, y el mobile nunca los veía (el jugador reservaba contra un inventario que no existía del lado del dueño). Todo — canchas, precios, reservas, su estado y su origen — vive en Postgres desde entonces (`Court`, `Reservation`, ver [BACKEND.md](./BACKEND.md#modelos-nuevos-desde-el-1808)).
 
-**Nota:** en el mismo rediseño se dejó de administrar amenities del complejo (cafetería, transferencias, baños) — no se migraron a la API, el formulario de "Mi cancha" ya no tiene esa sección. Confirmar con producto si es descope intencional o pendiente.
+**Nota:** en el mismo rediseño se perdió sin querer la sección de servicios del complejo (cafetería, transferencias, baños) — descope no intencional, recuperado el 2026-08-31: la sección "Servicios" volvió a "Mi cancha", ahora guardando en `Venue.amenities` (Postgres) en vez de `localStorage`, y el jugador la ve en mobile antes de reservar (ver [BACKEND.md](./BACKEND.md#venues--venues-service)).
 
 Lo que sigue siendo `localStorage` (fuera del alcance de la Fase W.1, sin cambios):
 
@@ -295,6 +295,7 @@ Administrador: saludo + CTA a Métricas.
 | Nombre / dirección | API `saveVenue` |
 | Ubicación (Fase L.0) | Buscador de municipio (centroide) o pin arrastrable sobre mapa — `VenueLocationMap` (Leaflet + OpenStreetMap, sin API key, `next/dynamic` con `ssr:false` porque Leaflet toca `window`) |
 | Canchas (`Court`) | `VenueCourtsSection` — alta/edición/baja de canchas individuales: nombre, **tamaño**, **precio propio por hora**, superficie (opcional, hereda la del complejo si no se define), activa/inactiva. Reemplaza el inventario 6/8/11 con tarifas por formato de antes de la Fase W.1 |
+| Servicios | Checkboxes Cafetería / Transferencias / Baños (misma lista que el `venue-extras.ts` pre-W.1) — API `saveVenue` → `Venue.amenities`; el jugador los ve en mobile antes de reservar |
 
 ### Analíticas (`/admin/analiticas`) — `analytics-dashboard.tsx`
 
@@ -475,7 +476,7 @@ Tras cambiar `NEXT_PUBLIC_*`: Redeploy. Si ves versión vieja: Cache Manager →
 
 - [ ] Métricas reales para Administrador.
 - [ ] Dominio de producción definitivo.
-- [ ] Persistir torneos, inventario y amenities en API NestJS.
+- [ ] Persistir torneos en API NestJS (inventario y amenities ya migrados: `Court` en W.1, `Venue.amenities` el 2026-08-31).
 
 ---
 
