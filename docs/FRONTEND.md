@@ -524,6 +524,45 @@ Las reservas telefónicas que carga el dueño desde el portal web siguen sin cam
 
 **Servicios del complejo (2026-08-31):** la tarjeta de cada complejo en el selector muestra chips con sus servicios (`PublicVenueApiDto.amenities`: cafetería, transferencias, baños — claves i18n `reservationsScreen:amenity_*` en los 7 idiomas), para que el jugador los vea antes de elegir dónde reservar. Si el complejo no tiene servicios marcados, no se muestra nada (sin hueco).
 
+## Crear partido — sede antes que formato, selector de fecha compartido
+
+**Archivo:** `app/screens/matches/components/CreateMatchModal.tsx`.
+
+**Componente compartido:** `app/components/DateTimeRangePicker.tsx` exporta `buildDateOptions()` (hoy + 14 días), `isValidTime(hour, minute)` y `combineDateTime(date, hour, minute)` (arma el ISO o `null` si la hora es inválida) como funciones puras, más el componente `DateTimeRangePicker` — la fila de días (`DayCard`, weekday + número) y los campos de hora son ahora una sola implementación usada tanto por Reservas como por Crear partido, en vez de dos copias divergentes.
+
+```ts
+interface DateTimeRangePickerProps {
+  mode: "range" | "single"           // "range": Reservas (inicio + fin). "single": Crear partido (solo inicio)
+  dateOptions: Date[]
+  selectedDate: Date | null
+  onSelectDate: (date: Date | null) => void
+  dateLabel: string
+  allowUnset?: boolean               // agrega una tarjeta "Sin definir" antes de la fila de días
+  unsetLabel?: string
+  startTimeLabel: string
+  startHour: string
+  startMinute: string
+  onStartHourChange: (value: string) => void
+  onStartMinuteChange: (value: string) => void
+  endTimeLabel?: string              // solo mode="range"
+  endHour?: string
+  endMinute?: string
+  onEndHourChange?: (value: string) => void
+  onEndMinuteChange?: (value: string) => void
+  invalidRangeError?: string         // solo mode="range"
+  isRangeValid?: boolean
+}
+```
+
+- **`CreateReservationModal`** lo usa en `mode="range"` (sin `allowUnset`) — comportamiento idéntico al de antes de la extracción, ahora sobre el componente compartido.
+- **`CreateMatchModal`** lo usa en `mode="single"` `allowUnset` — la fila de días es visualmente la misma que en Reservas, con una tarjeta extra "Sin definir" al principio (selecciona `selectedDate = null`) y sin pedir hora de fin.
+
+**Orden del formulario (antes: tipo → rival → formato → cupo → fecha → sede; ahora):** tipo de partido → grupo rival (si es VS) → **sede** → **formato** → cupo máximo → fecha y hora. La sede pasa antes que el formato porque la cancha real elegida informa qué formato tiene sentido — al revés de como estaba.
+
+**Sede informativa, sin reservar nada:** elegir una cancha de la app en este formulario sigue siendo puramente informativo — no crea ni bloquea ningún `Reservation`, no llama a `getAvailability`, y no está integrado con la auto-asignación de la W.1.1 (eso queda para una fase futura). Al elegir "Cancha de la app" y un complejo, se muestra un resumen con los mismos `PublicVenueApiDto.courtSizes` que usa Reservas (sin inventar otra consulta): tamaño de cancha (`courtSizeLabel`, `app/utils/courtSize.ts`) y cantidad de canchas de cada tamaño.
+
+**Sugerencia de formato:** si se eligió una cancha de la app, el campo Formato se pre-llena con el tamaño más común de ese complejo (`mostCommonCourtSize` + `courtSizeToFormat` en `app/utils/courtSize.ts`) — sigue siendo editable, es una sugerencia y no una restricción (un líder puede querer igual un partido 5v5 en una cancha etiquetada 6v6). La sugerencia solo se reemplaza a sí misma mientras el usuario no haya tocado el campo a mano; en cuanto edita el formato (chip o texto libre), deja de auto-actualizarse aunque cambie de cancha. Si no se eligió cancha de la app ("Sin sede" u "Otra cancha"), el campo se comporta exactamente igual que antes — chips + texto libre, sin sugerencia.
+
 ## AppAlert (reemplazo de `Alert.alert` nativo)
 
 **Archivo:** `app/components/AppAlert.tsx` — `Alert.alert(...)` de `react-native` dibuja el diálogo del sistema operativo: no hereda nada de la identidad visual de la app y es imposible repintarlo. Se reemplazó en los 16 puntos del código que lo usaban por un modal propio con la paleta Elite Forge.
@@ -544,6 +583,13 @@ El feed (drawer, composer, navbar, tarjetas de post, comentarios) mostraba únic
 - **Avatar de otros** — `PostDto`/`CommentDto` ya traen `authorAvatarBase64` desde el backend (ver [BACKEND.md](./BACKEND.md#feed--users-service)); `useFeed.ts` lo mapea a `authorAvatarPhoto` en `FeedPost`.
 
 ## Registro de cambios (sesión de implementación)
+
+### 2026-08-31 — Crear partido: sede antes que formato, mismo selector de fecha que Reservas
+
+- Extraído `app/components/DateTimeRangePicker.tsx` (día-fila + validación de hora) desde `CreateReservationModal`, usado ahora por ambos formularios (`mode="range"` en Reservas, `mode="single" allowUnset` en Crear partido) — sin lógica duplicada.
+- `CreateMatchModal`: reordenado a tipo → rival → **sede** → **formato** → cupo → fecha/hora; al elegir cancha de la app se muestra el resumen de tamaños del complejo (mismos `courtSizes` que Reservas) y el formato se pre-llena con el tamaño más común (editable, no bloqueante). Sigue sin crear ni chequear ninguna `Reservation` real.
+- Nuevo `app/utils/courtSize.ts` (`courtSizeLabel`, `courtSizeToFormat`, `mostCommonCourtSize`), reemplaza la copia local que tenía `CreateReservationModal`.
+- Ver [Crear partido — sede antes que formato](#crear-partido--sede-antes-que-formato-selector-de-fecha-compartido).
 
 ### 2026-08-31 — Servicios del complejo en el selector de reservas + regla ESLint para `Alert`
 
