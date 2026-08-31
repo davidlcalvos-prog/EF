@@ -13,11 +13,11 @@ El frontend vive en `apps/mobile/` y es una aplicación **React Native** generad
 | Área | Estado |
 |------|--------|
 | Pantalla de **Login** | Implementada + conectada al API Gateway |
-| Pantalla **Perfil** | Implementada (stats, tests físicos in-app, test psicológico, edición, avatar, sugerencia de posición) |
-| Pantalla **Feed** (red social) | Implementada (UI mock, sin backend) |
+| Pantalla **Perfil** | Implementada (stats, tests físicos in-app, test psicológico, edición, avatar sincronizado al backend, sugerencia de posición) |
+| Pantalla **Feed** (red social) | Implementada y conectada al backend — filtrada por red (amigos + grupos, Fase 10), fotos de perfil reales |
+| Grupos / Partidos / Reservas / Amigos / Comodín | Implementadas y conectadas al backend (ver secciones correspondientes más abajo) |
 | Pantalla de **Register** (placeholder) | En stack; registro real vía portal web externo |
-| **Backend / auth real** | Login conectado al API Gateway (`POST /api/auth/login`) |
-| **Feed backend** | No implementado — datos mock en `app/data/mockFeedPosts.ts` |
+| **Alertas nativas** | Eliminadas — `AppAlert` propio en toda la app, ver [AppAlert](#appalert-reemplazo-de-alertalert-nativo) |
 | **Expo Dev Client** | Configurado para Android/iOS |
 
 ### Flujo de arranque
@@ -223,11 +223,13 @@ Export centralizado: `app/components/ui/index.ts`
 
 ---
 
-## Pantalla Feed — red social (UI)
+## Pantalla Feed — red social
 
 **Archivo principal:** `app/screens/feed/FeedScreen.tsx`
 
-Destino post-login. Estilo tipo **Facebook**: publicaciones de jugadores, anuncios Elite Forge, composer superior y acciones sociales (solo UI).
+Destino post-login. Estilo tipo **Facebook**: publicaciones de jugadores, anuncios Elite Forge, composer superior y acciones sociales — conectado al backend real (`useFeed.ts`, `GET/POST /api/feed/*`).
+
+**Ya no es un feed global** (Fase 10): `useFeed` pagina `GET /api/feed/posts`, que en el backend ya viene filtrado por red — el usuario ve sus propios posts, los de sus amigos aceptados y los de cualquier compañero de sus grupos (ver [BACKEND.md → Feed](./BACKEND.md#feed--users-service)). Los anuncios "Elite Forge" siguen intercalándose client-side desde `mockFeedPosts.ts` (uno cada 4 posts reales) — eso no cambió.
 
 ### Layout
 
@@ -240,22 +242,25 @@ Destino post-login. Estilo tipo **Facebook**: publicaciones de jugadores, anunci
 
 | Componente | Descripción |
 |------------|-------------|
-| `FeedNavbar` | Navbar interactivo; logo centrado; avatar abre el drawer |
-| `FeedDrawer` | Perfil, Grupos, Partidos, Reservas (próximamente) + cerrar sesión |
-| `FeedComposer` | “¿Qué quieres compartir?” + accesos Foto / Video / Partido (stub) |
-| `FeedPostCard` | Tarjeta de publicación: texto, imagen, video, likes/comentarios |
-| `FeedAvatar` | Avatar circular con iniciales y animación press |
-| `mockFeedPosts.ts` | Datos mock (jugadores + anuncios Elite Forge) |
+| `FeedNavbar` | Navbar interactivo; logo centrado; avatar (foto real o iniciales) abre el drawer |
+| `FeedDrawer` | Perfil, Grupos, Amigos, Partidos, Cerca de mí, Campeonatos, Reservas + cerrar sesión — todas navegan a pantallas reales |
+| `FeedComposer` | “¿Qué quieres compartir?” + accesos Foto / Video / Partido (compose real conectado al backend; adjuntar foto/video/partido sigue siendo stub) |
+| `FeedPostCard` | Tarjeta de publicación real: texto, imagen, video, likes/comentarios, foto de perfil del autor |
+| `FeedAvatar` | Avatar circular — foto real (`photoBase64`) si el autor tiene una, si no iniciales + color, con animación press |
+| `mockFeedPosts.ts` | Solo los anuncios "Elite Forge" (intercalados client-side); los posts reales vienen del backend |
 
-### Drawer — accesos futuros
+### Drawer — accesos
 
-| Ítem | Estado |
+| Ítem | Destino |
 |------|--------|
-| Perfil | Navega a `ProfileScreen` |
-| Grupos | Alert “Próximamente” |
-| Partidos | Alert “Próximamente” |
-| Reservas | Alert “Próximamente” |
-| Cerrar sesión | Funcional (`logout()` → Login) |
+| Perfil | `ProfileScreen` |
+| Grupos | `GroupsScreen` |
+| Amigos | `FriendsScreen` (Fase 10) |
+| Partidos | `MatchesScreen` |
+| Cerca de mí | `NearbyGuestRequestsScreen` — vacantes de comodín cerca de tu zona (Fase 11) |
+| Campeonatos | `TournamentsScreen` |
+| Reservas | `ReservationsScreen` |
+| Cerrar sesión | `logout()` → Login |
 
 ### i18n
 
@@ -458,7 +463,132 @@ Namespace `profileScreen:*` en los **7 idiomas**: stats, tests, medición, psico
 
 ---
 
+## Amistad entre jugadores y búsqueda (Fase 10 / 10.1)
+
+**Pantalla:** `app/screens/friends/FriendsScreen.tsx` + hook `useFriends.ts`.
+
+Tres pestañas: **Amigos**, **Solicitudes** (recibidas/enviadas) y **Sugerencias** (amigos en común, compañeros de grupo). Al escribir en el buscador (mín. 3 caracteres, debounce 400 ms — mismo patrón de secuencia monotónica que `MunicipalityPicker` para descartar respuestas fuera de orden) se reemplaza la lista de pestañas por resultados de `GET /api/friendships/search`.
+
+**Regla de privacidad de la búsqueda** (validada server-side, ver [BACKEND.md → User Friendships](./BACKEND.md#user-friendships--users-service)): si el texto tiene forma de correo, la búsqueda es **exacta** — nunca se puede encontrar a alguien tecleando un fragmento de su email. Por `@alias` o nombre sí admite coincidencia parcial.
+
+Acciones (`useFriends.ts`): enviar solicitud, aceptar, rechazar/cancelar/eliminar — todas optimistas sobre el estado local, sin recargar toda la lista. El botón de amistad (agregar / solicitud enviada / aceptar-rechazar / ya amigos + eliminar) vive dentro de `MemberProfileModal` (ver sección siguiente), no en `FriendsScreen`.
+
+## Ficha de miembro — `MemberProfileModal`
+
+**Archivo:** `app/screens/groups/components/MemberProfileModal.tsx` — ficha de solo lectura de un jugador, reutilizada desde Grupos, Amigos, Rankings de torneo y postulantes a comodín.
+
+**Prop `source: MemberProfileSource`** (`"group" | "friends" | "search" | "suggestions" | "rankings" | "guest_application"`) — decide **de dónde** se abrió la ficha, no solo cosmética: controla la regla de producto `canShowStats`.
+
+**Regla `canShowStats`** (explícita, no cambiar sin pedirlo el producto):
+
+```ts
+const canShowStats =
+  source === "group" || source === "rankings" || friendship?.status === "accepted"
+```
+
+Las estadísticas (radar) solo se ven si la ficha se abrió desde un **grupo compartido** o desde **rankings de torneo**, o si hay **amistad aceptada** con esa persona — nunca desde una búsqueda o sugerencia sin ser todavía amigos. Si no se cumple, se muestra un candado en vez del radar. `preview` (nombre/alias/posición/avatar de la fila que abrió la ficha) permite mostrar la cabecera al instante mientras el resto carga.
+
+Botón de amistad según `friendship.status` (`none`/`pending_sent`/`pending_received`/`accepted`): agregar, solicitud enviada + cancelar, aceptar + rechazar, o ya amigos + eliminar (con confirmación).
+
+## Ubicación (Fase L.0)
+
+**Componente:** `app/components/MunicipalityPicker.tsx` — buscador con debounce sobre `GET /api/geo/municipalities` (dataset estático de municipios de Colombia).
+
+**Dónde se usa:** edición de perfil (`ProfileEditScreen`) y creación/edición de grupo (`GroupCreateModal`/`GroupEditModal`). **No** hay selector de ubicación en el partido — la sede de un `Match` se resuelve del lado del backend a partir de la cancha reservada o del grupo origen (`venueId`/lat-lng copiados, o `venueText` libre), sin un picker propio en esa pantalla.
+
+**Decisión explícita de esta etapa:** sin GPS ni mapas nativos en mobile — la ubicación se elige por municipio (búsqueda de texto), y lat/lng son siempre el centroide resuelto server-side. El pin arrastrable sobre un mapa real (Leaflet/OpenStreetMap) existe solo en el portal web ("Mi cancha", ver [FRONTEND-WEB.md](./FRONTEND-WEB.md)), no en mobile.
+
+## Comodín (Fase 11)
+
+Vacante para cubrir un cupo faltante en un partido `internal` `scheduled`, publicada por el líder/vice y visible para otros jugadores cerca de su zona guardada.
+
+| Pantalla / componente | Rol |
+|---|---|
+| `NearbyGuestRequestsScreen.tsx` + `useNearbyGuestRequests.ts` | Lista de vacantes abiertas cerca de tu municipio (acceso "Cerca de mí" del drawer) |
+| `GuestRequestModal.tsx` | El líder/vice publica la vacante (posición buscada opcional, radio en km) |
+| `GuestApplicantsModal.tsx` | El líder/vice revisa postulaciones y acepta/rechaza |
+| `GuestRequestCard.tsx` | Tarjeta de una vacante en la lista de "Cerca de mí" |
+| `useMatchGuestRequest.ts` | Ciclo de vida de la vacante de UN partido (abrir, cancelar, postulaciones) |
+
+En el roster del partido, un participante que entró como comodín (no por membresía de grupo) lleva el badge **"Comodín"** (`MatchParticipant.isGuest`).
+
+**Preferencia de perfil:** `ProfileEditScreen` tiene el toggle "avisarme si falta un jugador cerca" (`Profile.notifyNearbyGuestRequests`, opt-in, guardado al toque — no espera al botón Guardar general). Solo controla si se recibe **push** cuando se publica una vacante cerca; no afecta qué aparece en "Cerca de mí", que siempre se calcula por zona.
+
+## Reservas — selección por tamaño (Fase W.1.1)
+
+**Archivo:** `app/screens/reservations/components/CreateReservationModal.tsx`.
+
+El jugador elige complejo y **tamaño de cancha** (5v5/6v6/7v7/8v8/11v11) — ya no una cancha específica por nombre. Al completar complejo + tamaño + horario válido, un chequeo con debounce (350 ms, mismo patrón de secuencia que el resto de la app) consulta `GET /api/venues/:id/availability` y muestra cuántas canchas de ese tamaño están libres **antes** de dejar confirmar — nunca se llega a un error de solape recién al final. El backend auto-asigna la cancha puntual (ver [BACKEND.md → Reservations](./BACKEND.md#reservations-lado-jugador--venues-service)); `ReservationDetailScreen` muestra qué cancha específica le tocó ("Te asignamos: {cancha}") una vez confirmada.
+
+Las reservas telefónicas que carga el dueño desde el portal web siguen sin cambios: ahí sí elige la cancha directo por nombre (es el dueño quien gestiona su propio inventario).
+
+## AppAlert (reemplazo de `Alert.alert` nativo)
+
+**Archivo:** `app/components/AppAlert.tsx` — `Alert.alert(...)` de `react-native` dibuja el diálogo del sistema operativo: no hereda nada de la identidad visual de la app y es imposible repintarlo. Se reemplazó en los 16 puntos del código que lo usaban por un modal propio con la paleta Elite Forge.
+
+- **`AppAlertProvider`** envuelve la app en `app/app.tsx` (dentro de `AuthProvider`/`ThemeProvider`, fuera de `AppNavigator`).
+- **`useAppAlert()`** expone `showAlert(title, message?, buttons?)` — misma firma que `Alert.alert`, para que el cambio en cada pantalla fuera mecánico (import + nombre de la llamada).
+- Modal centrado, fade + scale al aparecer; botón `default` (emerald), `cancel` (neutral) o `destructive` (borde/texto rojo) según `style`. Tocar afuera cierra solo si hay un botón `cancel` — igual que el `Alert.alert` nativo.
+- Dos utilidades que no son componentes React (`pickProfileImage.ts`, `pickGroupPhoto.ts`) reciben `showAlert` como **parámetro** en vez de usar el hook directo, pasado por el componente que las llama.
+
+**Convención del proyecto:** ningún archivo debe importar `Alert` de `react-native` directamente — usar `useAppAlert()`. A diferencia de la regla ya existente para `TextInput`/`Text`/`Button` (bloqueada por `no-restricted-imports` en `eslint.config.js`, ver más abajo en Registro de cambios, entrada *"Fix lint CI"*), **esta convención todavía no está enforced por ESLint** — es manual, verificada con `grep -rn "Alert\.alert(" apps/mobile/app` antes de cerrar cualquier cambio que toque una alerta.
+
+## Fotos de perfil reales en el feed
+
+El feed (drawer, composer, navbar, tarjetas de post, comentarios) mostraba únicamente iniciales con color — nunca la foto real de nadie, ni la propia.
+
+- **`FeedAvatar.tsx`** gana `photoBase64?: string | null` (mismo patrón que `GroupAvatar.tsx`): si viene con valor renderiza la imagen; si no, mantiene el círculo de inicial + color de siempre.
+- **Avatar propio** — fuente única: `AuthContext` gana `authAvatarBase64: string | null`, **en memoria** (no MMKV, a propósito — repoblar desde el backend con `getMyProfile()` al loguear alcanza, evitar otra capa de caché que se desincronice, mismo problema que el token en la Fase 8.1). Se actualiza al instante al elegir una foto nueva en `ProfileScreen`, sin esperar la confirmación de red ni reiniciar la app. Reemplaza 4 copias sueltas de `getUserColor` (en `FeedDrawer`/`FeedComposeModal`/`FeedComposer`/`FeedNavbar`) por una sola en `app/utils/avatarColor.ts`, usada como fallback cuando no hay foto.
+- **Avatar de otros** — `PostDto`/`CommentDto` ya traen `authorAvatarBase64` desde el backend (ver [BACKEND.md](./BACKEND.md#feed--users-service)); `useFeed.ts` lo mapea a `authorAvatarPhoto` en `FeedPost`.
+
 ## Registro de cambios (sesión de implementación)
+
+### 2026-08-29 — Fotos de perfil reales en el feed
+
+- `FeedAvatar` gana `photoBase64`; `AuthContext` gana `authAvatarBase64` (en memoria, repoblado al loguear) como fuente única del avatar propio.
+- Reemplazadas 4 copias de `getUserColor` (`FeedDrawer`/`FeedComposeModal`/`FeedComposer`/`FeedNavbar`) por `app/utils/avatarColor.ts`.
+- Ver [Fotos de perfil reales en el feed](#fotos-de-perfil-reales-en-el-feed).
+
+### 2026-08-28 — `AppAlert` reemplaza `Alert.alert` nativo
+
+- Nuevo `app/components/AppAlert.tsx`: `AppAlertProvider` + `useAppAlert()`, misma firma que `Alert.alert`. Migrados los 16 puntos del código que usaban el diálogo nativo del sistema operativo.
+- Ver [AppAlert](#appalert-reemplazo-de-alertalert-nativo).
+
+### 2026-08-28 — Fix: radar de estadísticas colgado al abrir ficha desde grupo
+
+- `MemberProfileModal`: el efecto que carga las estadísticas incluía `loading`/`error`/`forbidden` en su propio arreglo de dependencias — al llamar `setLoading(true)`, React re-ejecutaba el efecto y su `cleanup` marcaba `cancelled = true` sobre la petición recién disparada, así que la respuesta real (aunque llegaba bien) se descartaba en silencio y el spinner quedaba colgado para siempre.
+- Se sacaron esos tres estados de las dependencias — el guard sigue usando `profile` (legítimo, evita repetir el pedido si ya hay datos).
+
+### 2026-08-27 — Reservas por tamaño, con auto-asignación y aprobación del dueño (Fase W.1 + W.1.1)
+
+- `CreateReservationModal`: el jugador elige complejo + **tamaño** de cancha (ya no una cancha por nombre — ese primer intento de la Fase W.1 quedó superado por la W.1.1 en el mismo ciclo). Chequeo de disponibilidad con debounce antes de dejar confirmar.
+- `ReservationDetailScreen` muestra qué cancha específica asignó el backend.
+- Las reservas creadas desde la app nacen `pending` (requieren aprobación del dueño desde el portal web) — antes nacían `confirmed` directo.
+- Ver [Reservas — selección por tamaño](#reservas--selección-por-tamaño-fase-w11).
+
+### 2026-08-26 — Comodín para partidos internos (Fase 11)
+
+- Nuevas pantallas `NearbyGuestRequestsScreen`, `GuestRequestModal`, `GuestApplicantsModal`, `GuestRequestCard`; hooks `useMatchGuestRequest`, `useNearbyGuestRequests`.
+- Badge "Comodín" en el roster para participantes que entraron por esta vía (`MatchParticipant.isGuest`).
+- Nuevo toggle en `ProfileEditScreen`: "avisarme si falta un jugador cerca" (`notifyNearbyGuestRequests`).
+- Ver [Comodín](#comodín-fase-11).
+
+### 2026-08-26 — Fundaciones de ubicación (Fase L.0)
+
+- Nuevo `MunicipalityPicker`, usado en edición de perfil y creación/edición de grupo. Sin GPS ni mapas nativos en esta etapa — búsqueda por municipio contra `GET /api/geo/municipalities`.
+- Ver [Ubicación](#ubicación-fase-l0).
+
+### 2026-08-26 — Búsqueda y sugerencias de amigos (Fase 10.1)
+
+- `FriendsScreen` gana pestaña Sugerencias y buscador (`@alias`/correo, con la regla de privacidad de coincidencia exacta por email).
+- Ver [Amistad entre jugadores y búsqueda](#amistad-entre-jugadores-y-búsqueda-fase-10--101).
+
+### 2026-08-26 — Amistad entre jugadores y feed filtrado (Fase 10)
+
+- Nueva pantalla `FriendsScreen` (pestañas Amigos/Solicitudes) y hook `useFriends`.
+- `MemberProfileModal` gana la prop `source` y la regla de producto `canShowStats` (estadísticas solo desde grupo/rankings, o con amistad aceptada) — reutilizada después por Rankings (Fase 9.1) y postulantes a comodín (Fase 11).
+- El Feed deja de ser global — ver [Pantalla Feed](#pantalla-feed--red-social).
+- Ver [Ficha de miembro](#ficha-de-miembro--memberprofilemodal).
 
 ### 2026-08-18 — Sincronización de perfil con backend, Tarea H (`Dev-David`)
 
@@ -575,12 +705,14 @@ Namespace `profileScreen:*` en los **7 idiomas**: stats, tests, medición, psico
 
 ### Pendiente / fuera de alcance actual
 
-- [ ] API real del Feed (publicaciones, likes, comentarios)
-- [ ] Backend de perfil (stats, tests, avatar en servidor)
-- [ ] Pantallas Grupos, Partidos, Reservas (solo stub desde perfil y drawer)
+Ya completado (no repetir como pendiente): API real del Feed + fotos de perfil reales, backend de perfil (stats/tests/avatar), pantallas Grupos/Partidos/Reservas/Amigos/Comodín, `AppAlert` en toda la app.
+
 - [ ] Formulario completo de Register in-app
 - [ ] OAuth real (Google / Facebook SDK)
 - [ ] Eliminar o aislar pantallas demo de Ignite
+- [ ] Convención "sin `Alert.alert` nativo" todavía no está reforzada por ESLint (`no-restricted-imports`) — hoy es manual, ver [AppAlert](#appalert-reemplazo-de-alertalert-nativo)
+- [ ] Reintento automático / cola offline para el sync de profile-stats cuando falla por red
+- [ ] En curso, sin mergear a `Dev-David` todavía: comodín múltiple (`feature/comodin-multiple`) — no documentar hasta que mergee
 
 ### Desarrollo en dispositivo físico
 
@@ -657,4 +789,4 @@ Al implementar algo nuevo:
 
 ---
 
-*Última actualización: módulo Perfil completo en rama `Dev-David` (tests in-app, psico, avatar, sugerencia de posición).*
+*Última actualización: 2026-08-29 — sincronizado con todo lo mergeado a `Dev-David` desde el 18/08: Amistades + feed filtrado (Fase 10/10.1), ubicación (Fase L.0), comodín (Fase 11), reservas por tamaño (Fase W.1/W.1.1), `AppAlert` y fotos de perfil reales en el feed.*
