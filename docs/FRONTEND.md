@@ -582,7 +582,22 @@ El feed (drawer, composer, navbar, tarjetas de post, comentarios) mostraba únic
 - **Avatar propio** — fuente única: `AuthContext` gana `authAvatarBase64: string | null`, **en memoria** (no MMKV, a propósito — repoblar desde el backend con `getMyProfile()` al loguear alcanza, evitar otra capa de caché que se desincronice, mismo problema que el token en la Fase 8.1). Se actualiza al instante al elegir una foto nueva en `ProfileScreen`, sin esperar la confirmación de red ni reiniciar la app. Reemplaza 4 copias sueltas de `getUserColor` (en `FeedDrawer`/`FeedComposeModal`/`FeedComposer`/`FeedNavbar`) por una sola en `app/utils/avatarColor.ts`, usada como fallback cuando no hay foto.
 - **Avatar de otros** — `PostDto`/`CommentDto` ya traen `authorAvatarBase64` desde el backend (ver [BACKEND.md](./BACKEND.md#feed--users-service)); `useFeed.ts` lo mapea a `authorAvatarPhoto` en `FeedPost`.
 
+## Fotos de perfil reales en miembros de grupo y roster de partidos
+
+Auditoría posterior a la Fase 12: los dos lugares que seguían mostrando solo inicial+color porque el backend no enviaba la foto eran la lista de miembros de un grupo (`GroupMemberRow.tsx`) y el roster de un partido (`ParticipantRow` en `MatchDetailScreen.tsx`).
+
+- `GroupMemberApiDto` y `MatchParticipantApiDto` ganan `avatarBase64: string | null` (ver [BACKEND.md](./BACKEND.md#groups--users-service)).
+- Ambas filas reemplazan su círculo inline de inicial+color por **`FeedAvatar`** (que ya soporta `photoBase64` desde la Fase 12), con `getUserColor` de `app/utils/avatarColor.ts` como color de fallback — se eliminaron las dos copias locales de `pickAvatarColor` (mismo algoritmo y paleta, el color visible no cambia). Un usuario sin foto se ve exactamente igual que antes.
+- `TournamentRankingsScreen` queda **sin** avatar a propósito: sus filas son texto plano (nunca tuvieron avatar, ni de inicial) y el contrato `RankingEntry` documenta explícitamente que no lleva `avatarBase64` porque la ficha al tocar una fila ya trae la foto por `getPublicMemberProfile`. Agregarlo implicaría rediseñar la fila y reabrir esa decisión — fuera de esta fase.
+- `FriendsScreen` y `GuestApplicantsModal` ya mostraban la foto real — confirmado, sin cambios.
+
 ## Registro de cambios (sesión de implementación)
+
+### 2026-08-31 — Fotos de perfil reales en miembros de grupo y roster de partidos
+
+- `GroupMemberRow` y `ParticipantRow` (`MatchDetailScreen`) pasan de inicial+color a `FeedAvatar` con la foto real (`avatarBase64` nuevo en `GroupMemberApiDto`/`MatchParticipantApiDto`); fallback de inicial+color idéntico al de antes vía `getUserColor`.
+- Rankings de torneo quedan sin avatar a propósito (decisión previa documentada en el contrato `RankingEntry`).
+- Ver [Fotos de perfil reales en miembros de grupo y roster de partidos](#fotos-de-perfil-reales-en-miembros-de-grupo-y-roster-de-partidos).
 
 ### 2026-08-31 — Crear partido: sede antes que formato, mismo selector de fecha que Reservas
 

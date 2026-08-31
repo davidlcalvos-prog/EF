@@ -9,9 +9,11 @@ import type { PlayerPositionId } from "@/data/suggestPlayerPosition"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
 import type { AppStackScreenProps } from "@/navigators/navigationTypes"
+import { FeedAvatar } from "@/screens/feed/components/FeedAvatar"
 import { api, type MatchParticipantApiDto } from "@/services/api"
 import type { GeneralApiProblem } from "@/services/api/apiProblem"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
+import { getUserColor } from "@/utils/avatarColor"
 import { formatDate } from "@/utils/formatDate"
 
 import { GuestApplicantsModal } from "./components/GuestApplicantsModal"
@@ -19,13 +21,6 @@ import { GuestRequestModal } from "./components/GuestRequestModal"
 import { statusLabel, typeLabel } from "./components/MatchCard"
 import { useMatchDetail } from "./useMatchDetail"
 import { useMatchGuestRequest } from "./useMatchGuestRequest"
-
-const AVATAR_PALETTE = ["#00CEC8", "#FF8C00", "#7B68EE", "#2ECC71", "#E74C3C"]
-
-function pickAvatarColor(seed: string) {
-  const hash = seed.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  return AVATAR_PALETTE[hash % AVATAR_PALETTE.length]
-}
 
 function describeProblem(problem: GeneralApiProblem): string {
   switch (problem.kind) {
@@ -124,18 +119,12 @@ function ParticipantRow({ participant }: { participant: MatchParticipantApiDto }
       borderBottomWidth={1}
       borderBottomColor="rgba(85,85,85,0.5)"
     >
-      <XStack
-        width={36}
-        height={36}
-        borderRadius={18}
-        backgroundColor={pickAvatarColor(participant.userId) as `#${string}`}
-        alignItems="center"
-        justifyContent="center"
-      >
-        <Text color="#FFFFFF" fontWeight="800" fontSize={14}>
-          {participant.name.trim().charAt(0).toUpperCase() || "?"}
-        </Text>
-      </XStack>
+      <FeedAvatar
+        label={participant.name}
+        color={getUserColor(participant.userId)}
+        photoBase64={participant.avatarBase64}
+        size={36}
+      />
       <YStack flex={1}>
         <XStack alignItems="center" gap={6}>
           <Text color="#FFFFFF" fontWeight="700" fontSize={14} numberOfLines={1}>

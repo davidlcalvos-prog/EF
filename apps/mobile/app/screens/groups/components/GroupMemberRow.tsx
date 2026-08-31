@@ -3,8 +3,10 @@ import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
 import { translate } from "@/i18n/translate"
+import { FeedAvatar } from "@/screens/feed/components/FeedAvatar"
 import type { GroupMemberApiDto, GroupMemberRoleApi } from "@/services/api"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
+import { getUserColor } from "@/utils/avatarColor"
 
 import { roleLabel } from "./GroupCard"
 
@@ -17,13 +19,6 @@ export interface GroupMemberRowProps {
   onRemove?: () => void
   /** Abre la ficha del miembro al tocar el área de avatar+nombre. */
   onPress?: () => void
-}
-
-const AVATAR_PALETTE = ["#00CEC8", "#FF8C00", "#7B68EE", "#2ECC71", "#E74C3C"]
-
-function pickAvatarColor(seed: string) {
-  const hash = seed.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  return AVATAR_PALETTE[hash % AVATAR_PALETTE.length]
 }
 
 const ROLE_COLORS = {
@@ -41,8 +36,6 @@ export function GroupMemberRow({
   onRemove,
   onPress,
 }: GroupMemberRowProps) {
-  const initial = member.name.trim().charAt(0).toUpperCase() || "?"
-
   return (
     <XStack
       alignItems="center"
@@ -59,18 +52,12 @@ export function GroupMemberRow({
         accessibilityRole={onPress ? "button" : undefined}
         style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 12 }}
       >
-        <XStack
-          width={40}
-          height={40}
-          borderRadius={20}
-          backgroundColor={pickAvatarColor(member.userId) as `#${string}`}
-          alignItems="center"
-          justifyContent="center"
-        >
-          <Text color="#FFFFFF" fontWeight="800" fontSize={15}>
-            {initial}
-          </Text>
-        </XStack>
+        <FeedAvatar
+          label={member.name}
+          color={getUserColor(member.userId)}
+          photoBase64={member.avatarBase64}
+          size={40}
+        />
 
         <YStack flex={1} gap={2}>
           <XStack alignItems="center" gap={6}>

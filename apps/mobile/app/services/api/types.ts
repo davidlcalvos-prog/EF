@@ -155,6 +155,8 @@ export interface GroupMemberApiDto {
   userId: string
   email: string
   name: string
+  /** Foto real de perfil; null si el usuario no cargó una. */
+  avatarBase64: string | null
   role: GroupMemberRoleApi
   joinedAt: string
 }
@@ -262,6 +264,8 @@ export interface MatchParticipantApiDto {
   userId: string
   email: string
   name: string
+  /** Foto real de perfil; null si el usuario no cargó una. */
+  avatarBase64: string | null
   confirmedAt: string
   team: MatchTeamApi | null
   /** solo en partidos vs; null en internal. */

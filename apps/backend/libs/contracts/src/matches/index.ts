@@ -30,6 +30,8 @@ export interface MatchParticipantDto {
   userId: string;
   email: string;
   name: string;
+  /** Foto real de perfil (Profile.avatarBase64); null si el usuario no cargó una. */
+  avatarBase64: string | null;
   confirmedAt: string;
   /** null hasta que el líder sortea equipos (Fase 6.5.4, solo partidos internal). */
   team: MatchTeam | null;

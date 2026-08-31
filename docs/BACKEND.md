@@ -199,6 +199,8 @@ Grupos de jugadores (Fase 2 del roadmap — bloqueador de Partidos/Reservas del 
 
 Modelos Prisma `Group` y `GroupMembership` (`groups`, `group_memberships`), con `GroupRole` (`creator` | `admin` | `member`) y único `(groupId, userId)`.
 
+`GroupMemberDto` (miembros dentro de `GET /api/groups/:id`) incluye `avatarBase64: string | null` (2026-08-31) — la foto real de perfil de cada miembro, sale del mismo `include` de `user` que ya traía `email`/`firstname`/`lastname` en `group.repository.ts` (`profile: { select: { avatarBase64 } }`, mismo patrón que `authorInclude` del feed), sin consulta extra.
+
 **Pendiente / fuera de alcance de esta fase** (ver [Próximos pasos](#próximos-pasos)): flujo de invitación con aceptación/rechazo para unirse a un grupo (hoy se agrega directo), y transferencia de liderazgo (que el creador ceda su rol a otro miembro).
 
 ### Matches → users-service
@@ -225,6 +227,8 @@ Partidos (Fase 3 del roadmap — bloqueador de Reservas del jugador y Campeonato
 | `vs` | Solo `creator`/`admin` de `originGroupId` | Status inicial `pending_opponent` hasta que `creator`/`admin` de `opponentGroupId` acepte o rechace |
 
 Modelos Prisma `Match` y `MatchParticipant` (`matches`, `match_participants`), enums `MatchType` (`internal`/`vs`) y `MatchStatus` (`draft`/`pending_opponent`/`scheduled`/`played`/`cancelled`). `reservationId` en el `MatchDto` se resuelve desde la relación inversa `Match.reservation` (FK real en `Reservation.matchId`, ver [Reservations (lado jugador) → venues-service](#reservations-lado-jugador--venues-service)).
+
+`MatchParticipantDto` (roster dentro de `GET /api/matches/:id`) incluye `avatarBase64: string | null` (2026-08-31) — la foto real de perfil de cada participante, sale del mismo `include` de `user` que ya traía `email`/`firstname`/`lastname` en `match.repository.ts` (`profile: { select: { avatarBase64 } }`, mismo patrón que `authorInclude` del feed), sin consulta extra.
 
 ### User Friendships → users-service
 
@@ -423,6 +427,11 @@ Pendientes (no implementados aún):
 ---
 
 ## Registro de cambios
+
+### 2026-08-31 — Fotos de perfil reales en miembros de grupo y roster de partidos
+
+- `GroupMemberDto` y `MatchParticipantDto` ganan `avatarBase64: string | null` — sale del mismo `include` de `user` que ya traía nombre y email en `group.repository.ts`/`match.repository.ts` (mismo patrón que `authorInclude` del feed, Fase 12), sin consulta extra.
+- `RankingEntry` queda **sin** `avatarBase64` a propósito — decisión ya documentada en `libs/contracts/src/rankings/index.ts`: la ficha al tocar una fila ya trae el avatar por `getPublicMemberProfile`.
 
 ### 2026-08-31 — Servicios del complejo (`Venue.amenities`)
 
