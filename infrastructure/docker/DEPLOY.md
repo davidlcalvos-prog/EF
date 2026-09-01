@@ -5,8 +5,8 @@ Runbook paso a paso para levantar el backend completo (4 microservicios + Postgr
 ## 0. Requisitos previos
 
 - Un VPS Ubuntu 24 con IP pública y acceso SSH como root (o usuario con sudo).
-- Un subdominio para el API (ej. `api.eliteforge.app`).
-- **DNS primero**: creá el registro `A` del subdominio apuntando a la IP del VPS **antes** de levantar el compose — Caddy necesita que el dominio resuelva para emitir el certificado de Let's Encrypt. Verificalo con `nslookup api.eliteforge.app` desde tu PC.
+- Un subdominio para el API — en producción real: `api.eliteforge.tech`.
+- **DNS primero**: creá el registro `A` del subdominio apuntando a la IP del VPS **antes** de levantar el compose — Caddy necesita que el dominio resuelva para emitir el certificado de Let's Encrypt. Verificalo con `nslookup api.eliteforge.tech` desde tu PC.
 
 ## 1. Instalar Docker + Compose plugin
 
@@ -33,10 +33,10 @@ Valores a rellenar (los `[SECRETO]` se generan, nunca se inventan a mano):
 
 | Variable | Cómo obtenerla |
 |---|---|
-| `API_DOMAIN` | Tu subdominio del API (ej. `api.eliteforge.app`) |
+| `API_DOMAIN` | Tu subdominio del API (producción real: `api.eliteforge.tech`) |
 | `POSTGRES_PASSWORD` | `openssl rand -base64 24` |
 | `JWT_SECRET` | `openssl rand -base64 48` |
-| `CORS_ORIGINS` | Dominios de la web separados por coma (`https://eliteforge.app,https://www.eliteforge.app`) |
+| `CORS_ORIGINS` | Dominios de la web separados por coma (`https://eliteforge.tech,https://www.eliteforge.tech`) |
 | `POSTGRES_USER` / `POSTGRES_DB` | Podés dejar `ef_user` / `ef_db` |
 | `EXPO_ACCESS_TOKEN` | Vacío (hoy no se usa; ver `apps/backend/.env.example`) |
 
@@ -61,7 +61,7 @@ docker compose --env-file .env.production -f infrastructure/docker/docker-compos
 docker compose --env-file .env.production -f infrastructure/docker/docker-compose.prod.yml logs -f api-gateway
 
 # Health por HTTPS (desde cualquier máquina)
-curl https://api.eliteforge.app/api/health
+curl https://api.eliteforge.tech/api/health
 ```
 
 Si el certificado no sale: casi siempre es el DNS que aún no propagó, o los puertos 80/443 cerrados en el firewall del proveedor. `docker compose ... logs caddy` lo dice explícito.
@@ -100,6 +100,7 @@ gunzip -c backups/ef_db-2026-08-25.sql.gz | docker compose --env-file .env.produ
 
 ## 7. Notas
 
+- El `"prepare": "husky install || true"` del `package.json` raíz es a propósito: dentro de las imágenes de Docker el `npm ci --omit=dev` no instala `husky` (devDependency) y sin el `|| true` el script `prepare` moría con exit 127 y tiraba abajo el build de las 4 imágenes. En desarrollo local (con devDependencies) `husky install` corre normal y el pre-commit no cambia.
 - Solo Caddy publica puertos al exterior (80/443). Postgres y los microservicios viven en la red interna del compose — no son accesibles desde afuera.
 - El compose falla a propósito si `JWT_SECRET` o `POSTGRES_PASSWORD` faltan en el `.env.production` — no hay defaults inseguros en producción.
 - Mobile para Play Store: en `apps/mobile/eas.json`, el perfil `production` está en `"buildType": "apk"` para distribución interna inicial; para subir a Play Store cambiarlo a `"buildType": "app-bundle"` (AAB) y correr `npx eas-cli build --profile production --platform android`.

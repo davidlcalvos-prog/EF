@@ -22,7 +22,7 @@
     "docker:up": "docker compose -f infrastructure/docker/docker-compose.yml up -d",
     "docker:down": "docker compose -f infrastructure/docker/docker-compose.yml down",
     "docker:build": "docker compose -f infrastructure/docker/docker-compose.yml build",
-    "prepare": "husky"
+    "prepare": "husky install || true"
   },
   "engines": {
     "node": ">=20.0.0"
