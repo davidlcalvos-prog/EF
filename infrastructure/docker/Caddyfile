@@ -1,6 +1,6 @@
 # Caddy termina TLS (certificado automático de Let's Encrypt) y proxya al
 # gateway en la red interna del compose. API_DOMAIN viene del .env.production
-# (ej. api.eliteforge.app). El registro DNS A del subdominio debe apuntar a la
+# (producción real: api.eliteforge.tech). El registro DNS A del subdominio debe apuntar a la
 # IP del VPS ANTES de levantar, o la emisión del certificado falla.
 {$API_DOMAIN} {
 	reverse_proxy api-gateway:3000

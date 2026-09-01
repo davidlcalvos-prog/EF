@@ -430,6 +430,11 @@ Pendientes (no implementados aún):
 
 ## Registro de cambios
 
+### 2026-08-31 — Dominio real de producción + fix de `husky` en builds de Docker
+
+- El backend quedó desplegado en `https://api.eliteforge.tech` (VPS Hostinger, Docker Compose + Caddy, HTTPS válido) — el marcador de posición `eliteforge.app` de la Fase D.0 se reemplazó por el dominio real en `eas.json`, `config.prod.ts`, `.env.example` de mobile y la documentación de despliegue.
+- `"prepare": "husky install || true"` en el `package.json` raíz: el `npm ci --omit=dev` de las imágenes de Docker no instala `husky` (devDependency) y el script `prepare` moría con exit 127, tirando abajo el build de las 4 imágenes. El `|| true` lo hace inofensivo en producción sin cambiar el pre-commit local. Ver [DEPLOY.md](../infrastructure/docker/DEPLOY.md).
+
 ### 2026-08-31 — Comodín múltiple (Fase 11.1)
 
 - `MatchGuestRequest` gana `requestedPositions String[]` (vacío = cualquier posición), `slotsTotal` (1–5) y `slotsFilled`; se elimina `requestedPosition` (migración `match_guest_requests_multi_slot`, backfill: posición única → array de una, `slotsFilled = 1` si estaba `filled`).
