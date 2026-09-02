@@ -486,6 +486,10 @@ Tras cambiar `NEXT_PUBLIC_*` o los dominios: reconstruir la imagen (`docker comp
 - [x] Torneos: modalidades, agenda→calendario, equipos manuales, W, goles/GC/tarjetas.
 - [x] Rankings podio: Goleadores + Valla menos vencida (sin asistencias/DFR/mejor defensa en UI).
 
+### 2026-09 — Favicon real (identidad de marca)
+
+- [x] `app/icon.png` (512×512) y `app/apple-icon.png` (180×180) — emblema del logo sobre carbón `#424242`, generados por `apps/mobile/scripts/generate-brand-assets.js` (`npm run generate:brand`, ver [FRONTEND.md](./FRONTEND.md#identidad-de-marca--íconos-splash-y-nombre-de-la-app)). Next.js los sirve solo por la convención de metadata por archivos del App Router (`<link rel="icon">`/`apple-touch-icon` en el HTML, verificado con `next build`) — nada que declarar en `layout.tsx`. Eliminados los restos del template en `public/` (`icon.svg`, `icon-dark-32x32.png`, `icon-light-32x32.png`, `apple-icon.png` genérico "V0"); nada los referenciaba salvo una exclusión inofensiva de Cache-Control.
+
 ### 2026-08 — Fase W.5: web al VPS en Docker
 
 - [x] La web se despliega en el VPS como servicio `web` del compose de producción (2026-08-31): nuevo `Dockerfile.web` (+ su `.dockerignore` propio), bloque `{$WEB_DOMAIN}` en el Caddyfile, variables `WEB_DOMAIN`/`WEB_DOMAIN_PRIMARY`. El shared hosting de Hostinger quedó descartado (límite de hilos LVE rompía el build); `hostinger.json` eliminado. Ver [Deploy](#deploy-vps-en-docker--fase-w5).

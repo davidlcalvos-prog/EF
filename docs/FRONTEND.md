@@ -597,7 +597,32 @@ Auditoría posterior a la Fase 12: los dos lugares que seguían mostrando solo i
 - `TournamentRankingsScreen` queda **sin** avatar a propósito: sus filas son texto plano (nunca tuvieron avatar, ni de inicial) y el contrato `RankingEntry` documenta explícitamente que no lleva `avatarBase64` porque la ficha al tocar una fila ya trae la foto por `getPublicMemberProfile`. Agregarlo implicaría rediseñar la fila y reabrir esa decisión — fuera de esta fase.
 - `FriendsScreen` y `GuestApplicantsModal` ya mostraban la foto real — confirmado, sin cambios.
 
+## Identidad de marca — íconos, splash y nombre de la app
+
+**Script:** `apps/mobile/scripts/generate-brand-assets.js` (`npm run generate:brand` desde `apps/mobile`; usa `sharp`, devDependency). Genera TODOS los íconos (mobile y web) desde el logo fuente (`assets/images/elite-forge-logo.png`, 1024×1024 RGBA) — reproducible: si cambia el logo, se corre el script y se regenera todo.
+
+**Decisión de diseño:** los íconos chicos (app, favicon, notificaciones) usan **solo el emblema** (escudo + pelota), sin la franja de texto "ELITE FORGE" — a 32 px el texto es ilegible. El logo completo con texto se usa únicamente en el splash. El recorte del emblema se **mide** (perfil de alfa fila por fila; el hueco transparente más grande separa emblema de texto; bounding box por columnas), sin coordenadas mágicas.
+
+Generados (mismos nombres que los placeholders de Ignite, así `app.json` no cambia rutas):
+
+| Archivo | Formato |
+|---|---|
+| `app-icon-all.png` / `app-icon-ios.png` / `app-icon-android-legacy.png` | 1024×1024 **RGB sin alfa** (iOS rechaza transparencia), emblema al 70% sobre carbón `#424242` |
+| `app-icon-android-adaptive-foreground.png` | 1024×1024 RGBA transparente; el emblema escala por su **diagonal** para caber entero en el círculo del 66% con 8% de margen |
+| `app-icon-android-adaptive-background.png` | 1024×1024 carbón sólido |
+| `app-icon-web-favicon.png` | 64×64 sobre carbón |
+| `notification-icon.png` (nuevo) | 96×96, silueta 100% blanca sobre transparente (Android solo usa el canal alfa); `expo-notifications` con `color: #00CEC8` |
+| `splash-logo.png` (nuevo) | logo completo con texto, 1024 de ancho, transparente; splash con `backgroundColor: #424242`, `imageWidth: 220`, `contain` |
+
+**Identidad en `app.json`:** `name: "Elite Forge"`, `scheme: "eliteforge"` (no había ningún `mobile://` hardcodeado), `android.package` y `ios.bundleIdentifier`: `com.eliteforge.app` (inmutables una vez publicados en tienda). `slug` sigue siendo `"mobile"` a propósito — está atado al `projectId` de EAS; renombrarlo exige hacerlo también en expo.dev. Pendiente antes de tienda: restringir `usesCleartextTraffic` a desarrollo.
+
 ## Registro de cambios (sesión de implementación)
+
+### 2026-09-01 — Identidad de marca: íconos reales, splash y nombre
+
+- Nuevo `scripts/generate-brand-assets.js` (`npm run generate:brand`, sharp): regenera todos los íconos desde el logo — emblema solo para íconos chicos, logo completo para el splash.
+- `app.json`: `name: "Elite Forge"`, `scheme: "eliteforge"`, `package`/`bundleIdentifier: com.eliteforge.app`; splash carbón con el logo completo; notificaciones con silueta blanca + `#00CEC8`. `slug`/`projectId` intactos.
+- Ver [Identidad de marca](#identidad-de-marca--íconos-splash-y-nombre-de-la-app).
 
 ### 2026-08-31 — Comodín múltiple (Fase 11.1)
 
