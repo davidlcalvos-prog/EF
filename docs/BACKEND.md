@@ -148,6 +148,18 @@ Prefijo global: `/api`.
 
 Códigos relevantes: **400** validación, **401** credenciales, **409** email duplicado.
 
+#### Dueños de cancha (Fase W.3) → auth-service, solo Administrador
+
+Los Empresarios **no se registran solos** (el registro público rechaza ese rol): los da de alta un Administrador desde el portal web. Rutas con `JwtAuthGuard` + `RolesGuard` restringido a **Administrador exclusivamente** (mismo patrón que Copa Elite Forge) — un Empresario o Jugador recibe **403**:
+
+| Método | Ruta | Notas |
+|--------|------|--------|
+| POST | `/api/admin/venue-owners` | Crea el Empresario (`CreateVenueOwnerDto`: email, name, contraseña temporal mín. 8 con letra+número). Mismo camino interno que `register()` (`createUserWithRole`: bcrypt cost 12 + Profile con alias único), rol Empresario. **409** email duplicado |
+| GET | `/api/admin/venue-owners` | Lista Empresarios con `venueName` (su primer complejo, o null) |
+| PATCH | `/api/admin/venue-owners/:id/status` | Activa/desactiva (`User.estado`; el login ya lo respeta: desactivado → 401). Solo actúa sobre Empresarios — nunca sobre un Administrador (**404** si el id no es un Empresario) |
+
+Los roles del sistema viven en la migración `system_roles_seed_data` (`INSERT ... ON CONFLICT DO NOTHING`): `migrate deploy` los garantiza en todo entorno — `seed.ts` (dev) y el bootstrap ya no son responsables de crearlos.
+
 ### Users → users-service
 
 | Método | Ruta | Auth |
@@ -166,7 +178,7 @@ Códigos relevantes: **400** validación, **401** credenciales, **409** email du
 | **Jugador** / **Empresario** / **Viewer** sobre `:id` ajeno | **403** |
 | Sin token | **401** |
 
-No hay endpoints administrativos adicionales: se reutilizan las rutas existentes.
+Para perfil/preferencias no hay endpoints administrativos adicionales: se reutilizan las rutas existentes. El alta/gestión de Empresarios sí tiene rutas propias — ver [Dueños de cancha (Fase W.3)](#dueños-de-cancha-fase-w3--auth-service-solo-administrador).
 
 ### Profile stats → users-service
 
@@ -431,6 +443,12 @@ Pendientes (no implementados aún):
 ---
 
 ## Registro de cambios
+
+### 2026-09-02 — Fase W.3: alta de dueños de cancha + roles como migración
+
+- Nueva migración `system_roles_seed_data` (`INSERT ... ON CONFLICT (name) DO NOTHING`, con `updatedAt` explícito porque no tiene default en la DB): los 4 roles del sistema quedan garantizados por `migrate deploy` en todo entorno. `bootstrap-prod.js` deja de crearlos — solo verifica que existan (aborta pidiendo `migrate deploy` si faltan) y crea el Administrador.
+- Rutas nuevas `POST/GET /api/admin/venue-owners` y `PATCH /api/admin/venue-owners/:id/status` (auth-service, gateway con RolesGuard **solo Administrador** — 403 para el resto). `register()` refactorizado a `createUserWithRole` compartido; el registro público sigue forzando Jugador.
+- Ver [Dueños de cancha](#dueños-de-cancha-fase-w3--auth-service-solo-administrador) y [DEPLOY.md § 3.1](../infrastructure/docker/DEPLOY.md).
 
 ### 2026-09-02 — Bootstrap seguro de producción: roles del sistema + Administrador
 

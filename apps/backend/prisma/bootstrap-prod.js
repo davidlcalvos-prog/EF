@@ -4,14 +4,17 @@
  * seed.ts NO se corre en producción: tiene contraseñas fijas y públicas (el
  * repo es público), crea datos de demo, y su "admin" es un Empresario — no
  * crea ningún Administrador, que es el único rol que puede dar de alta dueños
- * de cancha. Este script hace exactamente dos cosas, ambas idempotentes:
+ * de cancha. Este script hace UNA sola cosa, idempotente:
  *
- *   1. Upsert de los 4 roles del sistema (misma fuente de verdad que seed.ts:
- *      SYSTEM_ROLES_SEED de libs/common — se lee del dist compilado porque la
- *      imagen de producción no tiene ts-node ni los fuentes de libs/).
- *   2. Una cuenta de Administrador desde variables de entorno OBLIGATORIAS
- *      (sin defaults, sin contraseñas inventadas), en el mismo estado que
- *      dejaría el registro normal (bcrypt cost 12 + Profile con alias único).
+ *   Crear la cuenta de Administrador desde variables de entorno OBLIGATORIAS
+ *   (sin defaults, sin contraseñas inventadas), en el mismo estado que
+ *   dejaría el registro normal (bcrypt cost 12 + Profile con alias único).
+ *
+ * Los roles del sistema YA NO son responsabilidad de este script (Fase W.3):
+ * los garantiza la migración `system_roles_seed_data` vía `prisma migrate
+ * deploy`. Acá solo queda una verificación defensiva: si faltan, se aborta
+ * pidiendo correr las migraciones primero. (SYSTEM_ROLES_SEED se sigue
+ * leyendo del dist compilado de libs/common — la imagen no trae ts-node.)
  *
  * JS plano (CommonJS) a propósito: la imagen se construye con --omit=dev y no
  * trae ts-node. Solo usa dependencias de runtime (@prisma/client,
@@ -135,17 +138,17 @@ async function main() {
   const prisma = new PrismaClient({ adapter });
 
   try {
-    // 1) Roles del sistema (idempotente — mismo upsert que seed.ts)
-    for (const role of SYSTEM_ROLES_SEED) {
-      await prisma.role.upsert({
-        where: { name: role.name },
-        update: { description: role.description },
-        create: { name: role.name, description: role.description },
-      });
+    // Verificación defensiva: los roles los crea la migración system_roles_seed_data.
+    const roleNames = SYSTEM_ROLES_SEED.map((role) => role.name);
+    const existingRoles = await prisma.role.count({ where: { name: { in: roleNames } } });
+    if (existingRoles < roleNames.length) {
+      fail(
+        `Faltan roles del sistema (${existingRoles}/${roleNames.length}). ` +
+          'Correr `prisma migrate deploy` primero — la migración system_roles_seed_data los crea.',
+      );
     }
-    console.log(`bootstrap-prod: ${SYSTEM_ROLES_SEED.length} roles del sistema asegurados.`);
 
-    // 2) Cuenta de Administrador
+    // Cuenta de Administrador
     const adminRole = await prisma.role.findUniqueOrThrow({
       where: { name: SYSTEM_ROLE_NAMES.ADMINISTRADOR },
     });

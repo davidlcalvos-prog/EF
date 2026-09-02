@@ -1,5 +1,6 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { PrismaService } from '@ef/database';
+import { VenueOwnerDto } from '@ef/contracts';
 import { resolvePublicRegistrationRole } from '../registration-role.resolver';
 
 export interface CreateUserData {
@@ -7,6 +8,13 @@ export interface CreateUserData {
   passwordHash: string;
   name: string;
   registrationRole?: string;
+  /**
+   * Rol explícito, SOLO para flujos internos (alta de Empresario por un
+   * Administrador, Fase W.3) — nunca llega desde un body HTTP: el registro
+   * público sigue pasando por resolvePublicRegistrationRole, que rechaza
+   * Empresario/Administrador.
+   */
+  roleNameOverride?: string;
 }
 
 export interface AuthUserRecord {
@@ -41,7 +49,8 @@ export class UserRepository {
   }
 
   async create(data: CreateUserData): Promise<AuthUserRecord> {
-    const roleName = resolvePublicRegistrationRole(data.registrationRole);
+    const roleName =
+      data.roleNameOverride ?? resolvePublicRegistrationRole(data.registrationRole);
     const role = await this.prisma.role.findUnique({
       where: { name: roleName },
     });
@@ -74,6 +83,59 @@ export class UserRepository {
     });
 
     return this.toAuthUserRecord(user);
+  }
+
+  /** Empresarios con el nombre de su primer venue (Fase W.3, portal admin). */
+  async listVenueOwners(roleName: string): Promise<VenueOwnerDto[]> {
+    const owners = await this.prisma.user.findMany({
+      where: { role: { name: roleName } },
+      include: {
+        ownedVenues: { select: { name: true }, orderBy: { createdAt: 'asc' }, take: 1 },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return owners.map((owner) => ({
+      id: owner.id,
+      email: owner.email,
+      name: [owner.firstname, owner.lastname]
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .join(' '),
+      estado: owner.estado,
+      createdAt: owner.createdAt.toISOString(),
+      venueName: owner.ownedVenues[0]?.name ?? null,
+    }));
+  }
+
+  async findVenueOwnerById(
+    id: string,
+  ): Promise<{ id: string; roleName: string } | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, role: { select: { name: true } } },
+    });
+    return user ? { id: user.id, roleName: user.role.name } : null;
+  }
+
+  async setEstado(id: string, estado: boolean): Promise<VenueOwnerDto> {
+    const owner = await this.prisma.user.update({
+      where: { id },
+      data: { estado },
+      include: {
+        ownedVenues: { select: { name: true }, orderBy: { createdAt: 'asc' }, take: 1 },
+      },
+    });
+    return {
+      id: owner.id,
+      email: owner.email,
+      name: [owner.firstname, owner.lastname]
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .join(' '),
+      estado: owner.estado,
+      createdAt: owner.createdAt.toISOString(),
+      venueName: owner.ownedVenues[0]?.name ?? null,
+    };
   }
 
   private async buildUniqueAlias(email: string, name: string): Promise<string> {

@@ -19,6 +19,12 @@ export const MESSAGE_PATTERNS = {
     GET_PREFERENCES: 'users.get_preferences',
     UPDATE_PREFERENCES: 'users.update_preferences',
   },
+  // Fase W.3: alta y gestión de dueños de cancha, exclusivo de Administrador.
+  ADMIN_USERS: {
+    CREATE_VENUE_OWNER: 'admin_users.create_venue_owner',
+    LIST_VENUE_OWNERS: 'admin_users.list_venue_owners',
+    SET_VENUE_OWNER_STATUS: 'admin_users.set_venue_owner_status',
+  },
   VENUES: {
     LIST_MINE: 'venues.list_mine',
     UPSERT_MINE: 'venues.upsert_mine',
