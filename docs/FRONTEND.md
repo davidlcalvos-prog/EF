@@ -614,7 +614,9 @@ Generados (mismos nombres que los placeholders de Ignite, así `app.json` no cam
 | `notification-icon.png` (nuevo) | 96×96, silueta 100% blanca sobre transparente (Android solo usa el canal alfa); `expo-notifications` con `color: #00CEC8` |
 | `splash-logo.png` (nuevo) | logo completo con texto, 1024 de ancho, transparente; splash con `backgroundColor: #424242`, `imageWidth: 220`, `contain` |
 
-**Identidad en `app.json`:** `name: "Elite Forge"`, `scheme: "eliteforge"` (no había ningún `mobile://` hardcodeado), `android.package` y `ios.bundleIdentifier`: `com.eliteforge.app` (inmutables una vez publicados en tienda). `slug` sigue siendo `"mobile"` a propósito — está atado al `projectId` de EAS; renombrarlo exige hacerlo también en expo.dev. Pendiente antes de tienda: restringir `usesCleartextTraffic` a desarrollo.
+**Identidad en `app.json`:** `name: "Elite Forge"`, `scheme: "eliteforge"` (no había ningún `mobile://` hardcodeado), `android.package` y `ios.bundleIdentifier`: `com.eliteforge.app` (inmutables una vez publicados en tienda). Pendiente antes de tienda: restringir `usesCleartextTraffic` a desarrollo.
+
+**EAS (2026-09-01):** el proyecto está vinculado a la cuenta de Expo de David — `owner: "david.c18"`, `slug: "elite-forge"`. El proyecto original (`owner: elite-forge`, `projectId e70c95c5-…`) pertenecía a la cuenta de Alexis, que ya no forma parte del proyecto; como nunca se publicó ningún build bajo ese proyecto, se revinculó desde cero con `eas init` (que escribe el `extra.eas.projectId` nuevo en `app.json`). Los builds se lanzan logueado como `david.c18` (`eas login`).
 
 ## Registro de cambios (sesión de implementación)
 
