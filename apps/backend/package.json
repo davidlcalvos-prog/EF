@@ -22,7 +22,8 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "postinstall": "prisma generate",
-    "prisma:seed": "prisma db seed"
+    "prisma:seed": "prisma db seed",
+    "prisma:bootstrap-prod": "node prisma/bootstrap-prod.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",

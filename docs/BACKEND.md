@@ -74,6 +74,8 @@ Al registrarse correctamente el sistema:
 
 Respuesta típica: `{ accessToken, user: { id, email, name, role } }` (HTTP **201**).
 
+Si la tabla `roles` está vacía (base recién migrada sin bootstrap), el usuario recibe un mensaje genérico ("El registro no está disponible en este momento…") y el detalle técnico —qué rol falta y cómo resolverlo— va al log del servidor con nivel `error` (antes la instrucción interna "Run npm run prisma:seed" llegaba al usuario final; corregido 2026-09-02). El fix real es correr el bootstrap de producción — ver [DEPLOY.md § 3.1](../infrastructure/docker/DEPLOY.md).
+
 La app móvil no registra en nativo: el enlace “Crear cuenta” abre el registro web (`SIGN_UP_URL` → `apps/web` `/auth/sign-up`).
 
 ### Login
@@ -429,6 +431,11 @@ Pendientes (no implementados aún):
 ---
 
 ## Registro de cambios
+
+### 2026-09-02 — Bootstrap seguro de producción: roles del sistema + Administrador
+
+- Nuevo `prisma/bootstrap-prod.js` (JS plano, solo deps de runtime — la imagen no trae `ts-node`): upsert idempotente de los 4 roles (`SYSTEM_ROLES_SEED`, leído del `dist` compilado de `libs/common` para no duplicar la lista) + cuenta de **Administrador** desde `BOOTSTRAP_ADMIN_EMAIL`/`BOOTSTRAP_ADMIN_PASSWORD` (obligatorias, mínimo 12 caracteres, rechaza las contraseñas del seed de dev; mismo bcrypt cost 12 y mismo `Profile` con alias único que el registro normal). Si el email existe no pisa la contraseña salvo `BOOTSTRAP_ADMIN_RESET_PASSWORD=true`. `seed.ts` queda solo para desarrollo (contraseñas públicas + datos demo + su "admin" es Empresario). Script npm: `prisma:bootstrap-prod`. Ver [DEPLOY.md § 3.1](../infrastructure/docker/DEPLOY.md).
+- `user.repository.ts` (auth): el error de rol no sembrado ya no filtra la instrucción interna al usuario — mensaje genérico al cliente, detalle al log con `Logger.error`.
 
 ### 2026-08-31 — Dominio real de producción + fix de `husky` en builds de Docker
 

@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { PrismaService } from '@ef/database';
 import { resolvePublicRegistrationRole } from '../registration-role.resolver';
 
@@ -20,6 +20,8 @@ export interface AuthUserRecord {
 
 @Injectable()
 export class UserRepository {
+  private readonly logger = new Logger(UserRepository.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async findByEmail(email: string): Promise<AuthUserRecord | null> {
@@ -45,8 +47,13 @@ export class UserRepository {
     });
 
     if (!role) {
+      // El detalle es una instrucción interna — va al log, nunca al usuario.
+      this.logger.error(
+        `System role "${roleName}" is missing from the roles table. ` +
+          'Run prisma/bootstrap-prod.js (prod) or npm run prisma:seed (dev).',
+      );
       throw new InternalServerErrorException(
-        `System role "${roleName}" is not seeded. Run npm run prisma:seed.`,
+        'El registro no está disponible en este momento, intentá más tarde.',
       );
     }
 
