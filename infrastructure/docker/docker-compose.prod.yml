@@ -117,6 +117,25 @@ services:
       venues-service:
         condition: service_started
 
+  # Fase W.5: la web (Next.js standalone) corre acá y no en Hostinger shared
+  # hosting (su límite de hilos LVE mataba el build). NEXT_PUBLIC_* y el
+  # rewrite /api viajan como build args/env de build porque Next los incrusta
+  # al compilar; API_GATEWAY_URL de runtime queda por prolijidad.
+  web:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.web
+      args:
+        NEXT_PUBLIC_API_URL: /api
+        NEXT_PUBLIC_SITE_URL: https://${WEB_DOMAIN_PRIMARY:?WEB_DOMAIN_PRIMARY es obligatorio}
+    restart: always
+    environment:
+      NODE_ENV: production
+      API_GATEWAY_URL: http://api-gateway:3000
+    depends_on:
+      api-gateway:
+        condition: service_started
+
   caddy:
     image: caddy:2-alpine
     restart: always
@@ -125,12 +144,15 @@ services:
       - "443:443"
     environment:
       API_DOMAIN: ${API_DOMAIN:?API_DOMAIN es obligatorio}
+      WEB_DOMAIN: ${WEB_DOMAIN:?WEB_DOMAIN es obligatorio}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
       api-gateway:
+        condition: service_started
+      web:
         condition: service_started
 
 volumes:

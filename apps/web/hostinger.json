@@ -1,7 +1,0 @@
-{
-  "framework": "nextjs",
-  "installCommand": "npm install",
-  "buildCommand": "npm run build",
-  "startCommand": "npm run start -- -p $PORT",
-  "nodeVersion": "20"
-}

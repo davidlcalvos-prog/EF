@@ -5,3 +5,11 @@
 {$API_DOMAIN} {
 	reverse_proxy api-gateway:3000
 }
+
+# Fase W.5: la web Next.js (standalone) también vive en el compose. WEB_DOMAIN
+# puede traer varios hostnames separados por espacio (eliteforge.tech
+# www.eliteforge.tech): el placeholder {$WEB_DOMAIN} se sustituye ANTES de
+# tokenizar, así que Caddy los interpreta como dos direcciones del mismo bloque.
+{$WEB_DOMAIN} {
+	reverse_proxy web:3000
+}
