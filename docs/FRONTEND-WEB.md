@@ -411,8 +411,9 @@ Abrir **http://localhost:5175** · Admin: `/admin/login`.
 | Comando | Acción |
 |---------|--------|
 | `npm run dev` | Dev puerto **5175** |
-| `npm run build` | Build prod |
-| `npm run start` | Servir build |
+| `npm run build` | Build prod (`postbuild` copia `public/` y `.next/static/` al standalone) |
+| `npm run start` | Servir build (solo local — en Hostinger usar `start:standalone`) |
+| `npm run start:standalone` | Servir el build standalone (`node .next/standalone/apps/web/server.js`) |
 | `npm run lint` | ESLint |
 
 > Si ves UI antigua (sin Analíticas/Torneos): cierra pestañas de `:5173`, usa **5175**, o ventana de incógnito.
@@ -425,8 +426,26 @@ Abrir **http://localhost:5175** · Admin: `/admin/login`.
 |---------|--------|
 | Install | `npm install` / `npm ci` |
 | Build | `npm run build` |
-| Start | `npm run start -- -p $PORT` |
+| Start | `node .next/standalone/apps/web/server.js` |
 | Node | 20.x |
+
+**Por qué standalone (fix 2026-08-31):** el primer despliegue real compiló bien pero moría en runtime con `Cannot find module 'next'` (503). Causa: en el monorepo con npm workspaces, `next` vive hoisted en el `node_modules` de la raíz — Hostinger compila con el repo completo pero solo conserva `apps/web` al ejecutar, así que `next start` no encuentra el paquete. La solución es `output: 'standalone'` en `next.config.mjs` (junto al `outputFileTracingRoot` que ya existía): el build empaqueta una copia mínima autocontenida de las dependencias en `.next/standalone/`.
+
+Estructura de salida (con `outputFileTracingRoot` en la raíz del monorepo, replica la ruta relativa completa):
+
+```
+.next/standalone/
+├── node_modules/          ← dependencias mínimas, incluido `next`
+└── apps/web/
+    ├── server.js          ← entrypoint de producción
+    ├── package.json
+    ├── public/            ← copiado por `postbuild` (standalone no lo incluye solo)
+    └── .next/static/      ← ídem
+```
+
+`postbuild` (`scripts/copy-standalone-assets.js`, Node y no `cp` de shell para funcionar igual en Windows local y Linux de Hostinger) copia `public/` y `.next/static/` — es el comportamiento documentado de Next.js, no un bug: standalone no los incluye automáticamente.
+
+El **comando de inicio** a cargar en el panel de Hostinger es `node .next/standalone/apps/web/server.js` (el server standalone lee `PORT` y `HOSTNAME` del entorno; `API_GATEWAY_URL` debe apuntar a `https://api.eliteforge.tech`). Verificado localmente: el standalone arranca aislado y sirve la landing, un chunk de `/_next/static` y un asset de `public/` con 200.
 
 Tras cambiar `NEXT_PUBLIC_*`: Redeploy. Si ves versión vieja: Cache Manager → Purge All.
 
@@ -466,6 +485,10 @@ Tras cambiar `NEXT_PUBLIC_*`: Redeploy. Si ves versión vieja: Cache Manager →
 - [x] Fix logo (sin `<a>` anidado) + nav móvil + caché static solo immutable en prod.
 - [x] Torneos: modalidades, agenda→calendario, equipos manuales, W, goles/GC/tarjetas.
 - [x] Rankings podio: Goleadores + Valla menos vencida (sin asistencias/DFR/mejor defensa en UI).
+
+### 2026-08 — Deploy standalone (fix Hostinger)
+
+- [x] `output: 'standalone'` en `next.config.mjs` + `postbuild` (`scripts/copy-standalone-assets.js`) + `start:standalone` (2026-08-31) — arregla el `Cannot find module 'next'` en runtime de Hostinger, ver [Deploy (Hostinger)](#deploy-hostinger).
 
 ### 2026-08 — CI y lint
 

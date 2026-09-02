@@ -12,6 +12,10 @@ const isProd = process.env.NODE_ENV === 'production'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Hostinger solo conserva apps/web al ejecutar: standalone empaqueta una
+  // copia mínima de node_modules (incluido `next`) junto al build — sin esto,
+  // `next start` muere con "Cannot find module 'next'" en producción.
+  output: 'standalone',
   turbopack: {
     root: tracingRoot,
   },
