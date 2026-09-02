@@ -38,8 +38,8 @@ Los jugadores usan principalmente la **app móvil**. La web sirve como landing, 
 
 | Concepto | Valor |
 |----------|-------|
-| URL pública | https://sandybrown-pigeon-607893.hostingersite.com |
-| Hosting | Hostinger Node.js Web Apps |
+| URL pública | https://eliteforge.tech (+ `www`) |
+| Hosting | VPS (Docker Compose + Caddy, junto al backend — Fase W.5) |
 | Dev local | http://localhost:5175 |
 | Idioma | Español (`lang="es"`) |
 
@@ -66,7 +66,7 @@ Registro móvil → web:
 | Entorno | `SIGN_UP_URL` |
 |---------|---------------|
 | Dev | `http://localhost:5175/auth/sign-up` |
-| Prod | Hostinger `/auth/sign-up` |
+| Prod | `https://eliteforge.tech/auth/sign-up` |
 
 > Código activo solo en **`apps/web/`**.
 
@@ -147,8 +147,7 @@ apps/web/
 │   ├── auth/constants.ts                # ef_token
 │   └── theme/elite-forge.ts
 ├── middleware.ts
-├── next.config.mjs                      # Rewrites + Cache-Control
-├── hostinger.json
+├── next.config.mjs                      # Rewrites + Cache-Control + output standalone
 ├── package.json
 └── .env.example
 ```
@@ -419,18 +418,20 @@ Abrir **http://localhost:5175** · Admin: `/admin/login`.
 
 ---
 
-## Deploy (Hostinger)
+## Deploy (VPS en Docker — Fase W.5)
 
-| Setting | Valor |
-|---------|--------|
-| Install | `npm install` / `npm ci` |
-| Build | `npm run build` |
-| Start | automático — Hostinger ejecuta el script `"start"` de `package.json` |
-| Node | 20.x |
+La web corre en el **mismo VPS que el backend**, como el servicio `web` de `infrastructure/docker/docker-compose.prod.yml`, detrás de Caddy (dominios `eliteforge.tech` + `www.eliteforge.tech`). Runbook completo: [DEPLOY.md](../infrastructure/docker/DEPLOY.md).
 
-**Hostinger no tiene un campo de comando de arranque separado** (verificado en el panel real, 2026-08-31): tras el build, arranca la app ejecutando automáticamente el script `"start"` de `package.json` — no hay forma de indicarle otro comando desde la interfaz. Por eso `"start"` **es** el comando standalone (`node .next/standalone/apps/web/server.js`), no `next start`; un `"start:standalone"` aparte nunca se ejecutaría en producción (existió brevemente en el fix anterior y se eliminó por redundante).
+**Por qué se abandonó el shared hosting de Hostinger:** su límite estricto de hilos/procesos (CloudLinux LVE) hace fallar el build de Next.js — confirmado en vivo por SSH: Turbopack muere con `panic`/`EAGAIN` y Webpack también falla con `EAGAIN` al optimizar fuentes e imágenes de Leaflet. Los `hostinger.json` (raíz y `apps/web`) se eliminaron del repo. El registro DNS `A` de la raíz ya apuntaba al VPS, así que no hubo que tocar DNS.
 
-**Por qué standalone (fix 2026-08-31):** el primer despliegue real compiló bien pero moría en runtime con `Cannot find module 'next'` (503). Causa: en el monorepo con npm workspaces, `next` vive hoisted en el `node_modules` de la raíz — Hostinger compila con el repo completo pero solo conserva `apps/web` al ejecutar, así que `next start` no encuentra el paquete. La solución es `output: 'standalone'` en `next.config.mjs` (junto al `outputFileTracingRoot` que ya existía): el build empaqueta una copia mínima autocontenida de las dependencias en `.next/standalone/`.
+Piezas del despliegue:
+
+- **`infrastructure/docker/Dockerfile.web`** — multi-stage (node:20-alpine), mismo patrón que los 4 de backend: builder con `npm ci --workspace=@ef/web --include-workspace-root` + `next build`; producción que copia solo `.next/standalone/` (autocontenido). `CMD ["node", "apps/web/server.js"]`, `ENV PORT=3000 HOSTNAME=0.0.0.0` (sin `HOSTNAME=0.0.0.0` el standalone solo escucha en localhost y Caddy no lo alcanzaría). Tiene su propio `Dockerfile.web.dockerignore` porque el `.dockerignore` de la raíz excluye `apps/web/**` para los builds de backend (BuildKit usa el específico EN LUGAR del de la raíz).
+- **Build args vs. runtime:** `NEXT_PUBLIC_API_URL` (`/api`) y `NEXT_PUBLIC_SITE_URL` (`https://$WEB_DOMAIN_PRIMARY`) se pasan como build args porque Next los incrusta en el bundle al compilar. **Ojo:** el rewrite `/api → gateway` de `next.config.mjs` TAMBIÉN se evalúa en build (queda horneado en `routes-manifest.json` del standalone), así que `API_GATEWAY_URL=http://api-gateway:3000` está fijado dentro del propio Dockerfile en el paso de build — la variable de runtime sola no alcanza en modo standalone.
+- **Caddy:** bloque `{$WEB_DOMAIN} { reverse_proxy web:3000 }`; `WEB_DOMAIN` trae ambos hostnames separados por espacio y Caddy los toma como dos direcciones del mismo bloque (el placeholder se sustituye antes de tokenizar).
+- **Variables nuevas de `.env.production`:** `WEB_DOMAIN` (lista con `www`, para Caddy) y `WEB_DOMAIN_PRIMARY` (un solo dominio canónico, para el build) — ver comentario en `.env.production.example`.
+
+**Por qué standalone (fix 2026-08-31, sigue vigente en Docker):** en el monorepo con npm workspaces, `next` vive hoisted en el `node_modules` de la raíz; un runtime que solo conserve la carpeta de la app muere con `Cannot find module 'next'`. `output: 'standalone'` en `next.config.mjs` (junto al `outputFileTracingRoot` que ya existía) empaqueta una copia mínima autocontenida de las dependencias en `.next/standalone/` — la imagen de producción copia solo eso. El script `"start"` (`node .next/standalone/apps/web/server.js`) quedó del intento de Hostinger y sigue siendo el comando correcto (la imagen usa el path equivalente directo).
 
 Estructura de salida (con `outputFileTracingRoot` en la raíz del monorepo, replica la ruta relativa completa):
 
@@ -446,9 +447,7 @@ Estructura de salida (con `outputFileTracingRoot` en la raíz del monorepo, repl
 
 `postbuild` (`scripts/copy-standalone-assets.js`, Node y no `cp` de shell para funcionar igual en Windows local y Linux de Hostinger) copia `public/` y `.next/static/` — es el comportamiento documentado de Next.js, no un bug: standalone no los incluye automáticamente.
 
-El server standalone lee `PORT` y `HOSTNAME` del entorno (Hostinger inyecta `PORT` solo); `API_GATEWAY_URL` debe apuntar a `https://api.eliteforge.tech`. Verificado localmente con el comando real (`npm run build && npm run start`): el standalone arranca aislado y sirve la landing, un chunk de `/_next/static` y un asset de `public/` con 200.
-
-Tras cambiar `NEXT_PUBLIC_*`: Redeploy. Si ves versión vieja: Cache Manager → Purge All.
+Tras cambiar `NEXT_PUBLIC_*` o los dominios: reconstruir la imagen (`docker compose ... up -d --build web`) — son valores de build, no de runtime.
 
 ---
 
@@ -486,6 +485,10 @@ Tras cambiar `NEXT_PUBLIC_*`: Redeploy. Si ves versión vieja: Cache Manager →
 - [x] Fix logo (sin `<a>` anidado) + nav móvil + caché static solo immutable en prod.
 - [x] Torneos: modalidades, agenda→calendario, equipos manuales, W, goles/GC/tarjetas.
 - [x] Rankings podio: Goleadores + Valla menos vencida (sin asistencias/DFR/mejor defensa en UI).
+
+### 2026-08 — Fase W.5: web al VPS en Docker
+
+- [x] La web se despliega en el VPS como servicio `web` del compose de producción (2026-08-31): nuevo `Dockerfile.web` (+ su `.dockerignore` propio), bloque `{$WEB_DOMAIN}` en el Caddyfile, variables `WEB_DOMAIN`/`WEB_DOMAIN_PRIMARY`. El shared hosting de Hostinger quedó descartado (límite de hilos LVE rompía el build); `hostinger.json` eliminado. Ver [Deploy](#deploy-vps-en-docker--fase-w5).
 
 ### 2026-08 — Deploy standalone (fix Hostinger)
 

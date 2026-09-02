@@ -1,12 +1,14 @@
 # Despliegue del MVP — VPS Ubuntu 24 + Docker Compose + Caddy
 
-Runbook paso a paso para levantar el backend completo (4 microservicios + Postgres + HTTPS automático) en un VPS recién creado. La web va aparte en Hostinger (`hostinger.json`) y mobile se compila con EAS (`apps/mobile/eas.json`).
+Runbook paso a paso para levantar el stack completo (4 microservicios + Postgres + **web Next.js** + HTTPS automático) en un VPS recién creado. Mobile se compila con EAS (`apps/mobile/eas.json`).
+
+**Fase W.5:** la web ya NO se despliega en el shared hosting de Hostinger — su límite de hilos/procesos (CloudLinux LVE) mataba el build de Next.js (Turbopack con `panic`/`EAGAIN`, Webpack con `EAGAIN` al optimizar fuentes e imágenes de Leaflet, confirmado por SSH). Corre como un contenedor más de este compose (`web`, `Dockerfile.web`), detrás de Caddy. Los `hostinger.json` se eliminaron del repo.
 
 ## 0. Requisitos previos
 
 - Un VPS Ubuntu 24 con IP pública y acceso SSH como root (o usuario con sudo).
-- Un subdominio para el API — en producción real: `api.eliteforge.tech`.
-- **DNS primero**: creá el registro `A` del subdominio apuntando a la IP del VPS **antes** de levantar el compose — Caddy necesita que el dominio resuelva para emitir el certificado de Let's Encrypt. Verificalo con `nslookup api.eliteforge.tech` desde tu PC.
+- Un subdominio para el API — en producción real: `api.eliteforge.tech` — y el dominio raíz para la web (`eliteforge.tech` + `www`).
+- **DNS primero**: los registros `A` (subdominio del API y dominio raíz) deben apuntar a la IP del VPS **antes** de levantar el compose — Caddy necesita que cada dominio resuelva para emitir su certificado de Let's Encrypt. Verificalo con `nslookup api.eliteforge.tech` y `nslookup eliteforge.tech` desde tu PC. (El `A` de la raíz ya quedó apuntando al VPS cuando Hostinger vinculó el dominio.)
 
 ## 1. Instalar Docker + Compose plugin
 
@@ -34,6 +36,8 @@ Valores a rellenar (los `[SECRETO]` se generan, nunca se inventan a mano):
 | Variable | Cómo obtenerla |
 |---|---|
 | `API_DOMAIN` | Tu subdominio del API (producción real: `api.eliteforge.tech`) |
+| `WEB_DOMAIN` | Hostnames de la web separados por **espacio** (`eliteforge.tech www.eliteforge.tech`) — Caddy los toma como dos direcciones del mismo bloque |
+| `WEB_DOMAIN_PRIMARY` | UN dominio canónico sin protocolo (`eliteforge.tech`) — arma `NEXT_PUBLIC_SITE_URL` en el **build** de la web (Next lo incrusta al compilar; por eso no alcanza una sola variable) |
 | `POSTGRES_PASSWORD` | `openssl rand -base64 24` |
 | `JWT_SECRET` | `openssl rand -base64 48` |
 | `CORS_ORIGINS` | Dominios de la web separados por coma (`https://eliteforge.tech,https://www.eliteforge.tech`) |
@@ -48,7 +52,9 @@ Valores a rellenar (los `[SECRETO]` se generan, nunca se inventan a mano):
 docker compose --env-file .env.production -f infrastructure/docker/docker-compose.prod.yml up -d --build
 ```
 
-Qué pasa al levantar: Postgres arranca y pasa su healthcheck → el servicio one-shot `migrate` corre `prisma migrate deploy` (aplica todas las migraciones a la base vacía y termina) → recién entonces arrancan los 4 servicios → Caddy pide el certificado y publica 80/443.
+Qué pasa al levantar: Postgres arranca y pasa su healthcheck → el servicio one-shot `migrate` corre `prisma migrate deploy` (aplica todas las migraciones a la base vacía y termina) → recién entonces arrancan los 4 servicios → arranca `web` (Next.js standalone, `HOSTNAME=0.0.0.0` para que Caddy lo alcance en la red interna) → Caddy pide los certificados (API + web) y publica 80/443.
+
+**Sobre el build de `web`:** `NEXT_PUBLIC_API_URL` (`/api`) y `NEXT_PUBLIC_SITE_URL` (`https://$WEB_DOMAIN_PRIMARY`) viajan como **build args** porque Next.js los incrusta en el bundle del cliente al compilar. El rewrite `/api → api-gateway` también queda horneado en build (`routes-manifest.json` del standalone) apuntando a `http://api-gateway:3000` — está fijado dentro de `Dockerfile.web`, no es configurable porque el DNS interno del compose nunca cambia.
 
 ## 4. Verificar
 
@@ -62,6 +68,9 @@ docker compose --env-file .env.production -f infrastructure/docker/docker-compos
 
 # Health por HTTPS (desde cualquier máquina)
 curl https://api.eliteforge.tech/api/health
+
+# La web (debe devolver el HTML de la landing)
+curl -I https://eliteforge.tech
 ```
 
 Si el certificado no sale: casi siempre es el DNS que aún no propagó, o los puertos 80/443 cerrados en el firewall del proveedor. `docker compose ... logs caddy` lo dice explícito.

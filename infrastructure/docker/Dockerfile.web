@@ -1,0 +1,68 @@
+# syntax=docker/dockerfile:1
+
+# Fase W.5: la web corre en el VPS como un contenedor más (el shared hosting
+# de Hostinger mataba el build de Next.js por el límite de hilos de CloudLinux).
+# Node 20 para coincidir con la versión que ya usaban Hostinger/EAS (el backend
+# usa 22; la web declara engines >=20).
+ARG NODE_VERSION=20
+
+# -----------------------------------------------------------------------------
+# Builder — instala deps del workspace @ef/web y compila Next.js (standalone)
+# -----------------------------------------------------------------------------
+FROM node:${NODE_VERSION}-alpine AS builder
+
+WORKDIR /app
+
+# Manifests del monorepo (npm ci exige lockfile + todos los workspaces declarados)
+COPY package.json package-lock.json ./
+COPY apps/backend/package.json apps/backend/package.json
+COPY apps/mobile/package.json apps/mobile/package.json
+COPY apps/web/package.json apps/web/package.json
+
+# Solo el workspace de la web + raíz: el postinstall de apps/backend (prisma
+# generate) no corre porque sus deps no se instalan.
+RUN npm ci --workspace=@ef/web --include-workspace-root
+
+# Código fuente de la web
+COPY apps/web/next.config.mjs apps/web/tsconfig.json apps/web/postcss.config.mjs \
+  apps/web/middleware.ts apps/web/next-env.d.ts apps/web/components.json ./apps/web/
+COPY apps/web/app ./apps/web/app
+COPY apps/web/components ./apps/web/components
+COPY apps/web/lib ./apps/web/lib
+COPY apps/web/scripts ./apps/web/scripts
+COPY apps/web/public ./apps/web/public
+
+# NEXT_PUBLIC_* se incrustan en el bundle del cliente EN BUILD — llegan como
+# build args del compose, no sirven como env de runtime.
+ARG NEXT_PUBLIC_API_URL=/api
+ARG NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} \
+  NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
+
+# OJO: el rewrite /api → gateway de next.config.mjs también se evalúa en BUILD
+# (queda horneado en routes-manifest.json dentro del standalone) — por eso
+# API_GATEWAY_URL tiene que apuntar acá al DNS interno del compose, no alcanza
+# con la variable de runtime. Nunca cambia: siempre es el gateway del compose.
+ENV API_GATEWAY_URL=http://api-gateway:3000
+
+# `postbuild` copia public/ y .next/static/ dentro del standalone.
+RUN npm run build --workspace=@ef/web
+
+# -----------------------------------------------------------------------------
+# Production — solo el standalone (node_modules mínimo + server.js + estáticos)
+# -----------------------------------------------------------------------------
+FROM node:${NODE_VERSION}-alpine AS production
+
+WORKDIR /app
+
+ENV NODE_ENV=production \
+  PORT=3000 \
+  HOSTNAME=0.0.0.0
+
+# El standalone es autocontenido: node_modules mínimo (incluido `next`),
+# apps/web/server.js, y — gracias al postbuild — public/ y .next/static/.
+COPY --from=builder /app/apps/web/.next/standalone ./
+
+EXPOSE 3000
+
+CMD ["node", "apps/web/server.js"]
