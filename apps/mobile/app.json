@@ -1,6 +1,6 @@
 {
   "name": "Elite Forge",
-  "slug": "mobile",
+  "slug": "elite-forge",
   "scheme": "eliteforge",
   "version": "1.0.0",
   "orientation": "portrait",
@@ -85,8 +85,8 @@
       "version": "11.5.0"
     },
     "eas": {
-      "projectId": "e70c95c5-f7cf-4ced-879a-a210182852cc"
+      "projectId": "8494aae2-3590-420c-bcf8-c7c0de4d6b6f"
     }
   },
-  "owner": "elite-forge"
+  "owner": "david.c18"
 }
