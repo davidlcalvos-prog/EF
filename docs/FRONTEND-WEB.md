@@ -410,10 +410,9 @@ Abrir **http://localhost:5175** · Admin: `/admin/login`.
 
 | Comando | Acción |
 |---------|--------|
-| `npm run dev` | Dev puerto **5175** |
+| `npm run dev` | Dev puerto **5175** (no afectado por `output: 'standalone'`) |
 | `npm run build` | Build prod (`postbuild` copia `public/` y `.next/static/` al standalone) |
-| `npm run start` | Servir build (solo local — en Hostinger usar `start:standalone`) |
-| `npm run start:standalone` | Servir el build standalone (`node .next/standalone/apps/web/server.js`) |
+| `npm run start` | Servir el build standalone (`node .next/standalone/apps/web/server.js`) — es lo que ejecuta Hostinger |
 | `npm run lint` | ESLint |
 
 > Si ves UI antigua (sin Analíticas/Torneos): cierra pestañas de `:5173`, usa **5175**, o ventana de incógnito.
@@ -426,8 +425,10 @@ Abrir **http://localhost:5175** · Admin: `/admin/login`.
 |---------|--------|
 | Install | `npm install` / `npm ci` |
 | Build | `npm run build` |
-| Start | `node .next/standalone/apps/web/server.js` |
+| Start | automático — Hostinger ejecuta el script `"start"` de `package.json` |
 | Node | 20.x |
+
+**Hostinger no tiene un campo de comando de arranque separado** (verificado en el panel real, 2026-08-31): tras el build, arranca la app ejecutando automáticamente el script `"start"` de `package.json` — no hay forma de indicarle otro comando desde la interfaz. Por eso `"start"` **es** el comando standalone (`node .next/standalone/apps/web/server.js`), no `next start`; un `"start:standalone"` aparte nunca se ejecutaría en producción (existió brevemente en el fix anterior y se eliminó por redundante).
 
 **Por qué standalone (fix 2026-08-31):** el primer despliegue real compiló bien pero moría en runtime con `Cannot find module 'next'` (503). Causa: en el monorepo con npm workspaces, `next` vive hoisted en el `node_modules` de la raíz — Hostinger compila con el repo completo pero solo conserva `apps/web` al ejecutar, así que `next start` no encuentra el paquete. La solución es `output: 'standalone'` en `next.config.mjs` (junto al `outputFileTracingRoot` que ya existía): el build empaqueta una copia mínima autocontenida de las dependencias en `.next/standalone/`.
 
@@ -445,7 +446,7 @@ Estructura de salida (con `outputFileTracingRoot` en la raíz del monorepo, repl
 
 `postbuild` (`scripts/copy-standalone-assets.js`, Node y no `cp` de shell para funcionar igual en Windows local y Linux de Hostinger) copia `public/` y `.next/static/` — es el comportamiento documentado de Next.js, no un bug: standalone no los incluye automáticamente.
 
-El **comando de inicio** a cargar en el panel de Hostinger es `node .next/standalone/apps/web/server.js` (el server standalone lee `PORT` y `HOSTNAME` del entorno; `API_GATEWAY_URL` debe apuntar a `https://api.eliteforge.tech`). Verificado localmente: el standalone arranca aislado y sirve la landing, un chunk de `/_next/static` y un asset de `public/` con 200.
+El server standalone lee `PORT` y `HOSTNAME` del entorno (Hostinger inyecta `PORT` solo); `API_GATEWAY_URL` debe apuntar a `https://api.eliteforge.tech`. Verificado localmente con el comando real (`npm run build && npm run start`): el standalone arranca aislado y sirve la landing, un chunk de `/_next/static` y un asset de `public/` con 200.
 
 Tras cambiar `NEXT_PUBLIC_*`: Redeploy. Si ves versión vieja: Cache Manager → Purge All.
 
@@ -488,7 +489,8 @@ Tras cambiar `NEXT_PUBLIC_*`: Redeploy. Si ves versión vieja: Cache Manager →
 
 ### 2026-08 — Deploy standalone (fix Hostinger)
 
-- [x] `output: 'standalone'` en `next.config.mjs` + `postbuild` (`scripts/copy-standalone-assets.js`) + `start:standalone` (2026-08-31) — arregla el `Cannot find module 'next'` en runtime de Hostinger, ver [Deploy (Hostinger)](#deploy-hostinger).
+- [x] `output: 'standalone'` en `next.config.mjs` + `postbuild` (`scripts/copy-standalone-assets.js`) (2026-08-31) — arregla el `Cannot find module 'next'` en runtime de Hostinger, ver [Deploy (Hostinger)](#deploy-hostinger).
+- [x] `"start"` pasa a ser el server standalone (2026-08-31) — Hostinger no tiene campo de comando de arranque: ejecuta `"start"` automáticamente, así que el `"start:standalone"` del fix anterior nunca corría en producción; se redefinió `"start"` y se eliminó el script redundante.
 
 ### 2026-08 — CI y lint
 
