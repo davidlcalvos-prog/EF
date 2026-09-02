@@ -1,7 +1,7 @@
 {
-  "name": "mobile",
+  "name": "Elite Forge",
   "slug": "mobile",
-  "scheme": "mobile",
+  "scheme": "eliteforge",
   "version": "1.0.0",
   "orientation": "portrait",
   "userInterfaceStyle": "automatic",
@@ -16,7 +16,7 @@
   ],
   "android": {
     "icon": "./assets/images/app-icon-android-legacy.png",
-    "package": "com.mobile",
+    "package": "com.eliteforge.app",
     "adaptiveIcon": {
       "foregroundImage": "./assets/images/app-icon-android-adaptive-foreground.png",
       "backgroundImage": "./assets/images/app-icon-android-adaptive-background.png"
@@ -27,7 +27,7 @@
   "ios": {
     "icon": "./assets/images/app-icon-ios.png",
     "supportsTablet": true,
-    "bundleIdentifier": "com.mobile"
+    "bundleIdentifier": "com.eliteforge.app"
   },
   "web": {
     "favicon": "./assets/images/app-icon-web-favicon.png",
@@ -39,10 +39,10 @@
     [
       "expo-splash-screen",
       {
-        "image": "./assets/images/app-icon-android-adaptive-foreground.png",
-        "imageWidth": 300,
+        "image": "./assets/images/splash-logo.png",
+        "imageWidth": 220,
         "resizeMode": "contain",
-        "backgroundColor": "#191015"
+        "backgroundColor": "#424242"
       }
     ],
     [
@@ -71,8 +71,8 @@
     [
       "expo-notifications",
       {
-        "icon": "./assets/images/app-icon-android-adaptive-foreground.png",
-        "color": "#191015"
+        "icon": "./assets/images/notification-icon.png",
+        "color": "#00CEC8"
       }
     ]
   ],

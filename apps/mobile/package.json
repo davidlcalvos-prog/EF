@@ -4,6 +4,7 @@
   "private": true,
   "main": "index.tsx",
   "scripts": {
+    "generate:brand": "node scripts/generate-brand-assets.js",
     "start": "npx expo start --dev-client",
     "android": "npx expo run:android",
     "ios": "npx expo run:ios",
@@ -101,6 +102,7 @@
     "reactotron-react-js": "^3.3.11",
     "reactotron-react-native": "^5.0.5",
     "reactotron-react-native-mmkv": "^0.2.6",
+    "sharp": "^0.34.5",
     "ts-jest": "^29.1.1",
     "tsx": "^4.20.3",
     "typescript": "~5.9.2"
