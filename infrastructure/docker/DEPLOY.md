@@ -54,6 +54,23 @@ docker compose --env-file .env.production -f infrastructure/docker/docker-compos
 
 Qué pasa al levantar: Postgres arranca y pasa su healthcheck → el servicio one-shot `migrate` corre `prisma migrate deploy` (aplica todas las migraciones a la base vacía y termina) → recién entonces arrancan los 4 servicios → arranca `web` (Next.js standalone, `HOSTNAME=0.0.0.0` para que Caddy lo alcance en la red interna) → Caddy pide los certificados (API + web) y publica 80/443.
 
+### 3.1 Primer arranque: bootstrap de roles + Administrador (obligatorio)
+
+`migrate deploy` crea las tablas pero **no inserta los roles del sistema** — sin ellos, el registro de jugadores falla. Y `seed.ts` **no se corre en producción**: tiene contraseñas fijas públicas (el repo es público), crea datos de demo, y su "admin" es un Empresario — no crea ningún Administrador, que es el único rol que puede dar de alta dueños de cancha.
+
+Para eso existe `prisma/bootstrap-prod.js` (idempotente, viaja dentro de las imágenes): asegura los 4 roles del sistema y crea la cuenta de Administrador desde variables de entorno, sin ningún default. La contraseña no debe quedar en el historial de bash — usar `read -s`:
+
+```bash
+read -s -p "Contraseña del Administrador: " BOOTSTRAP_ADMIN_PASSWORD; echo
+docker compose --env-file .env.production -f infrastructure/docker/docker-compose.prod.yml \
+  exec -e BOOTSTRAP_ADMIN_EMAIL=davidlcalvos@gmail.com \
+       -e BOOTSTRAP_ADMIN_PASSWORD="$BOOTSTRAP_ADMIN_PASSWORD" \
+       users-service node prisma/bootstrap-prod.js
+unset BOOTSTRAP_ADMIN_PASSWORD
+```
+
+Reglas del script: aborta si faltan email o contraseña, si la contraseña tiene menos de 12 caracteres, o si es una de las del seed de dev (`Admin123!`/`Demo123!`). Si el email ya existe no toca la contraseña ("ya existe, sin cambios") salvo que se pase `-e BOOTSTRAP_ADMIN_RESET_PASSWORD=true`. Opcionales: `BOOTSTRAP_ADMIN_FIRSTNAME`/`BOOTSTRAP_ADMIN_LASTNAME`. Nunca crea datos de demo ni loguea la contraseña. Se puede correr de nuevo tras cada redeploy sin duplicar nada.
+
 **Sobre el build de `web`:** `NEXT_PUBLIC_API_URL` (`/api`) y `NEXT_PUBLIC_SITE_URL` (`https://$WEB_DOMAIN_PRIMARY`) viajan como **build args** porque Next.js los incrusta en el bundle del cliente al compilar. El rewrite `/api → api-gateway` también queda horneado en build (`routes-manifest.json` del standalone) apuntando a `http://api-gateway:3000` — está fijado dentro de `Dockerfile.web`, no es configurable porque el DNS interno del compose nunca cambia.
 
 ## 4. Verificar
