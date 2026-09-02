@@ -10,6 +10,7 @@ import {
   Trophy,
   ChartNoAxesCombined,
   Medal,
+  UsersRound,
   type LucideIcon,
 } from 'lucide-react'
 import { Logo } from '@/components/logo'
@@ -76,6 +77,16 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { href: '/admin', label: 'Resumen', icon: LayoutDashboard },
       { href: '/admin/metricas', label: 'Métricas', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Usuarios',
+    items: [
+      {
+        href: '/admin/duenos-de-cancha',
+        label: 'Dueños de cancha',
+        icon: UsersRound,
+      },
     ],
   },
   {

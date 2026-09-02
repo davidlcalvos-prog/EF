@@ -1,7 +1,13 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { MESSAGE_PATTERNS } from '@ef/common';
-import { LoginDto, RegisterDto, ValidateTokenDto } from '@ef/contracts';
+import {
+  CreateVenueOwnerDto,
+  LoginDto,
+  RegisterDto,
+  SetVenueOwnerStatusPayload,
+  ValidateTokenDto,
+} from '@ef/contracts';
 import { AuthService } from './auth.service';
 
 @Controller()
@@ -26,5 +32,22 @@ export class AuthController {
   @MessagePattern(MESSAGE_PATTERNS.AUTH.GET_ME)
   getMe(@Payload() data: { userId: string }) {
     return this.authService.getMe(data.userId);
+  }
+
+  // ── Fase W.3: dueños de cancha (el gateway restringe a Administrador) ──
+
+  @MessagePattern(MESSAGE_PATTERNS.ADMIN_USERS.CREATE_VENUE_OWNER)
+  createVenueOwner(@Payload() dto: CreateVenueOwnerDto) {
+    return this.authService.createVenueOwner(dto);
+  }
+
+  @MessagePattern(MESSAGE_PATTERNS.ADMIN_USERS.LIST_VENUE_OWNERS)
+  listVenueOwners() {
+    return this.authService.listVenueOwners();
+  }
+
+  @MessagePattern(MESSAGE_PATTERNS.ADMIN_USERS.SET_VENUE_OWNER_STATUS)
+  setVenueOwnerStatus(@Payload() payload: SetVenueOwnerStatusPayload) {
+    return this.authService.setVenueOwnerStatus(payload.userId, payload.estado);
   }
 }

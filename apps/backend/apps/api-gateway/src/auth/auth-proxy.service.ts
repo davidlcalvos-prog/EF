@@ -5,9 +5,11 @@ import { MESSAGE_PATTERNS, SERVICE_NAMES, toHttpException } from '@ef/common';
 import {
   AuthMeResponse,
   AuthResponse,
+  CreateVenueOwnerDto,
   LoginDto,
   RegisterDto,
   ValidateTokenResponse,
+  VenueOwnerDto,
 } from '@ef/contracts';
 
 @Injectable()
@@ -33,6 +35,29 @@ export class AuthProxyService {
 
   getMe(userId: string): Promise<AuthMeResponse> {
     return this.send<AuthMeResponse>(MESSAGE_PATTERNS.AUTH.GET_ME, { userId });
+  }
+
+  // ── Fase W.3: dueños de cancha (solo Administrador, ver controller) ──
+
+  createVenueOwner(dto: CreateVenueOwnerDto): Promise<VenueOwnerDto> {
+    return this.send<VenueOwnerDto>(
+      MESSAGE_PATTERNS.ADMIN_USERS.CREATE_VENUE_OWNER,
+      dto,
+    );
+  }
+
+  listVenueOwners(): Promise<VenueOwnerDto[]> {
+    return this.send<VenueOwnerDto[]>(
+      MESSAGE_PATTERNS.ADMIN_USERS.LIST_VENUE_OWNERS,
+      {},
+    );
+  }
+
+  setVenueOwnerStatus(userId: string, estado: boolean): Promise<VenueOwnerDto> {
+    return this.send<VenueOwnerDto>(
+      MESSAGE_PATTERNS.ADMIN_USERS.SET_VENUE_OWNER_STATUS,
+      { userId, estado },
+    );
   }
 
   private send<T>(pattern: string, payload: unknown): Promise<T> {

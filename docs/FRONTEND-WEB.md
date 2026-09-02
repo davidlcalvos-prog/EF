@@ -486,6 +486,10 @@ Tras cambiar `NEXT_PUBLIC_*` o los dominios: reconstruir la imagen (`docker comp
 - [x] Torneos: modalidades, agenda→calendario, equipos manuales, W, goles/GC/tarjetas.
 - [x] Rankings podio: Goleadores + Valla menos vencida (sin asistencias/DFR/mejor defensa en UI).
 
+### 2026-09 — Fase W.3: página "Dueños de cancha" (solo Administrador)
+
+- [x] Nueva `app/admin/(portal)/duenos-de-cancha/` (`page.tsx` + `actions.ts`) + DAL `lib/dal/admin/venue-owners.ts` + `components/admin/venue-owners-dashboard.tsx` (2026-09-02). Tabla de Empresarios (nombre, correo, complejo, estado, alta) con activar/desactivar, y alta con contraseña temporal: botón "Generar" (12 caracteres aleatorios con `crypto.getRandomValues`, garantiza letra+número) y aviso post-creación que muestra la clave **una sola vez** para que David se la envíe al dueño. Ítem "Dueños de cancha" en la sección nueva **Usuarios** del sidebar de Administrador; la página redirige a `/admin/reservas` si entra un Empresario (mismo mecanismo que Campeonatos Elite Forge) y el backend devuelve 403 igual. Un dueño recién creado sin venue ve el flujo existente "Sin cancha configurada → Mi cancha" (verificado en vivo).
+
 ### 2026-09 — Favicon real (identidad de marca)
 
 - [x] `app/icon.png` (512×512) y `app/apple-icon.png` (180×180) — emblema del logo sobre carbón `#424242`, generados por `apps/mobile/scripts/generate-brand-assets.js` (`npm run generate:brand`, ver [FRONTEND.md](./FRONTEND.md#identidad-de-marca--íconos-splash-y-nombre-de-la-app)). Next.js los sirve solo por la convención de metadata por archivos del App Router (`<link rel="icon">`/`apple-touch-icon` en el HTML, verificado con `next build`) — nada que declarar en `layout.tsx`. Eliminados los restos del template en `public/` (`icon.svg`, `icon-dark-32x32.png`, `icon-light-32x32.png`, `apple-icon.png` genérico "V0"); nada los referenciaba salvo una exclusión inofensiva de Cache-Control.

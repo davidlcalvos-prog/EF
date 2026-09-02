@@ -276,6 +276,7 @@ Si a un partido interno programado le falta gente, el líder o vicelíder puede 
 | **Aprobación del dueño** | Una reserva creada desde la app nace pendiente — el dueño la confirma o rechaza desde el dashboard web |
 | **Reservas telefónicas** | El dueño también puede cargar reservas gestionadas por llamada, con nombre y teléfono del cliente — estas quedan confirmadas de inmediato, sin paso de aprobación |
 | **Dashboard web** | Plataforma para **dueños de canchas**: administra sus canchas por tamaño y precio propio, y su calendario de reservas |
+| **Alta de dueños (regla de negocio, Fase W.3)** | Los dueños de cancha **no se registran solos**: el registro público solo crea jugadores. El dueño interesado escribe por correo, y el **Administrador** lo da de alta desde el portal (página "Dueños de cancha") con una contraseña temporal que le comunica por fuera (sin correos automáticos todavía). El Administrador también puede desactivar a un dueño (no puede loguearse hasta reactivarlo). No existe alta de Administradores por UI — eso sigue siendo solo bootstrap del servidor |
 | **Tiempo real** | Los dueños ven reservas y cancelaciones al instante |
 | **Perfil** | El usuario ve sus reservas activas en una sección del perfil |
 
@@ -382,4 +383,4 @@ La guía completa de colores y distribución UI está en el [README principal](.
 
 ---
 
-*Última actualización: 2026-08-29 — red social filtrada por amigos/grupo, comodín para partidos, canchas por tamaño con aprobación del dueño, ubicación real y fotos de perfil en el feed.*
+*Última actualización: 2026-09-02 — alta de dueños de cancha desde el portal de Administrador (los dueños no se registran solos), roles del sistema garantizados por migración.*
