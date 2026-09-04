@@ -45,8 +45,7 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.eliteforge.tech/api/",
         "EXPO_PUBLIC_SIGN_UP_URL": "https://eliteforge.tech/auth/sign-up"
-      },
-      "android": { "buildType": "apk" }
+      }
     }
   },
   "submit": {

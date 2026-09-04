@@ -618,6 +618,8 @@ Generados (mismos nombres que los placeholders de Ignite, así `app.json` no cam
 
 **EAS (2026-09-01):** el proyecto está vinculado a la cuenta de Expo de David — `owner: "david.c18"`, `slug: "elite-forge"`. El proyecto original (`owner: elite-forge`, `projectId e70c95c5-…`) pertenecía a la cuenta de Alexis, que ya no forma parte del proyecto; como nunca se publicó ningún build bajo ese proyecto, se revinculó desde cero con `eas init` (que escribe el `extra.eas.projectId` nuevo en `app.json`). Los builds se lanzan logueado como `david.c18` (`eas login`).
 
+**Perfiles de build y formato Android (2026-09-04):** el perfil `production` de `eas.json` **no** declara `buildType`, así que usa el default de EAS, `app-bundle`, y genera un **`.aab`** (Android App Bundle). Es obligatorio: Google Play solo acepta `.aab` para cualquier pista de la consola — incluidas "Pruebas internas" y "Pruebas cerradas" — y rechaza `.apk` en apps nuevas. Los perfiles `development`, `development:device` y `preview` sí declaran `"buildType": "apk"` a propósito: generan un **`.apk`** para instalar directo en un teléfono (`distribution: internal`) en pruebas manuales; ese archivo **no** sirve para subir a la tienda. Resumen: `eas build -p android --profile production` → `.aab` para Google Play; `--profile preview` / `development` → `.apk` para instalar a mano.
+
 ## Registro de cambios (sesión de implementación)
 
 ### 2026-09-01 — Identidad de marca: íconos reales, splash y nombre
