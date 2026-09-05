@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useState } from "react"
-import { ActivityIndicator, Modal, Pressable, ScrollView, View } from "react-native"
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+} from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
@@ -140,7 +147,10 @@ export function FeedCommentsSheet({
       onRequestClose={handleClose}
       statusBarTranslucent
     >
-      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "flex-end" }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "flex-end" }}
+      >
         <Pressable style={{ flex: 1 }} onPress={handleClose} />
 
         <YStack
@@ -298,7 +308,7 @@ export function FeedCommentsSheet({
             </Pressable>
           </XStack>
         </YStack>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }

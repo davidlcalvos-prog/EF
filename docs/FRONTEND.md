@@ -620,7 +620,22 @@ Generados (mismos nombres que los placeholders de Ignite, así `app.json` no cam
 
 **Perfiles de build y formato Android (2026-09-04):** el perfil `production` de `eas.json` **no** declara `buildType`, así que usa el default de EAS, `app-bundle`, y genera un **`.aab`** (Android App Bundle). Es obligatorio: Google Play solo acepta `.aab` para cualquier pista de la consola — incluidas "Pruebas internas" y "Pruebas cerradas" — y rechaza `.apk` en apps nuevas. Los perfiles `development`, `development:device` y `preview` sí declaran `"buildType": "apk"` a propósito: generan un **`.apk`** para instalar directo en un teléfono (`distribution: internal`) en pruebas manuales; ese archivo **no** sirve para subir a la tienda. Resumen: `eas build -p android --profile production` → `.aab` para Google Play; `--profile preview` / `development` → `.apk` para instalar a mano.
 
+## Teclado en modales y pantallas (fixes de QA en dispositivo real, 2026-09-05)
+
+**Regla de la app:** todo `KeyboardAvoidingView` usa `behavior={Platform.OS === "ios" ? "padding" : "height"}` — el `undefined` en Android deja los campos tapados por el teclado (era el bug de `ProfileEditScreen`, único lugar con el patrón roto; `Screen.tsx` y `LoginScreen` ya lo hacían bien).
+
+**Modales:** un `<Modal>` de React Native es una jerarquía de vistas nativa separada — **no hereda** el `KeyboardAvoidingView` de la pantalla que lo abre. Todo modal con entrada de texto lleva el suyo propio como raíz (la View raíz del modal ES el `KeyboardAvoidingView`, mismo behavior). Aplicado en los 9 modales con `TextField`: `MunicipalityPicker`, `GroupSearchModal`, `FeedCommentsSheet`, `FeedComposeModal`, `GroupAddMemberModal`, `GroupCreateModal`, `GroupEditModal`, `CreateMatchModal` y `CreateReservationModal`. Si se crea un modal nuevo con inputs, seguir este patrón.
+
+**Idioma de respaldo:** `app/i18n/index.ts` → `fallbackLocale = "es"` (antes `"en-US"`): si el idioma del sistema no coincide con ninguno de los 7 soportados, la app cae a español. La detección del idioma del sistema (`Localization.getLocales()`) no cambió.
+
 ## Registro de cambios (sesión de implementación)
+
+### 2026-09-05 — Fixes de QA: teclado en Android, teclado en modales, fallback en español
+
+- `ProfileEditScreen`: `behavior` del `KeyboardAvoidingView` pasa de `undefined` a `"height"` en Android (el teclado tapaba los campos).
+- Los 9 modales con `TextField` ganan su propio `KeyboardAvoidingView` raíz (un `Modal` no hereda el de la pantalla).
+- `fallbackLocale` pasa de `"en-US"` a `"es"`.
+- Ver [Teclado en modales y pantallas](#teclado-en-modales-y-pantallas-fixes-de-qa-en-dispositivo-real-2026-09-05).
 
 ### 2026-09-01 — Identidad de marca: íconos reales, splash y nombre
 
