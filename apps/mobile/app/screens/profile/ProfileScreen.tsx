@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { useFocusEffect } from "@react-navigation/native"
 import { Text, XStack, YStack } from "tamagui"
 
-import { useAppAlert } from "@/components/AppAlert"
+import { useAppAlert, type ShowAppAlert } from "@/components/AppAlert"
 import { useAuth } from "@/context/AuthContext"
 import {
   getTagIdFromEmail,
@@ -31,21 +31,37 @@ import { useProfileStats } from "./useProfileStats"
 import { MAX_AVATAR_BASE64_LENGTH, pickProfileImageFromGallery } from "./utils/pickProfileImage"
 
 /**
- * Best-effort: sube el avatar al backend sin bloquear la UI. Si falla (sin
- * red, 400 por tamaño) el avatar local queda igual — se reintenta la próxima
- * vez que el usuario cambie la foto.
+ * Sube el avatar al backend sin bloquear la UI. El avatar local ya está
+ * persistido y visible; lo que se decide acá es si el resto de la app (feed,
+ * grupos, partidos — que leen el dato del servidor) va a verlo. Por eso NUNCA
+ * se descarta en silencio: si no se puede subir, se loguea y se avisa al
+ * usuario, que si no creería que la foto quedó cuando solo la ve él.
  */
-function syncAvatarToBackend(base64: string | null): void {
-  if (!base64 || base64.length > MAX_AVATAR_BASE64_LENGTH) return
+function syncAvatarToBackend(base64: string | null, showAlert: ShowAppAlert): void {
+  const reportFailure = (reason: string) => {
+    console.warn(`[profile] el avatar no se subió al servidor: ${reason}`)
+    showAlert(
+      translate("profileScreen:avatarUploadFailedTitle"),
+      translate("profileScreen:avatarUploadFailedMessage"),
+    )
+  }
+  if (!base64) {
+    reportFailure("el picker no devolvió base64")
+    return
+  }
+  if (base64.length > MAX_AVATAR_BASE64_LENGTH) {
+    // Ya viene redimensionada a 512×512 (pickProfileImage.ts); superar el
+    // límite acá es rarísimo, pero si pasa el usuario tiene que saberlo.
+    reportFailure(`supera el límite (${base64.length} > ${MAX_AVATAR_BASE64_LENGTH} chars)`)
+    return
+  }
   api
     .updateProfileAvatar(base64)
     .then((result) => {
-      if (result.kind !== "ok" && __DEV__) {
-        console.warn("[profile] sync de avatar falló:", result.kind)
-      }
+      if (result.kind !== "ok") reportFailure(`respuesta ${result.kind}`)
     })
     .catch((error) => {
-      if (__DEV__) console.warn("[profile] sync de avatar lanzó excepción:", error)
+      reportFailure(`excepción ${String(error)}`)
     })
 }
 
@@ -128,7 +144,7 @@ export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
     // esperar la confirmación de red (mismo criterio optimista que
     // updateProfile de arriba) ni reiniciar la app.
     setAuthAvatarBase64(picked.base64)
-    syncAvatarToBackend(picked.base64)
+    syncAvatarToBackend(picked.base64, showAlert)
   }, [profile.avatarUri, updateProfile, userKey, setAuthAvatarBase64, showAlert])
 
   const handleQuickLink = useCallback(

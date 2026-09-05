@@ -1,4 +1,5 @@
 import { Directory, File, Paths } from "expo-file-system"
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator"
 import * as ImagePicker from "expo-image-picker"
 
 import type { ShowAppAlert } from "@/components/AppAlert"
@@ -6,6 +7,27 @@ import { translate } from "@/i18n/translate"
 
 /** Debe coincidir con MAX_AVATAR_BASE64_LENGTH del backend (libs/contracts/src/users). */
 export const MAX_AVATAR_BASE64_LENGTH = 500_000
+
+/**
+ * El recorte 1:1 del picker sale a la resolución de la cámara (1–4 MB, 1,3–5 M
+ * caracteres en base64) y superaba el límite del servidor — la foto nunca
+ * salía del teléfono. Un avatar se muestra chico y circular: 512×512 a JPEG
+ * 0,7 (~30–80 KB, ~40–110 K chars) entra holgado y se ve igual de bien.
+ */
+const AVATAR_SIZE_PX = 512
+const AVATAR_JPEG_QUALITY = 0.7
+
+async function resizeForAvatar(sourceUri: string): Promise<{ uri: string; base64: string | null }> {
+  const image = await ImageManipulator.manipulate(sourceUri)
+    .resize({ width: AVATAR_SIZE_PX, height: AVATAR_SIZE_PX })
+    .renderAsync()
+  const saved = await image.saveAsync({
+    compress: AVATAR_JPEG_QUALITY,
+    format: SaveFormat.JPEG,
+    base64: true,
+  })
+  return { uri: saved.uri, base64: saved.base64 ?? null }
+}
 
 function sanitizeUserKey(userKey: string): string {
   return userKey.replace(/[^a-zA-Z0-9._-]/g, "_")
@@ -85,18 +107,21 @@ export async function pickProfileImageFromGallery(
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.85,
-      base64: true,
     })
 
     if (result.canceled || !result.assets[0]?.uri) return null
 
-    const persistedUri = persistAvatarImage(result.assets[0].uri, userKey)
+    // Un solo redimensionado sirve para los dos destinos: el archivo local que
+    // muestra Perfil y el base64 que se sube al servidor (menos código, y lo
+    // que ve el usuario es exactamente lo que ven los demás).
+    const resized = await resizeForAvatar(result.assets[0].uri)
+    const persistedUri = persistAvatarImage(resized.uri, userKey)
 
     if (previousUri && previousUri !== persistedUri) {
       await deleteStoredAvatar(previousUri)
     }
 
-    return { uri: persistedUri, base64: result.assets[0].base64 ?? null }
+    return { uri: persistedUri, base64: resized.base64 }
   } catch {
     showAlert(
       translate("profileScreen:avatarNativeMissingTitle"),

@@ -444,6 +444,10 @@ Pendientes (no implementados aún):
 
 ## Registro de cambios
 
+### 2026-09-05 — 413 en vez de 500 para cuerpos que superan el límite del gateway
+
+- `AllExceptionsFilter` (`libs/common`) reconoce los errores del body-parser de Express (`type: 'entity.*'` + `status`): un cuerpo > 1 MB responde **413** "Payload too large: the request body exceeds the 1MB limit" y un JSON malformado **400**, en vez del 500 genérico anterior. Hallazgo secundario del diagnóstico del avatar (el cliente nunca debería enviar tanto, pero el error tiene que ser claro).
+
 ### 2026-09-02 — Fase W.3: alta de dueños de cancha + roles como migración
 
 - Nueva migración `system_roles_seed_data` (`INSERT ... ON CONFLICT (name) DO NOTHING`, con `updatedAt` explícito porque no tiene default en la DB): los 4 roles del sistema quedan garantizados por `migrate deploy` en todo entorno. `bootstrap-prod.js` deja de crearlos — solo verifica que existan (aborta pidiendo `migrate deploy` si faltan) y crea el Administrador.

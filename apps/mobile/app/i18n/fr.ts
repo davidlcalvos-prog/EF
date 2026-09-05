@@ -699,6 +699,9 @@ const fr: Translations = {
     avatarPermissionMessage: "Autorisez l'accès à la galerie.",
     avatarNativeMissingTitle: "Galerie indisponible",
     avatarNativeMissingMessage: "Recompilez le dev client pour la galerie.",
+    avatarUploadFailedTitle: "La photo n'a pas pu être envoyée",
+    avatarUploadFailedMessage:
+      "Elle est enregistrée sur ce téléphone, mais le reste de l'app ne l'affichera pas. Essaie une autre photo ou réessaie plus tard.",
     personalInfoTitle: "À propos",
     personalAge: "Âge : {{age}}",
     psychSectionTitle: "Évaluation psychologique",

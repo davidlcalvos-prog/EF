@@ -687,6 +687,9 @@ const hi: Translations = {
     avatarPermissionMessage: "गैलरी की अनुमति दें।",
     avatarNativeMissingTitle: "गैलरी उपलब्ध नहीं",
     avatarNativeMissingMessage: "dev client rebuild आवश्यक।",
+    avatarUploadFailedTitle: "फ़ोटो अपलोड नहीं हो सकी",
+    avatarUploadFailedMessage:
+      "यह इस फ़ोन पर सेव हो गई, लेकिन ऐप के बाकी हिस्सों में नहीं दिखेगी। कोई दूसरी फ़ोटो आज़माएँ या बाद में फिर कोशिश करें।",
     personalInfoTitle: "मेरे बारे में",
     personalAge: "आयु: {{age}}",
     psychSectionTitle: "मनोवैज्ञानिक मूल्यांकन",
