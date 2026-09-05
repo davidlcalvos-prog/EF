@@ -688,6 +688,9 @@ const ja: Translations = {
     avatarPermissionMessage: "ギャラリーへのアクセスを許可してください。",
     avatarNativeMissingTitle: "ギャラリー不可",
     avatarNativeMissingMessage: "dev clientの再ビルドが必要です。",
+    avatarUploadFailedTitle: "写真をアップロードできませんでした",
+    avatarUploadFailedMessage:
+      "この端末には保存されましたが、アプリの他の画面には表示されません。別の写真を試すか、後でもう一度お試しください。",
     personalInfoTitle: "自己紹介",
     personalAge: "年齢: {{age}}",
     psychSectionTitle: "心理評価",

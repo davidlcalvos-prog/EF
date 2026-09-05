@@ -588,6 +588,8 @@ El feed (drawer, composer, navbar, tarjetas de post, comentarios) mostraba únic
 - **Avatar propio** — fuente única: `AuthContext` gana `authAvatarBase64: string | null`, **en memoria** (no MMKV, a propósito — repoblar desde el backend con `getMyProfile()` al loguear alcanza, evitar otra capa de caché que se desincronice, mismo problema que el token en la Fase 8.1). Se actualiza al instante al elegir una foto nueva en `ProfileScreen`, sin esperar la confirmación de red ni reiniciar la app. Reemplaza 4 copias sueltas de `getUserColor` (en `FeedDrawer`/`FeedComposeModal`/`FeedComposer`/`FeedNavbar`) por una sola en `app/utils/avatarColor.ts`, usada como fallback cuando no hay foto.
 - **Avatar de otros** — `PostDto`/`CommentDto` ya traen `authorAvatarBase64` desde el backend (ver [BACKEND.md](./BACKEND.md#feed--users-service)); `useFeed.ts` lo mapea a `authorAvatarPhoto` en `FeedPost`.
 
+**Subida de la foto (fix 2026-09-05):** la foto elegida en Perfil se **redimensiona a 512×512 JPEG calidad 0,7** con `expo-image-manipulator` (`resizeForAvatar` en `pickProfileImage.ts`) antes de persistirla y de generar el base64. El mismo redimensionado sirve para el archivo local que muestra Perfil y para lo que se sube — lo que ve el usuario es lo que ven los demás. Antes el picker devolvía el recorte a resolución de cámara (1–4 MB, 1,3–5 M caracteres en base64), `syncAvatarToBackend` lo descartaba en silencio por superar `MAX_AVATAR_BASE64_LENGTH` (500 000) y la foto nunca salía del teléfono: Perfil la mostraba (archivo local) pero feed/grupos/partidos (que leen el dato del servidor) veían la inicial. Con 512×512 q0,7 una foto de cámara queda en ~30–110 K caracteres (medido: una imagen de 10,9 MB baja a ~29 K). `syncAvatarToBackend` ya **no descarta en silencio**: si no hay base64, supera el límite o el `PATCH` falla, loguea con `console.warn` y avisa con `AppAlert` (`profileScreen:avatarUploadFailed*`, 7 idiomas). `expo-image-manipulator` es un módulo nativo — requiere recompilar el dev client / AAB con EAS.
+
 ## Fotos de perfil reales en miembros de grupo y roster de partidos
 
 Auditoría posterior a la Fase 12: los dos lugares que seguían mostrando solo inicial+color porque el backend no enviaba la foto eran la lista de miembros de un grupo (`GroupMemberRow.tsx`) y el roster de un partido (`ParticipantRow` en `MatchDetailScreen.tsx`).
@@ -628,7 +630,27 @@ Generados (mismos nombres que los placeholders de Ignite, así `app.json` no cam
 
 **Idioma de respaldo:** `app/i18n/index.ts` → `fallbackLocale = "es"` (antes `"en-US"`): si el idioma del sistema no coincide con ninguno de los 7 soportados, la app cae a español. La detección del idioma del sistema (`Localization.getLocales()`) no cambió.
 
+## Barras del sistema y safe area en Android (edge-to-edge, fix 2026-09-05)
+
+`app.json` activa `edgeToEdgeEnabled` con el plugin `react-native-edge-to-edge` y `enforceNavigationBarContrast: false` (barra de navegación totalmente transparente, también en modo 3 botones). Con eso, el color de los íconos de las barras lo gobierna la app — y con `parentTheme: "Light"` salían **oscuros sobre el fondo carbón**: en teléfonos con navegación por 3 botones, Atrás/Inicio/Recientes quedaban invisibles ("el UI oculta las funciones del teléfono").
+
+- **`parentTheme` → `"Default"`** (tema DayNight de edge-to-edge; `"Dark"` no existe en la librería). El contraste real lo fija el punto siguiente, no el tema.
+- **Un solo `<SystemBars style="light" />`** en `app/app.tsx` (raíz, dentro de `SafeAreaProvider`) para toda la app — reemplaza los 19 `<StatusBar barStyle="light-content">` de `react-native` que había en cada pantalla (deprecado con edge-to-edge según la propia librería, y que además no gobernaba la barra de navegación). La app es oscura de punta a punta, así que no hace falta variarlo por pantalla; si alguna vez una pantalla clara lo necesita, `SystemBars` acepta `style` por pantalla.
+- **Safe area**: `components/Screen.tsx` (wrapper de Ignite con `safeAreaEdges`) **no lo usa ninguna pantalla real** — solo `WelcomeScreen`, que no está en ningún navegador. La convención vigente es manual: cada pantalla aplica `insets.top`/`insets.bottom` de `useResponsiveLayout()`. `MatchDetailScreen` y `ReservationDetailScreen` eran las únicas dos con `paddingBottom` fijo al final del scroll (los botones de acción quedaban bajo la barra de gestos/botones); ahora usan `insets.bottom + 16`. Migrar todo al wrapper compartido sería una fase aparte, decidida explícitamente.
+
 ## Registro de cambios (sesión de implementación)
+
+### 2026-09-05 — Fix: barra de navegación de Android invisible + insets faltantes
+
+- `app.json`: `parentTheme` `"Light"` → `"Default"`; `<SystemBars style="light" />` único en `app.tsx` en lugar de los 19 `<StatusBar>` por pantalla.
+- `MatchDetailScreen` y `ReservationDetailScreen`: `paddingBottom: insets.bottom + 16` en el scroll.
+- Ver [Barras del sistema y safe area](#barras-del-sistema-y-safe-area-en-android-edge-to-edge-fix-2026-09-05).
+
+### 2026-09-05 — Fix: la foto de perfil se descartaba en silencio antes de llegar al servidor
+
+- `pickProfileImage.ts`: redimensionado a 512×512 JPEG q0,7 con `expo-image-manipulator` (nuevo, `~55.0.21`, módulo nativo → recompilar con EAS) para el archivo local y el base64 que se sube.
+- `ProfileScreen.syncAvatarToBackend`: nunca más un `return` silencioso — log de advertencia + `AppAlert` cuando la foto no se pudo subir. 2 claves i18n nuevas (`avatarUploadFailedTitle/Message`) en los 7 idiomas.
+- Ver [Fotos de perfil reales en el feed](#fotos-de-perfil-reales-en-el-feed).
 
 ### 2026-09-05 — Fixes de QA: teclado en Android, teclado en modales, fallback en español
 

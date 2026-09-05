@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react"
-import { ActivityIndicator, Pressable, RefreshControl, StatusBar } from "react-native"
+import { ActivityIndicator, Pressable, RefreshControl } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 import { Drawer } from "react-native-drawer-layout"
 import Animated, { useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated"
@@ -208,8 +208,6 @@ export function FeedScreen(_props: AppStackScreenProps<"Feed">) {
 
   return (
     <YStack flex={1} backgroundColor={eliteForgeColors.carbon}>
-      <StatusBar barStyle="light-content" backgroundColor={eliteForgeColors.carbon} />
-
       <Drawer
         open={drawerOpen}
         onOpen={openDrawer}

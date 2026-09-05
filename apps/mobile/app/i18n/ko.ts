@@ -680,6 +680,9 @@ const ko: Translations = {
     avatarPermissionMessage: "갤러리 접근을 허용하세요.",
     avatarNativeMissingTitle: "갤러리 사용 불가",
     avatarNativeMissingMessage: "dev client 재빌드가 필요합니다.",
+    avatarUploadFailedTitle: "사진을 업로드하지 못했습니다",
+    avatarUploadFailedMessage:
+      "이 기기에는 저장되었지만 앱의 다른 화면에는 표시되지 않습니다. 다른 사진을 시도하거나 나중에 다시 시도하세요.",
     personalInfoTitle: "소개",
     personalAge: "나이: {{age}}",
     psychSectionTitle: "심리 평가",
