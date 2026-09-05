@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StatusBar } from "react-native"
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useFocusEffect } from "@react-navigation/native"
 import { Text, XStack, YStack } from "tamagui"
@@ -104,8 +104,6 @@ export function ProfileEditScreen({ navigation }: AppStackScreenProps<"ProfileEd
 
   return (
     <YStack flex={1} backgroundColor={eliteForgeColors.carbon}>
-      <StatusBar barStyle="light-content" backgroundColor={eliteForgeColors.carbon} />
-
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}

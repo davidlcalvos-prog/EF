@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StatusBar } from "react-native"
+import { ActivityIndicator, FlatList, Pressable, RefreshControl } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
@@ -136,8 +136,6 @@ export function NearbyGuestRequestsScreen({
 
   return (
     <YStack flex={1} backgroundColor={eliteForgeColors.carbon}>
-      <StatusBar barStyle="light-content" backgroundColor={eliteForgeColors.carbon} />
-
       <YStack paddingTop={insets.top} paddingHorizontal={horizontalPadding} gap={16} flex={1}>
         <XStack alignItems="center" justifyContent="space-between" paddingTop={8}>
           <Pressable onPress={() => navigation.goBack()} hitSlop={12} accessibilityRole="button">

@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { ActivityIndicator, StatusBar } from "react-native"
+import { ActivityIndicator } from "react-native"
 import { Text, YStack } from "tamagui"
 
 import { EliteForgeLogo } from "@/components/ui"
@@ -39,8 +39,6 @@ export function RegisterScreen({ navigation }: RegisterScreenProps) {
       alignItems="center"
       justifyContent="center"
     >
-      <StatusBar barStyle="light-content" backgroundColor={eliteForgeColors.carbon} />
-
       <YStack
         width="100%"
         maxWidth={contentMaxWidth}

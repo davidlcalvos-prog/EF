@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { ActivityIndicator, Pressable, ScrollView, StatusBar } from "react-native"
+import { ActivityIndicator, Pressable, ScrollView } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
@@ -503,8 +503,6 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
 
   return (
     <YStack flex={1} backgroundColor={eliteForgeColors.carbon}>
-      <StatusBar barStyle="light-content" backgroundColor={eliteForgeColors.carbon} />
-
       <YStack paddingTop={insets.top} paddingHorizontal={horizontalPadding} gap={16} flex={1}>
         <XStack alignItems="center" justifyContent="space-between" paddingTop={8}>
           <Pressable onPress={() => navigation.goBack()} hitSlop={12} accessibilityRole="button">
@@ -565,7 +563,7 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
               maxWidth: contentMaxWidth,
               width: "100%",
               alignSelf: "center",
-              paddingBottom: 16,
+              paddingBottom: insets.bottom + 16,
             }}
             showsVerticalScrollIndicator={false}
           >
