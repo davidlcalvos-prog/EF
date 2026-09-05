@@ -21,6 +21,7 @@ import "./utils/gestureHandler"
 import { useEffect, useState } from "react"
 import { useFonts } from "expo-font"
 import * as Linking from "expo-linking"
+import { SystemBars } from "react-native-edge-to-edge"
 import { KeyboardProvider } from "react-native-keyboard-controller"
 import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context"
 import { TamaguiProvider } from "tamagui"
@@ -121,6 +122,13 @@ export function App() {
   return (
     <TamaguiProvider config={tamaguiConfig} defaultTheme="dark">
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+        {/* Barras del sistema (estado + navegación) con íconos claros, UNA sola
+            vez para toda la app: con edge-to-edge y navegación transparente,
+            el <StatusBar> de react-native está deprecado y no gobierna la barra
+            de navegación — que sobre el fondo carbón quedaba con íconos oscuros
+            invisibles en teléfonos con 3 botones. La app es oscura de punta a
+            punta, así que no hace falta variarlo por pantalla. */}
+        <SystemBars style="light" />
         <KeyboardProvider>
           <AuthProvider>
             <ThemeProvider>

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react"
-import { Pressable, ScrollView, StatusBar } from "react-native"
+import { Pressable, ScrollView } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import Animated from "react-native-reanimated"
 import { Text, XStack, YStack } from "tamagui"
@@ -128,8 +128,6 @@ export function PsychologicalTestScreen({ navigation }: AppStackScreenProps<"Psy
 
   return (
     <YStack flex={1} backgroundColor={eliteForgeColors.carbon}>
-      <StatusBar barStyle="light-content" backgroundColor={eliteForgeColors.carbon} />
-
       <ScrollView
         contentContainerStyle={{
           paddingTop: insets.top + 12,

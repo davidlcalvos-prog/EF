@@ -1,5 +1,5 @@
 import { FC, useCallback, useState } from "react"
-import { KeyboardAvoidingView, Platform, Pressable, StatusBar } from "react-native"
+import { KeyboardAvoidingView, Platform, Pressable } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { ScrollView, Text, XStack, YStack } from "tamagui"
 
@@ -132,8 +132,6 @@ export const LoginScreen: FC<LoginScreenProps> = () => {
 
   return (
     <YStack flex={1} backgroundColor={eliteForgeColors.carbon}>
-      <StatusBar barStyle="light-content" backgroundColor={eliteForgeColors.carbon} />
-
       <Pressable
         onPress={handleSettings}
         hitSlop={12}
