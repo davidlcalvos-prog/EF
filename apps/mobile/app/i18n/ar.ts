@@ -681,6 +681,9 @@ const ar: Translations = {
     avatarPermissionMessage: "Allow gallery access.",
     avatarNativeMissingTitle: "Gallery unavailable",
     avatarNativeMissingMessage: "Rebuild dev client for gallery support.",
+    avatarUploadFailedTitle: "تعذّر رفع الصورة",
+    avatarUploadFailedMessage:
+      "تم حفظها على هذا الهاتف، لكن بقية التطبيق لن تعرضها. جرّب صورة أخرى أو أعد المحاولة لاحقًا.",
     personalInfoTitle: "About me",
     personalAge: "Age: {{age}}",
     psychSectionTitle: "Psychological assessment",

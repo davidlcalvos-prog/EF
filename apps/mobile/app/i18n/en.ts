@@ -700,6 +700,9 @@ const en = {
     avatarNativeMissingTitle: "Gallery not available",
     avatarNativeMissingMessage:
       "Your current dev build does not include the image picker module. Rebuild the dev client with EAS, or continue using the default avatar.",
+    avatarUploadFailedTitle: "Photo could not be uploaded",
+    avatarUploadFailedMessage:
+      "It was saved on this phone, but the rest of the app won't show it. Try another photo or try again later.",
     personalInfoTitle: "About me",
     personalAge: "Age: {{age}}",
     psychSectionTitle: "Psychological assessment",

@@ -706,6 +706,9 @@ const es: Translations = {
     avatarNativeMissingTitle: "Galería no disponible",
     avatarNativeMissingMessage:
       "Tu APK actual no incluye el módulo de galería. Recompila el dev client con EAS o usa el avatar por defecto.",
+    avatarUploadFailedTitle: "La foto no se pudo subir",
+    avatarUploadFailedMessage:
+      "Se guardó en este teléfono, pero el resto de la app no la va a mostrar. Probá con otra foto o intentá de nuevo más tarde.",
     personalInfoTitle: "Sobre mí",
     personalAge: "Edad: {{age}}",
     psychSectionTitle: "Evaluación psicológica",

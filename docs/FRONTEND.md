@@ -588,6 +588,8 @@ El feed (drawer, composer, navbar, tarjetas de post, comentarios) mostraba únic
 - **Avatar propio** — fuente única: `AuthContext` gana `authAvatarBase64: string | null`, **en memoria** (no MMKV, a propósito — repoblar desde el backend con `getMyProfile()` al loguear alcanza, evitar otra capa de caché que se desincronice, mismo problema que el token en la Fase 8.1). Se actualiza al instante al elegir una foto nueva en `ProfileScreen`, sin esperar la confirmación de red ni reiniciar la app. Reemplaza 4 copias sueltas de `getUserColor` (en `FeedDrawer`/`FeedComposeModal`/`FeedComposer`/`FeedNavbar`) por una sola en `app/utils/avatarColor.ts`, usada como fallback cuando no hay foto.
 - **Avatar de otros** — `PostDto`/`CommentDto` ya traen `authorAvatarBase64` desde el backend (ver [BACKEND.md](./BACKEND.md#feed--users-service)); `useFeed.ts` lo mapea a `authorAvatarPhoto` en `FeedPost`.
 
+**Subida de la foto (fix 2026-09-05):** la foto elegida en Perfil se **redimensiona a 512×512 JPEG calidad 0,7** con `expo-image-manipulator` (`resizeForAvatar` en `pickProfileImage.ts`) antes de persistirla y de generar el base64. El mismo redimensionado sirve para el archivo local que muestra Perfil y para lo que se sube — lo que ve el usuario es lo que ven los demás. Antes el picker devolvía el recorte a resolución de cámara (1–4 MB, 1,3–5 M caracteres en base64), `syncAvatarToBackend` lo descartaba en silencio por superar `MAX_AVATAR_BASE64_LENGTH` (500 000) y la foto nunca salía del teléfono: Perfil la mostraba (archivo local) pero feed/grupos/partidos (que leen el dato del servidor) veían la inicial. Con 512×512 q0,7 una foto de cámara queda en ~30–110 K caracteres (medido: una imagen de 10,9 MB baja a ~29 K). `syncAvatarToBackend` ya **no descarta en silencio**: si no hay base64, supera el límite o el `PATCH` falla, loguea con `console.warn` y avisa con `AppAlert` (`profileScreen:avatarUploadFailed*`, 7 idiomas). `expo-image-manipulator` es un módulo nativo — requiere recompilar el dev client / AAB con EAS.
+
 ## Fotos de perfil reales en miembros de grupo y roster de partidos
 
 Auditoría posterior a la Fase 12: los dos lugares que seguían mostrando solo inicial+color porque el backend no enviaba la foto eran la lista de miembros de un grupo (`GroupMemberRow.tsx`) y el roster de un partido (`ParticipantRow` en `MatchDetailScreen.tsx`).
@@ -629,6 +631,12 @@ Generados (mismos nombres que los placeholders de Ignite, así `app.json` no cam
 **Idioma de respaldo:** `app/i18n/index.ts` → `fallbackLocale = "es"` (antes `"en-US"`): si el idioma del sistema no coincide con ninguno de los 7 soportados, la app cae a español. La detección del idioma del sistema (`Localization.getLocales()`) no cambió.
 
 ## Registro de cambios (sesión de implementación)
+
+### 2026-09-05 — Fix: la foto de perfil se descartaba en silencio antes de llegar al servidor
+
+- `pickProfileImage.ts`: redimensionado a 512×512 JPEG q0,7 con `expo-image-manipulator` (nuevo, `~55.0.21`, módulo nativo → recompilar con EAS) para el archivo local y el base64 que se sube.
+- `ProfileScreen.syncAvatarToBackend`: nunca más un `return` silencioso — log de advertencia + `AppAlert` cuando la foto no se pudo subir. 2 claves i18n nuevas (`avatarUploadFailedTitle/Message`) en los 7 idiomas.
+- Ver [Fotos de perfil reales en el feed](#fotos-de-perfil-reales-en-el-feed).
 
 ### 2026-09-05 — Fixes de QA: teclado en Android, teclado en modales, fallback en español
 

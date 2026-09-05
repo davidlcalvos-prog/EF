@@ -17,15 +17,25 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
+    // Errores del body-parser de Express (no son HttpException): traen su propio
+    // status — 413 "entity.too.large" cuando el cuerpo supera el limit del
+    // parser, 400 "entity.parse.failed" con JSON inválido. Sin esto salían como
+    // 500 genérico y el cliente no sabía que el problema era el tamaño.
+    const bodyParserStatus = this.bodyParserErrorStatus(exception);
+
     const status =
       exception instanceof HttpException
         ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+        : (bodyParserStatus ?? HttpStatus.INTERNAL_SERVER_ERROR);
 
     const raw =
       exception instanceof HttpException
         ? exception.getResponse()
-        : 'Internal server error';
+        : bodyParserStatus === HttpStatus.PAYLOAD_TOO_LARGE
+          ? 'Payload too large: the request body exceeds the 1MB limit'
+          : bodyParserStatus !== null
+            ? 'Malformed request body'
+            : 'Internal server error';
 
     // Nest a menudo devuelve { statusCode, message, error }; exponer solo message
     // para que clientes (web ApiError) lean string | string[] correctamente.
@@ -51,6 +61,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
       path: request.url,
       message,
     });
+  }
+
+  /** 4xx de body-parser (`type: 'entity.*'` + `status`), o null si no es uno. */
+  private bodyParserErrorStatus(exception: unknown): number | null {
+    if (typeof exception !== 'object' || exception === null) return null;
+    const { type, status } = exception as { type?: unknown; status?: unknown };
+    if (typeof type !== 'string' || !type.startsWith('entity.')) return null;
+    return typeof status === 'number' && status >= 400 && status < 500
+      ? status
+      : HttpStatus.BAD_REQUEST;
   }
 }
 
