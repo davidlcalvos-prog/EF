@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ActivityIndicator, Keyboard, Modal, Pressable, ScrollView, View } from "react-native"
+import {
+  ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  View,
+} from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
@@ -182,7 +191,10 @@ export function CreateReservationModal({
       onRequestClose={handleClose}
       statusBarTranslucent
     >
-      <View style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
         <Pressable
           style={{
             position: "absolute",
@@ -482,7 +494,7 @@ export function CreateReservationModal({
             ) : null}
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }

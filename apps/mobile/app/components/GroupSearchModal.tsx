@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from "react"
-import { ActivityIndicator, FlatList, Keyboard, Modal, Pressable, View } from "react-native"
+import {
+  ActivityIndicator,
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  View,
+} from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
@@ -108,7 +117,10 @@ export function GroupSearchModal({ visible, onClose, onRequest }: GroupSearchMod
       onRequestClose={handleClose}
       statusBarTranslucent
     >
-      <View style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
         <Pressable
           style={{
             position: "absolute",
@@ -263,7 +275,7 @@ export function GroupSearchModal({ visible, onClose, onRequest }: GroupSearchMod
             }
           />
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }

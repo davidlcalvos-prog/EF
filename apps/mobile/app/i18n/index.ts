@@ -13,7 +13,9 @@ import hi from "./hi"
 import ja from "./ja"
 import ko from "./ko"
 
-const fallbackLocale = "en-US"
+// Respaldo en español: si el idioma del sistema no coincide con ninguno de los
+// soportados, la app cae a "es" (clave exacta de `resources`), no a inglés.
+const fallbackLocale = "es"
 
 const systemLocales = Localization.getLocales()
 

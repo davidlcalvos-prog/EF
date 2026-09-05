@@ -1,5 +1,13 @@
 import { useState } from "react"
-import { ActivityIndicator, Keyboard, Modal, Pressable, View } from "react-native"
+import {
+  ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  View,
+} from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
@@ -65,7 +73,10 @@ export function GroupAddMemberModal({ visible, onClose, onAdd }: GroupAddMemberM
       onRequestClose={handleClose}
       statusBarTranslucent
     >
-      <View style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
         <Pressable
           style={{
             position: "absolute",
@@ -174,7 +185,7 @@ export function GroupAddMemberModal({ visible, onClose, onAdd }: GroupAddMemberM
             ) : null}
           </YStack>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }

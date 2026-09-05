@@ -108,7 +108,7 @@ export function ProfileEditScreen({ navigation }: AppStackScreenProps<"ProfileEd
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
           contentContainerStyle={{
