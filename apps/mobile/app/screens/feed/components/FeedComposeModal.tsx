@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Keyboard,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -157,7 +158,10 @@ export function FeedComposeModal({ visible, onClose, onPost }: FeedComposeModalP
       onRequestClose={handleClose}
       statusBarTranslucent
     >
-      <View style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
         {/* Fondo atenuado: siempre se ve el feed (~62%+ sin teclado) */}
         <Pressable
           style={{
@@ -306,7 +310,7 @@ export function FeedComposeModal({ visible, onClose, onPost }: FeedComposeModalP
             </XStack>
           </YStack>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }

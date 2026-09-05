@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from "react"
-import { ActivityIndicator, FlatList, Modal, Pressable, View } from "react-native"
+import {
+  ActivityIndicator,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  View,
+} from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
 
@@ -123,7 +131,12 @@ export function MunicipalityPicker({
       </Pressable>
 
       <Modal visible={open} animationType="slide" transparent onRequestClose={close}>
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)" }}>
+        {/* Un Modal es una jerarquía nativa aparte: NO hereda el KeyboardAvoidingView
+            de la pantalla que lo abre — necesita el suyo o el teclado tapa la lista. */}
+        <KeyboardAvoidingView
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)" }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
           <View
             style={{
               position: "absolute",
@@ -238,7 +251,7 @@ export function MunicipalityPicker({
               />
             )}
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </>
   )
