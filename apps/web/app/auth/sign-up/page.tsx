@@ -186,6 +186,17 @@ export default function SignUpPage() {
             {isLoading ? 'Creando cuenta...' : 'Crear cuenta gratis'}
           </Button>
         </div>
+
+        <p className="text-center text-xs text-muted-foreground">
+          Al crear tu cuenta, aceptás nuestra{' '}
+          <Link
+            href="/legal/privacidad"
+            className="font-medium text-primary hover:underline"
+          >
+            Política de Privacidad
+          </Link>
+          .
+        </p>
       </form>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">

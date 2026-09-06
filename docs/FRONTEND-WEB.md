@@ -488,6 +488,10 @@ Tras cambiar `NEXT_PUBLIC_*` o los dominios: reconstruir la imagen (`docker comp
 - [x] Torneos: modalidades, agenda→calendario, equipos manuales, W, goles/GC/tarjetas.
 - [x] Rankings podio: Goleadores + Valla menos vencida (sin asistencias/DFR/mejor defensa en UI).
 
+### 2026-09 — Enlace a la Política de Privacidad en el registro web
+
+- [x] `/auth/sign-up` (el registro real — mobile solo redirige acá) muestra, justo debajo del botón "Crear cuenta gratis", "Al crear tu cuenta, aceptás nuestra Política de Privacidad" con `Link` interno a `/legal/privacidad`, mismo tratamiento visual que el otro link del formulario (`font-medium text-primary hover:underline`) (2026-09-06). Cierra el pendiente anotado en la entrada anterior; el aviso del `LoginScreen` de mobile queda como estaba.
+
 ### 2026-09 — Política de privacidad publicada
 
 - [x] `/legal/privacidad` muestra el texto legal real (2026-09-06). `components/legal/legal-page.tsx` se separó en dos: `LegalPlaceholderPage` (sin cambios; lo sigue usando `/legal/terminos`, que queda en placeholder a propósito) y `LegalContentPage({ title, updatedAt, children })`, mismo marco visual (nav, fondo, footer, título, "Última actualización") con el cuerpo como JSX (`h2`/`h3`/`p`/`ul` — el proyecto no tiene renderer de markdown y no vale una dependencia solo para esto). El texto se transcribió **sin cambiar una palabra** desde `docs/politica-de-privacidad-elite-forge.md` (fuente de verdad versionada — si hay que corregir algo, se corrige ahí primero); verificado palabra por palabra contra el HTML generado. La fecha es la de publicación, no la de redacción. En mobile se agregó el enlace "Al registrarte, aceptás nuestra Política de Privacidad" en `LoginScreen` (junto a "Crear cuenta"; `RegisterScreen` es solo un puente al navegador) → `https://eliteforge.tech/legal/privacidad`. Pendiente: la página de sign-up web tampoco enlaza a la política.
