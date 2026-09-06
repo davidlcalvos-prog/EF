@@ -190,6 +190,8 @@ Tema **dark** por defecto (`class="dark"` en `<html>`).
 | `/auth/confirmed` | Post-registro |
 | `/auth/error` | Error auth |
 | `/dashboard` | Middleware → `/` |
+| `/legal/privacidad` | Política de privacidad — texto real aprobado (`LegalContentPage`); fuente versionada en `docs/politica-de-privacidad-elite-forge.md` |
+| `/legal/terminos` | Términos de uso — **placeholder a propósito** (`LegalPlaceholderPage`), documento pendiente de redacción/revisión |
 
 ### Portal admin
 
@@ -485,6 +487,10 @@ Tras cambiar `NEXT_PUBLIC_*` o los dominios: reconstruir la imagen (`docker comp
 - [x] Fix logo (sin `<a>` anidado) + nav móvil + caché static solo immutable en prod.
 - [x] Torneos: modalidades, agenda→calendario, equipos manuales, W, goles/GC/tarjetas.
 - [x] Rankings podio: Goleadores + Valla menos vencida (sin asistencias/DFR/mejor defensa en UI).
+
+### 2026-09 — Política de privacidad publicada
+
+- [x] `/legal/privacidad` muestra el texto legal real (2026-09-06). `components/legal/legal-page.tsx` se separó en dos: `LegalPlaceholderPage` (sin cambios; lo sigue usando `/legal/terminos`, que queda en placeholder a propósito) y `LegalContentPage({ title, updatedAt, children })`, mismo marco visual (nav, fondo, footer, título, "Última actualización") con el cuerpo como JSX (`h2`/`h3`/`p`/`ul` — el proyecto no tiene renderer de markdown y no vale una dependencia solo para esto). El texto se transcribió **sin cambiar una palabra** desde `docs/politica-de-privacidad-elite-forge.md` (fuente de verdad versionada — si hay que corregir algo, se corrige ahí primero); verificado palabra por palabra contra el HTML generado. La fecha es la de publicación, no la de redacción. En mobile se agregó el enlace "Al registrarte, aceptás nuestra Política de Privacidad" en `LoginScreen` (junto a "Crear cuenta"; `RegisterScreen` es solo un puente al navegador) → `https://eliteforge.tech/legal/privacidad`. Pendiente: la página de sign-up web tampoco enlaza a la política.
 
 ### 2026-09 — Fase W.3: página "Dueños de cancha" (solo Administrador)
 

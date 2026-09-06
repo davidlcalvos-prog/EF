@@ -51,6 +51,8 @@ const ko: Translations = {
     loginFailed: "로그인에 실패했습니다. 다시 시도하세요.",
     createAccountPrompt: "계정이 없으신가요?",
     createAccountLink: "계정 만들기",
+    privacyPrompt: "가입하면 다음에 동의하게 됩니다:",
+    privacyLink: "개인정보 처리방침",
     googleButton: "Gmail로 계속",
     facebookButton: "Facebook으로 계속",
     signingInShort: "…",

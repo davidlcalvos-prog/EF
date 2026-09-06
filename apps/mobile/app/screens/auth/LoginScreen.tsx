@@ -29,6 +29,8 @@ const UI_PREVIEW_TOKEN = "dev-ui-preview-token"
 const UI_PREVIEW_EMAIL = "ui-preview@eliteforge.local"
 /** No hay OAuth real implementado — oculta los botones hasta que lo haya. */
 const SOCIAL_LOGIN_ENABLED = false
+/** Documento legal publicado solo en producción (apps/web /legal/privacidad). */
+const PRIVACY_POLICY_URL = "https://eliteforge.tech/legal/privacidad"
 
 /** Altura unificada input / botón login (fila responsive) */
 const FIELD_HEIGHT = 44
@@ -289,6 +291,16 @@ export const LoginScreen: FC<LoginScreenProps> = () => {
                     </XStack>
                   ) : null}
                 </XStack>
+
+                {/* El registro real vive en la web; el aviso legal va acá, junto al
+                    CTA de crear cuenta, porque RegisterScreen es solo un puente
+                    que abre el navegador y vuelve. */}
+                <LinkText
+                  align="flex-start"
+                  prompt={translate("loginScreen:privacyPrompt")}
+                  linkLabel={translate("loginScreen:privacyLink")}
+                  onPress={() => openLinkInBrowser(PRIVACY_POLICY_URL)}
+                />
 
                 {__DEV__ ? (
                   <Button variant="outline" width="100%" onPress={handleUiPreview}>

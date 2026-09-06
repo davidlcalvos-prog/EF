@@ -52,6 +52,8 @@ const es: Translations = {
     loginFailed: "No se pudo iniciar sesión. Inténtalo de nuevo.",
     createAccountPrompt: "¿No tienes cuenta?",
     createAccountLink: "Crear cuenta",
+    privacyPrompt: "Al registrarte, aceptás nuestra",
+    privacyLink: "Política de Privacidad",
     googleButton: "Continuar con Gmail",
     facebookButton: "Continuar con Facebook",
     signingInShort: "…",

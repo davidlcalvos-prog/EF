@@ -52,6 +52,8 @@ const fr: Translations = {
     loginFailed: "Échec de la connexion. Veuillez réessayer.",
     createAccountPrompt: "Pas encore de compte ?",
     createAccountLink: "Créer un compte",
+    privacyPrompt: "En créant un compte, tu acceptes notre",
+    privacyLink: "Politique de confidentialité",
     googleButton: "Continuer avec Gmail",
     facebookButton: "Continuer avec Facebook",
     signingInShort: "…",

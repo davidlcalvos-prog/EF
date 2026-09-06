@@ -50,6 +50,8 @@ const en = {
     loginFailed: "Sign in failed. Please try again.",
     createAccountPrompt: "Don't have an account?",
     createAccountLink: "Create account",
+    privacyPrompt: "By signing up, you accept our",
+    privacyLink: "Privacy Policy",
     googleButton: "Continue with Gmail",
     facebookButton: "Continue with Facebook",
     signingInShort: "…",
