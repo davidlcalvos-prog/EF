@@ -51,6 +51,8 @@ const hi: Translations = {
     loginFailed: "लॉग इन विफल। कृपया पुनः प्रयास करें।",
     createAccountPrompt: "खाता नहीं है?",
     createAccountLink: "खाता बनाएं",
+    privacyPrompt: "साइन अप करके आप हमारी",
+    privacyLink: "गोपनीयता नीति",
     googleButton: "Gmail के साथ जारी रखें",
     facebookButton: "Facebook के साथ जारी रखें",
     signingInShort: "…",

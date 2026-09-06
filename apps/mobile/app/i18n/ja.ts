@@ -52,6 +52,8 @@ const ja: Translations = {
     loginFailed: "ログインに失敗しました。もう一度お試しください。",
     createAccountPrompt: "アカウントをお持ちでないですか？",
     createAccountLink: "アカウント作成",
+    privacyPrompt: "登録すると、次に同意したものとみなされます：",
+    privacyLink: "プライバシーポリシー",
     googleButton: "Gmailで続行",
     facebookButton: "Facebookで続行",
     signingInShort: "…",

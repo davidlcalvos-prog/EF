@@ -51,6 +51,8 @@ const ar: Translations = {
     loginFailed: "فشل تسجيل الدخول. يرجى المحاولة مرة أخرى.",
     createAccountPrompt: "ليس لديك حساب؟",
     createAccountLink: "إنشاء حساب",
+    privacyPrompt: "بإنشاء حساب، أنت توافق على",
+    privacyLink: "سياسة الخصوصية",
     googleButton: "المتابعة مع Gmail",
     facebookButton: "المتابعة مع Facebook",
     signingInShort: "…",
