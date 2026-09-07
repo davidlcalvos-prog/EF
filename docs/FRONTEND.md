@@ -640,7 +640,26 @@ Generados (mismos nombres que los placeholders de Ignite, así `app.json` no cam
 - **Un solo `<SystemBars style="light" />`** en `app/app.tsx` (raíz, dentro de `SafeAreaProvider`) para toda la app — reemplaza los 19 `<StatusBar barStyle="light-content">` de `react-native` que había en cada pantalla (deprecado con edge-to-edge según la propia librería, y que además no gobernaba la barra de navegación). La app es oscura de punta a punta, así que no hace falta variarlo por pantalla; si alguna vez una pantalla clara lo necesita, `SystemBars` acepta `style` por pantalla.
 - **Safe area**: `components/Screen.tsx` (wrapper de Ignite con `safeAreaEdges`) **no lo usa ninguna pantalla real** — solo `WelcomeScreen`, que no está en ningún navegador. La convención vigente es manual: cada pantalla aplica `insets.top`/`insets.bottom` de `useResponsiveLayout()`. `MatchDetailScreen` y `ReservationDetailScreen` eran las únicas dos con `paddingBottom` fijo al final del scroll (los botones de acción quedaban bajo la barra de gestos/botones); ahora usan `insets.bottom + 16`. Migrar todo al wrapper compartido sería una fase aparte, decidida explícitamente.
 
+## `TextField`: altura fija y padding (fix de QA 2026-09-07)
+
+`components/TextField.tsx` (wrapper de Ignite, único lugar con `TextInput` crudo — la regla `no-restricted-imports` lo bloquea en el resto) fija en `$inputStyle` **`height: 24` + `paddingVertical: 0`** como workaround del issue de RN 21720. La prop `style` entra **última** en el array de estilos del input, así que sobreescribe el padding pero no la altura: pasar `paddingVertical: 12` deja 24 − 24 = **0 px de área de texto**, y en Android el texto queda invisible al escribir (el campo funciona — el estado cambia y la búsqueda dispara — solo que no se ve nada). Eran exactamente dos campos: el buscador de **Amigos** (`FriendsScreen`) y el de **Municipio** (`MunicipalityPicker`); los otros 11 `TextField` del proyecto no pasan padding vertical por `style` (auditado al cerrar el fix).
+
+**Regla:** nunca pasar `paddingVertical`/`paddingTop`/`paddingBottom` por la prop `style` de un `TextField`. Si un campo necesita más espacio vertical, aplicarlo en `inputWrapperStyle` (el wrapper `View`), no en el input. El `height: 24` de `TextField.tsx` **no** se tocó (refactor del componente = fase aparte); queda un comentario junto a esa línea con la advertencia. Nota: el fix no cambia la altura visual de los dos campos — el alto ya era 24 fijo con el bug — así que no hizo falta compensar en el wrapper.
+
+**Lo que NO era la causa** (verificado durante la investigación): los 13 `TextField` y los 7 `Input` (Tamagui, color `$efWhite` fijo en `ui/Input.tsx`) tienen `color` y `placeholderTextColor` explícitos, y el cambio de `parentTheme` `"Light"` → `"Default"` no afecta el color del texto (el default del tema solo aplica cuando `color` no está seteado).
+
+## Notificaciones push: registro del token con rastro (fix 2026-09-07)
+
+`utils/pushNotifications.ts` → `registerPushToken()` (se llama una vez al hacer login) es best-effort: si el usuario niega el permiso, Expo no devuelve token (falta `projectId` de EAS) o el backend rechaza el `POST /api/push-tokens`, **no reintenta ni bloquea** — pero ahora deja un `console.warn("[push] ...")` **fuera de `__DEV__`** con el motivo (antes salía en silencio y solo logueaba la excepción en dev). El comportamiento funcional no cambió; el punto es que "no me llegó la solicitud de amistad" sea diagnosticable desde el log del dispositivo (`adb logcat`) en vez de parecer un bug del backend. Contraparte en el backend: [BACKEND.md](./BACKEND.md#registro-de-cambios) (`NotificationsService.sendToUser` loguea warning cuando el destinatario no tiene tokens).
+
 ## Registro de cambios (sesión de implementación)
+
+### 2026-09-07 — Fix de QA: texto invisible en dos `TextField` + rastro del registro del push token
+
+- `FriendsScreen` y `MunicipalityPicker`: se quita `paddingVertical: 12` del `style` que pasaban al `TextField` (con el `height: 24` fijo del componente dejaba 0 px de área de texto → texto invisible en Android). Sin cambios visuales de altura; ningún otro `TextField` tenía el patrón.
+- `TextField.tsx`: comentario preventivo junto a `height: 24` (no pasar padding vertical por `style`; usar `inputWrapperStyle`). El componente no se refactorizó.
+- `pushNotifications.ts` → `registerPushToken`: `console.warn` fuera de `__DEV__` cuando no hay permiso, Expo no devuelve token, el backend lo rechaza o hay excepción. Sin cambio funcional.
+- Ver [`TextField`: altura fija y padding](#textfield-altura-fija-y-padding-fix-de-qa-2026-09-07) y [Notificaciones push: registro del token con rastro](#notificaciones-push-registro-del-token-con-rastro-fix-2026-09-07).
 
 ### 2026-09-05 — Fix: barra de navegación de Android invisible + insets faltantes
 

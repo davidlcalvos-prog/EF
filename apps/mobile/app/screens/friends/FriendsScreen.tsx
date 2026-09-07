@@ -372,7 +372,7 @@ export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
               borderWidth: 0,
               paddingHorizontal: 0,
             }}
-            style={{ color: "#FFFFFF", fontSize: 14, paddingVertical: 12 }}
+            style={{ color: "#FFFFFF", fontSize: 14 }}
           />
           {searchActive ? (
             <Pressable onPress={() => setQuery("")} hitSlop={10} accessibilityRole="button">

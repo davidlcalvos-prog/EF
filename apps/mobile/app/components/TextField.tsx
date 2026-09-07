@@ -265,6 +265,12 @@ const $inputStyle: ThemedStyle<TextStyle> = ({ colors, typography, spacing }) =>
   fontFamily: typography.primary.normal,
   color: colors.text,
   fontSize: 16,
+  // Alto fijo + paddingVertical 0 (workaround del issue de RN 21720, ver link).
+  // NO pasar paddingVertical por la prop `style`: entra último en el array y
+  // sobreescribe el padding pero no esta altura, así que 24 - padding deja el
+  // área de texto en 0 px y en Android el texto queda invisible al escribir
+  // (QA 2026-09-07: buscador de Amigos y de Municipio). Si hace falta más
+  // espacio, aplicarlo en `inputWrapperStyle`, no acá.
   height: 24,
   // https://github.com/facebook/react-native/issues/21720#issuecomment-532642093
   paddingVertical: 0,

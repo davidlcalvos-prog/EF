@@ -44,14 +44,25 @@ export async function registerPushToken(): Promise<void> {
       const { status } = await Notifications.requestPermissionsAsync()
       finalStatus = status
     }
-    if (finalStatus !== "granted") return
+    if (finalStatus !== "granted") {
+      console.warn(`[push] token no registrado: permiso de notificaciones "${finalStatus}"`)
+      return
+    }
 
     const token = await getExpoPushToken()
-    if (!token) return
+    if (!token) {
+      console.warn("[push] token no registrado: Expo no devolvió token (¿falta projectId de EAS?)")
+      return
+    }
 
-    await api.registerPushToken(token, Platform.OS === "ios" ? "ios" : "android")
+    const response = await api.registerPushToken(token, Platform.OS === "ios" ? "ios" : "android")
+    if (response.kind !== "ok") {
+      console.warn(`[push] el backend rechazó el token: ${response.kind}`)
+    }
   } catch (error) {
-    if (__DEV__) console.log("registerPushToken failed", error)
+    // Fuera de __DEV__ a propósito: sin rastro, "no me llegó la notificación"
+    // era indistinguible de un bug del backend (QA 2026-09-07).
+    console.warn("[push] registerPushToken lanzó excepción:", error)
   }
 }
 

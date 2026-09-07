@@ -444,6 +444,10 @@ Pendientes (no implementados aún):
 
 ## Registro de cambios
 
+### 2026-09-07 — Push omitido por falta de token deja de ser silencioso
+
+- `NotificationsService.sendToUser` (users-service) sigue siendo best-effort — si el destinatario no tiene tokens Expo válidos **no envía nada**, igual que antes — pero ahora loguea un `warn` con el `userId`, cuántos tokens hay en DB y el título del aviso ("Push omitido: el usuario … no tiene tokens Expo registrados …"). Hallazgo de QA: una solicitud de amistad "que no llega" se creaba bien en `user_friendships` (verificado end-to-end en local: `POST /api/friendships` → fila `pending` → `GET /api/friendships?filter=pending_received` del destinatario la devuelve); lo que faltaba era el push, y sin log era indistinguible de un fallo real. Para confirmar en producción: `docker compose logs users-service | grep "Push omitido"`. Contraparte en el cliente: [FRONTEND.md](./FRONTEND.md#notificaciones-push-registro-del-token-con-rastro-fix-2026-09-07).
+
 ### 2026-09-05 — 413 en vez de 500 para cuerpos que superan el límite del gateway
 
 - `AllExceptionsFilter` (`libs/common`) reconoce los errores del body-parser de Express (`type: 'entity.*'` + `status`): un cuerpo > 1 MB responde **413** "Payload too large: the request body exceeds the 1MB limit" y un JSON malformado **400**, en vez del 500 genérico anterior. Hallazgo secundario del diagnóstico del avatar (el cliente nunca debería enviar tanto, pero el error tiene que ser claro).
