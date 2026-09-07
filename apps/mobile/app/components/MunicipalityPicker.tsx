@@ -193,7 +193,7 @@ export function MunicipalityPicker({
                   borderWidth: 0,
                   paddingHorizontal: 0,
                 }}
-                style={{ color: "#FFFFFF", fontSize: 14, paddingVertical: 12 }}
+                style={{ color: "#FFFFFF", fontSize: 14 }}
               />
             </XStack>
 

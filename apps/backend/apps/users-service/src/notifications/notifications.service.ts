@@ -22,7 +22,14 @@ export class NotificationsService {
   ): Promise<void> {
     const tokens = await this.pushTokenRepository.findByUserId(userId);
     const validTokens = tokens.filter((t) => Expo.isExpoPushToken(t.token));
-    if (validTokens.length === 0) return;
+    if (validTokens.length === 0) {
+      // Best-effort a propósito, pero con rastro: sin esto, "no me llegó la
+      // solicitud" era indistinguible de un fallo real (QA 2026-09-07).
+      this.logger.warn(
+        `Push omitido: el usuario ${userId} no tiene tokens Expo registrados (${tokens.length} en DB, 0 válidos) — "${title}"`,
+      );
+      return;
+    }
 
     const messages: ExpoPushMessage[] = validTokens.map((t) => ({
       to: t.token,
