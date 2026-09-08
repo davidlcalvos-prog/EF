@@ -353,6 +353,180 @@
   }
 }
 
+/* ── Silueta animada del hero (components/landing/hero-player.tsx) ───────
+   Tres poses (recibe → dribla → tira) en crossfade con un leve
+   desplazamiento hacia la derecha (sentido de la jugada). Tiempos:
+
+     --pose-duration    lo que cada pose queda quieta      (4.5s)
+     --pose-transition  duración del crossfade entre poses (0.8s)
+
+   El usuario pidió al principio 15s POR POSE; se dejó en 4.5s y se
+   parametrizó para subirlo acá sin tocar la lógica (con 15s el ciclo
+   completo pasa a 45s). Ciclo = 3 × --pose-duration (las transiciones se
+   solapan: mientras una pose se va, la siguiente ya está entrando), así
+   que con los valores por defecto dura 13.5s.
+
+   Los porcentajes de ef-pose-cycle salen de esos dos valores:
+     fade-in termina en   --pose-transition / ciclo            = 0.8 / 13.5 ≈ 5.93%
+     fade-out empieza en  --pose-duration / ciclo              = 33.33%
+     fade-out termina en (--pose-duration + --pose-transition) / ciclo ≈ 39.26%
+   Si cambiás solo --pose-duration, la transición escala en proporción
+   (sigue siendo fluida). Para fijarla en segundos exactos, recalculá esos
+   tres porcentajes. */
+.ef-hero-player {
+  --pose-duration: 4.5s;
+  --pose-transition: 0.8s;
+  --pose-cycle: calc(3 * var(--pose-duration));
+  --ef-sil: #262626; /* carbón, un paso más oscuro que --secondary */
+  aspect-ratio: 400 / 440; /* la posición la pone el padre (hero.tsx) */
+}
+.ef-pose {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  will-change: opacity, transform;
+}
+.ef-aura-layer {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 85%;
+  will-change: opacity, transform;
+}
+.ef-sil-layer {
+  position: relative;
+}
+.ef-sil {
+  color: var(--ef-sil);
+}
+.ef-wisp {
+  position: absolute;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-emerald) 70%, transparent) 0%,
+    color-mix(in srgb, var(--color-emerald) 25%, transparent) 40%,
+    transparent 68%
+  );
+  filter: blur(6px);
+  will-change: opacity, transform;
+}
+.ef-spark-impact {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--color-orange);
+  box-shadow: 0 0 8px 2px color-mix(in srgb, var(--color-orange) 60%, transparent);
+  opacity: 0;
+  will-change: opacity, transform;
+}
+
+@keyframes ef-pose-cycle {
+  0% {
+    opacity: 0;
+    transform: translateX(-3.5%);
+  }
+  5.93% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  33.33% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  39.26% {
+    opacity: 0;
+    transform: translateX(3.5%);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(3.5%);
+  }
+}
+/* Respiración del aura: sube y baja despacio, nunca parpadea. */
+@keyframes ef-breathe {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.018);
+  }
+}
+/* Vapor: nace, asciende, se abre y se disipa. */
+@keyframes ef-vapor {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.6);
+  }
+  25% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(8%, -140%, 0) scale(1.5);
+  }
+}
+/* Partículas del impacto: salen del balón y se apagan. */
+@keyframes ef-impact-spark {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.5);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--dx), var(--dy), 0) scale(1.1);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ef-pose {
+    animation: ef-pose-cycle var(--pose-cycle) ease-in-out infinite both;
+  }
+  .ef-pose-2 {
+    animation-delay: var(--pose-duration);
+  }
+  .ef-pose-3 {
+    animation-delay: calc(2 * var(--pose-duration));
+  }
+  .ef-aura-layer {
+    animation: ef-breathe 4.2s ease-in-out infinite;
+  }
+  .ef-wisp {
+    animation: ef-vapor 5.2s ease-out infinite;
+  }
+  .ef-spark-impact {
+    animation: ef-impact-spark 1.9s ease-out infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Una sola pose estática (dribla), aura fija, sin vapor ni partículas. */
+  .ef-pose {
+    animation: none;
+    opacity: 0;
+  }
+  .ef-pose-2 {
+    opacity: 1;
+  }
+  .ef-aura-layer {
+    animation: none;
+    opacity: 0.85;
+  }
+  .ef-wisp,
+  .ef-spark-impact {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* Apaga también las utilidades de tw-animate-css y de Tailwind. */
   .ef-enter,

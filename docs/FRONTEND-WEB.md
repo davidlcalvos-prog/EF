@@ -460,7 +460,7 @@ Regla desde 2026-09-07: **la landing solo promete lo que la app hace**. Cada tex
 | Componente | Tipo | Contenido |
 |------------|------|-----------|
 | `LandingNav` | cliente | Logo (lockup) + anclas Rendimiento / Comodín / Canchas + "Soy dueño de cancha", "Registro gratis", "Descargar" |
-| `Hero` | estático (server, lee `public/` con `fs`) | Composición a sangre: imagen de fondo (si existe) + overlay oscuro + líneas de velocidad en SVG; eyebrow "ELITE FORGE"; slogan en dos líneas **"El talento no nace." / "Se forja."** (blanco / cian) a la izquierda; CTAs "Prueba inicial" (registro) y "Cómo funciona" (`#rendimiento`). Sin balón. Ver [Hero: imagen a sangre](#hero-imagen-a-sangre) |
+| `Hero` | estático (server, lee `public/` con `fs`) + `HeroPlayer` cliente | Composición a sangre: imagen de fondo (si existe) + overlay oscuro + líneas de velocidad en SVG + **silueta animada de futbolista** (recibe → dribla → tira) a la derecha; eyebrow "ELITE FORGE"; slogan en dos líneas **"El talento no nace." / "Se forja."** (blanco / cian) a la izquierda; CTAs "Prueba inicial" (registro) y "Cómo funciona" (`#rendimiento`). Sin balón junto al titular. Ver [Hero: imagen a sangre](#hero-imagen-a-sangre) y [Hero: silueta animada](#hero-silueta-animada) |
 | `PerformanceSection` | estático (+ `StatsRadar` cliente) | Radar con las **6 stats reales** en el orden de `STAT_ORDER` (Ataque, Defensa, Resistencia, Velocidad, Pases, Regate); 6 tests físicos cargados a mano + test de mentalidad |
 | `TournamentsSection` | cliente | 3 cards-botón (grupo, partidos internos/VS, campeonatos) que abren `FeatureDialog` con los pasos reales de la app |
 | `MatchFinderSection` | estático (+ `MatchFinderCta` cliente) | Comodín "Cerca de mí" como **lista por municipio**; el SVG de Colombia es decorativo (`aria-hidden`); el botón abre el modal explicativo |
@@ -482,7 +482,7 @@ Regla desde 2026-09-07: **la landing solo promete lo que la app hace**. Cada tex
 
 El hero está preparado para una ilustración a ancho completo que **todavía no existe en el repo** (se encarga aparte). `components/landing/hero.tsx` busca en build `public/hero-player.webp` y, si no, `public/hero-player.png` (`resolveHeroImage`, con `fs.existsSync` sobre `process.cwd()/public`, que en el standalone de producción es la copia que hace `scripts/copy-standalone-assets.js`). Mientras no exista ninguno, el hero no pide nada y deja ver `landing-bg.svg`, el fondo fijo de toda la landing. Cuando la imagen aparezca hay que **rebuildear** (la página es estática).
 
-Capas, de atrás hacia adelante: imagen (`bg-cover`, foco en `70% center`) → overlay `from-background via-background/80 to-background/10` de izquierda a derecha + fundido inferior de 10 rem → glow naranja → líneas de velocidad (`SpeedLines`, SVG `viewBox 0 0 100 100`, animadas con `ef-speed`/`ef-spark`) → texto.
+Capas, de atrás hacia adelante: imagen (`bg-cover`, foco en `70% center`) → overlay `from-background via-background/80 to-background/10` de izquierda a derecha + fundido inferior de 10 rem → glow naranja → líneas de velocidad (`SpeedLines`, SVG `viewBox 0 0 100 100`, animadas con `ef-speed`/`ef-spark`) → silueta animada (`HeroPlayer`) → degradado extra solo en móvil (`md:hidden`) → texto.
 
 **Especificación para el ilustrador / la imagen:**
 
@@ -496,11 +496,42 @@ Capas, de atrás hacia adelante: imagen (`bg-cover`, foco en `70% center`) → o
 | Tono | Fondo oscuro en la gama carbón (#424242 → #2e2e2e) para fundirse con el overlay y con `landing-bg.svg` en el borde inferior; acentos cian #00cec8 / naranja #ff8c00 opcionales |
 | Móvil | En < 640 px el texto ocupa casi todo el ancho: la imagen se ve como fondo detrás del overlay. Que el sujeto siga reconocible aunque quede parcialmente tapado |
 
+### Hero: silueta animada
+
+`components/landing/hero-player.tsx` (cliente, sin JS de animación) dibuja un futbolista en silueta con aura de calor corporal y cicla tres poses de una jugada: **recibe** (control de pecho) → **dribla** (conducción, balón al pie) → **tira** (remate, balón saliendo con impacto naranja). Vuelve a la primera en loop.
+
+**Cómo funciona el ciclo.** Cada pose es un `<div class="ef-pose ef-pose-N">` con dos `<svg>` (aura y silueta) sobre el mismo `viewBox 0 0 400 440`. Las tres comparten la animación `ef-pose-cycle` (opacity + `translateX` de ±3,5 % en el sentido de la jugada, izquierda → derecha) con `animation-delay` escalonado: pose 2 arranca a `--pose-duration`, pose 3 a `2 × --pose-duration`. Las transiciones se solapan (crossfade real: mientras una se va, la siguiente ya entra), por eso el ciclo es `3 × --pose-duration` y no `3 × (duración + transición)`. Por qué HTML y no `<g>`: opacity/transform sobre elementos HTML se componen en GPU sin re-rasterizar el filtro del aura en cada frame (un `transform` sobre un `<g>` interno lo re-aplicaría). Solo se animan `opacity` y `transform`.
+
+**Dónde ajustar los tiempos.** En `globals.css`, regla `.ef-hero-player`:
+
+| Custom property | Default | Qué controla |
+|---|---|---|
+| `--pose-duration` | `4.5s` | Lo que cada pose queda quieta. El usuario pidió al principio 15 s por pose; se dejó en 4,5 s y se parametrizó para subirlo acá (con 15 s el ciclo pasa a 45 s) |
+| `--pose-transition` | `0.8s` | Duración del crossfade. Los porcentajes de `ef-pose-cycle` (5,93 % / 33,33 % / 39,26 %) están calculados para 0,8 s sobre un ciclo de 13,5 s: si cambiás solo `--pose-duration`, la transición escala en proporción; para fijarla en segundos exactos hay que recalcular esos tres porcentajes (fórmula en el comentario del CSS) |
+| `--pose-cycle` | `calc(3 * var(--pose-duration))` | Derivada; no tocar |
+| `--ef-sil` | `#262626` | Relleno de la silueta (carbón, un paso más oscuro que `--secondary`) |
+
+Ciclo completo por defecto: **13,5 s**.
+
+**Aura (calor, no rayos).** Filtro SVG `#ef-aura-filter` aplicado a un `<use>` de la silueta: contorno = `feMorphology dilate 2.5` + blur 1,6 + flood cian al 80 %; halo = dilate 12 + blur 20, deformado con `feTurbulence` (fractalNoise 0.018, 2 octavas) vía `feDisplacementMap scale 42` para que el borde sea orgánico, flood cian al 45 %. La capa del aura respira con `ef-breathe` (opacity 0,72 ↔ 1 y `scale` 1 ↔ 1,018 en 4,2 s, ease-in-out, nunca parpadea). Cinco "wisps" (`.ef-wisp`, `<span>` con `radial-gradient` + `blur(6px)`) nacen sobre cabeza y hombros, ascienden, se abren y se disipan (`ef-vapor`, 5,2 s, desfasados). En la pose 3, un `radialGradient` naranja detrás del balón, tres estelas y seis partículas (`.ef-spark-impact`, `ef-impact-spark`) marcan el impacto.
+
+**Tokens de color.** Solo paleta Elite Forge: `var(--color-emerald)` (#00cec8) para contorno, halo y vapor; `var(--color-orange)` (#ff8c00) para impacto, estelas y partículas; `--ef-sil` #262626 para el relleno; el fondo es el del hero (`--background` #424242 + overlay). **No** se usa el verde lima de la referencia. Los `feFlood`/`stop` llevan el hex como fallback y el token vía `style` (`flood-color`/`stop-color` aceptan `var()`).
+
+**Reduced motion.** `@media (prefers-reduced-motion: reduce)`: una sola pose estática (dribla), aura fija al 85 %, wisps y partículas ocultos.
+
+**Responsive.** La caja se posiciona desde `hero.tsx`: en `lg` ocupa el 80 % de alto del hero pegada a la derecha; en `md` 74 %; en `sm` 62 % con opacidad 0,85; en móvil 48 %, corrida un 30 % fuera del borde derecho y al 60 % de opacidad, y un degradado extra (`md:hidden`) por encima asegura el contraste del titular. El texto (`max-w-2xl`, izquierda) nunca se superpone con la silueta en `md+`.
+
+**Poses.** Están construidas por partes (`Head`, torso en polígono con cintura, `Arm` húmero/antebrazo/mano, `Leg` muslo/pantorrilla/pie) con trazos gruesos de extremos redondos, pensadas para leerse como silueta a distancia. Para retocar una pose se editan las coordenadas en `PoseReceive` / `PoseDribble` / `PoseShoot` (el aura sigue sola porque usa `<use>`).
+
 **Título de la landing:** `app/page.tsx` exporta su propio `metadata` ("ELITE FORGE — El talento no nace. Se forja."); `app/layout.tsx` (compartido con las páginas legales declaradas en Play Console) conserva el suyo y no se toca.
 
 ---
 
 ## Registro de cambios
+
+### 2026-09-07 — Hero con silueta animada de futbolista (recibe → dribla → tira)
+
+- [x] `components/landing/hero-player.tsx`: silueta SVG en carbón con aura de calor corporal (filtro `feMorphology` + `feGaussianBlur` + `feTurbulence`/`feDisplacementMap`, respiración suave, vapor que asciende) que cicla tres poses en crossfade con desplazamiento direccional. CSS puro (`ef-pose-cycle`, `ef-breathe`, `ef-vapor`, `ef-impact-spark`), solo `opacity`/`transform`, cada pose en su propio `<div>` para no re-rasterizar el filtro por frame. Tiempos en `--pose-duration` (4,5 s) y `--pose-transition` (0,8 s); ciclo 13,5 s. Colores: cian `--color-emerald` + naranja `--color-orange` (impacto del balón). Reduced motion: una pose estática sin aura pulsante. Ver [Hero: silueta animada](#hero-silueta-animada).
 
 ### 2026-09-07 — Ajuste del hero: sin balón, titular a la izquierda, composición a sangre
 

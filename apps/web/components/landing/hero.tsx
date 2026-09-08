@@ -3,6 +3,7 @@ import path from 'path'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { HeroPlayer } from './hero-player'
 
 /**
  * Imagen a sangre del hero. Todavía no existe en el repo (la ilustración se
@@ -103,6 +104,12 @@ export function Hero() {
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent" />
         <div className="ef-glow-orange absolute -bottom-40 left-1/4 h-96 w-[60rem] -translate-x-1/2" />
         <SpeedLines />
+        {/* Capa 4: silueta animada (recibe → dribla → tira). En escritorio
+            ocupa la mitad derecha, fuera del bloque de texto; en móvil se
+            reduce, se corre a la derecha y baja de opacidad, y un degradado
+            extra por encima garantiza el contraste del titular. */}
+        <HeroPlayer className="absolute bottom-0 right-[-30%] h-[48%] opacity-60 sm:right-[-8%] sm:h-[62%] sm:opacity-85 md:right-[1%] md:h-[74%] md:opacity-100 lg:right-[5%] lg:h-[80%]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background/85 via-background/45 to-transparent md:hidden" />
       </div>
 
       <div className="relative mx-auto flex min-h-[82vh] max-w-7xl flex-col items-start justify-center px-4 py-20 text-left sm:px-6">
