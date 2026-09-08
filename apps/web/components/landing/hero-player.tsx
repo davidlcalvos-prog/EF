@@ -31,7 +31,16 @@
  *
  * Con prefers-reduced-motion: una sola pose (dribla) estática, aura fija,
  * sin vapor, deriva ni partículas (globals.css).
+ *
+ * Dos fuentes para la silueta: si scripts/split-hero-poses.js generó
+ * hero-poses.generated.ts (RASTER_POSES) a partir de la ilustración, cada
+ * pose es un <image> PNG con alfa y el SVG solo pone el aura, la energía y el
+ * impacto DETRÁS; si no, se usan las figuras vectoriales de abajo como
+ * respaldo. El aura funciona igual en los dos casos porque el filtro trabaja
+ * sobre el canal alfa (SourceAlpha) del <use>.
  */
+
+import { RASTER_POSES, type RasterPose } from './hero-poses.generated'
 
 type Pt = [number, number]
 
@@ -336,9 +345,8 @@ function lcg(seed: number) {
   }
 }
 
-function energyStreaks(j: Joints, trail: Pt, seed: number) {
-  const rand = lcg(seed)
-  const anchors: Pt[] = [
+function jointAnchors(j: Joints): Pt[] {
+  return [
     add(j.head, [-14, -6]),
     j.shoulderL,
     j.elbowL,
@@ -350,6 +358,10 @@ function energyStreaks(j: Joints, trail: Pt, seed: number) {
     j.kneeR,
     j.elbowR,
   ]
+}
+
+function energyStreaks(anchors: Pt[], trail: Pt, seed: number) {
+  const rand = lcg(seed)
   const dir = unit(trail)
   const n = perp(dir)
   const out: { d: string; w: number; o: number }[] = []
@@ -442,9 +454,19 @@ export function HeroPlayer({ className = '' }: { className?: string }) {
         </defs>
       </svg>
 
-      {POSES.map(({ id, label, j, trail }) => {
-        const streaks = energyStreaks(j, trail, 1000 + id * 97)
-        const feet = lerp(j.toeL, j.toeR, 0.5)
+      {POSES.map(({ id, label, j, trail: vectorTrail }, index) => {
+        const raster: RasterPose | undefined = RASTER_POSES?.[index]
+        const trail: Pt = raster ? raster.trail : vectorTrail
+        const anchors: Pt[] = raster ? raster.anchors : jointAnchors(j)
+        const streaks = energyStreaks(anchors, trail, 1000 + id * 97)
+        const feet: Pt = raster ? [raster.x + raster.w / 2, 396] : lerp(j.toeL, j.toeR, 0.5)
+        // Balón para el impacto (pose 3): detectado en la imagen o, si quedó
+        // pegado al cuerpo y no se pudo separar, arriba a la derecha de la figura.
+        const ball: Pt = raster
+          ? raster.ball
+            ? [raster.ball[0], raster.ball[1]]
+            : [raster.x + raster.w * 0.9, raster.y + raster.h * 0.4]
+          : j.ball
         return (
           <div key={id} className={`ef-pose ef-pose-${id}`} data-pose={label}>
             {/* Energía: trazos que salen del cuerpo hacia atrás + luz de suelo. */}
@@ -462,19 +484,30 @@ export function HeroPlayer({ className = '' }: { className?: string }) {
                 para que la respiración (opacity/transform) no re-rasterice. */}
             <div className="ef-aura-layer">
               <svg viewBox={VIEWBOX} className="h-full w-full" focusable="false">
-                {id === 3 && <circle cx={j.ball[0]} cy={j.ball[1]} r={66} fill="url(#ef-impact)" />}
+                {id === 3 && <circle cx={f(ball[0])} cy={f(ball[1])} r={66} fill="url(#ef-impact)" />}
                 <use href={`#ef-sil-${id}`} filter="url(#ef-aura-filter)" />
               </svg>
             </div>
             <svg viewBox={VIEWBOX} className="ef-sil-layer h-full w-full" focusable="false">
               <g id={`ef-sil-${id}`} className="ef-sil">
-                <Figure j={j} />
+                {raster ? (
+                  <image
+                    href={raster.src}
+                    x={raster.x}
+                    y={raster.y}
+                    width={raster.w}
+                    height={raster.h}
+                    preserveAspectRatio="xMidYMax meet"
+                  />
+                ) : (
+                  <Figure j={j} />
+                )}
               </g>
               {id === 3 && (
                 <g stroke="var(--color-orange)" strokeWidth={3} strokeLinecap="round" opacity={0.8}>
-                  <line x1={322} y1={198} x2={296} y2={206} />
-                  <line x1={318} y1={182} x2={288} y2={184} />
-                  <line x1={326} y1={168} x2={304} y2={154} />
+                  <line x1={f(ball[0] - 26)} y1={f(ball[1] + 12)} x2={f(ball[0] - 52)} y2={f(ball[1] + 20)} />
+                  <line x1={f(ball[0] - 30)} y1={f(ball[1] - 4)} x2={f(ball[0] - 60)} y2={f(ball[1] - 2)} />
+                  <line x1={f(ball[0] - 22)} y1={f(ball[1] - 18)} x2={f(ball[0] - 44)} y2={f(ball[1] - 32)} />
                 </g>
               )}
             </svg>
@@ -485,8 +518,8 @@ export function HeroPlayer({ className = '' }: { className?: string }) {
                   className="ef-spark-impact"
                   style={
                     {
-                      left: '87%',
-                      top: '42.3%',
+                      left: `${f((ball[0] / 400) * 100)}%`,
+                      top: `${f((ball[1] / 440) * 100)}%`,
                       '--dx': `${s.dx}px`,
                       '--dy': `${s.dy}px`,
                       animationDelay: `${s.delay}s`,
