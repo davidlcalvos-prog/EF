@@ -1,6 +1,5 @@
-import Link from 'next/link'
-import { MapPin, Search } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { MapPin } from 'lucide-react'
+import { MatchFinderCta } from './match-finder-cta'
 
 /**
  * Silueta de Colombia (viewBox 360x500), proyección equirectangular
@@ -44,7 +43,7 @@ export function MatchFinderSection() {
     <section id="buscador" className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
       <div className="grid items-center gap-10 lg:grid-cols-2">
         {/* Map visual */}
-        <div className="ef-card relative aspect-[4/3] overflow-hidden rounded-2xl">
+        <div className="ef-card ef-reveal relative aspect-[4/3] overflow-hidden rounded-2xl">
           <div
             className="absolute inset-0 opacity-40"
             style={{
@@ -60,15 +59,16 @@ export function MatchFinderSection() {
                 'radial-gradient(circle at center, color-mix(in srgb, var(--primary) 12%, transparent), transparent 60%)',
             }}
           />
-          {/* Mapa de Colombia con pines en ciudades reales. El contenedor
-              conserva la proporción del viewBox para que los % de los pines
-              coincidan con las coordenadas del path. */}
+          {/* Silueta de Colombia con pines en ciudades reales — ilustración
+              decorativa (la app NO tiene mapa: "Cerca de mí" es una lista por
+              municipio). El contenedor conserva la proporción del viewBox
+              para que los % de los pines coincidan con el path. */}
           <div className="absolute inset-0 flex items-center justify-center p-6">
             <div className="relative aspect-[360/500] max-h-full">
               <svg
                 viewBox="0 0 360 500"
                 className="h-full w-full"
-                aria-label="Mapa de Colombia con partidos disponibles"
+                aria-hidden="true"
               >
                 <path
                   d={COLOMBIA_PATH}
@@ -131,21 +131,20 @@ export function MatchFinderSection() {
         {/* Copy */}
         <div>
           <h2 className="font-heading text-3xl font-bold italic uppercase tracking-tight text-foreground text-balance sm:text-4xl">
-            Buscador de partidos
+            Comodín: cerca de mí
           </h2>
           <p className="mt-4 max-w-md leading-relaxed text-muted-foreground">
-            Encuentra partidos locales que se adaptan a tu nivel y horario.
-            Utiliza nuestra vista de mapa interactivo o la lista de eventos para
-            unirte a la acción en segundos.
+            ¿A tu grupo le falta un jugador para el partido? Publica la vacante
+            con la posición que necesitas. Los jugadores de tu municipio que
+            activaron el aviso reciben la notificación, la ven en su lista
+            &ldquo;Cerca de mí&rdquo; y se postulan. Tú eliges quién entra.
           </p>
-          <Button
-            render={<Link href="/auth/sign-up" />}
-            size="lg"
-            className="ef-cta mt-6 h-12 px-6 font-heading font-semibold uppercase tracking-wide"
-          >
-            <Search className="mr-1 h-5 w-5" />
-            Explorar Mapa
-          </Button>
+          <ul className="mt-5 space-y-2 text-sm text-muted-foreground">
+            <li className="flex gap-2"><span className="text-primary">1.</span> Define tu zona en el perfil y activa &ldquo;avisarme si falta un jugador cerca&rdquo;.</li>
+            <li className="flex gap-2"><span className="text-primary">2.</span> Un grupo publica hasta 5 vacantes por partido, por posición.</li>
+            <li className="flex gap-2"><span className="text-primary">3.</span> Te postulas desde la lista; si te aceptan, quedas en la planilla del partido.</li>
+          </ul>
+          <MatchFinderCta />
         </div>
       </div>
     </section>

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 
 const navLinks = [
   { label: 'Rendimiento', href: '#rendimiento' },
-  { label: 'Buscar Partido', href: '#buscador' },
+  { label: 'Comodín', href: '#buscador' },
   { label: 'Canchas', href: '#canchas' },
 ]
 

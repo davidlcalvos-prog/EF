@@ -237,3 +237,341 @@
     background: linear-gradient(90deg, var(--color-emerald) 50%, var(--color-orange) 50%);
   }
 }
+
+/* ── Animación de la landing (lote 2) ──────────────────────────────────
+   Energía de saque inicial, no decoración genérica: el titular entra
+   escalonado, el balón rueda hasta su lugar, las tarjetas suben al entrar
+   en pantalla (scroll-driven, sin JS) y el icono de cada tarjeta "patea"
+   al pasar el mouse. Todo se apaga con prefers-reduced-motion. */
+@keyframes ef-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* Líneas de velocidad del hero: cruzan de derecha a izquierda y se
+   desvanecen; las partículas parpadean y derivan hacia la izquierda. */
+@keyframes ef-speed {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-160%);
+    opacity: 0;
+  }
+}
+@keyframes ef-spark {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  30% {
+    opacity: 0.9;
+    transform: translate(-6px, -2px) scale(1);
+  }
+  70% {
+    opacity: 0.4;
+    transform: translate(-16px, -5px) scale(0.8);
+  }
+}
+@keyframes ef-kick {
+  0% {
+    transform: none;
+  }
+  30% {
+    transform: translate(2px, -3px) rotate(-14deg) scale(1.08);
+  }
+  60% {
+    transform: translate(-1px, 1px) rotate(6deg) scale(0.96);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes ef-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ef-enter {
+    animation: ef-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .ef-speed {
+    animation: ef-speed 2.6s linear infinite;
+  }
+  .ef-spark {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: ef-spark 3.4s ease-in-out infinite;
+  }
+  .ef-card-hover:hover .ef-chip svg {
+    animation: ef-kick 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  /* Filo luminoso de la tarjeta que "corre" al pasar el mouse, como un
+     destello sobre el césped. */
+  .ef-card-hover {
+    overflow: hidden;
+  }
+  .ef-card-hover::after {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 30%,
+      rgb(255 255 255 / 0.06) 50%,
+      transparent 70%
+    );
+    transform: translateX(-100%);
+  }
+  .ef-card-hover:hover::after {
+    animation: ef-sweep 0.9s ease-out both;
+  }
+  /* Revelado al hacer scroll (Chrome/Edge; el resto ve las tarjetas
+     quietas, que es el estado final). */
+  @supports (animation-timeline: view()) {
+    .ef-reveal {
+      animation: ef-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 35%;
+    }
+  }
+}
+
+/* ── Silueta animada del hero (components/landing/hero-player.tsx) ───────
+   Tres poses (recibe → dribla → tira) en crossfade con un leve
+   desplazamiento hacia la derecha (sentido de la jugada). Tiempos:
+
+     --pose-duration    lo que cada pose queda quieta      (4.5s)
+     --pose-transition  duración del crossfade entre poses (0.8s)
+
+   El usuario pidió al principio 15s POR POSE; se dejó en 4.5s y se
+   parametrizó para subirlo acá sin tocar la lógica (con 15s el ciclo
+   completo pasa a 45s). Ciclo = 3 × --pose-duration (las transiciones se
+   solapan: mientras una pose se va, la siguiente ya está entrando), así
+   que con los valores por defecto dura 13.5s.
+
+   Los porcentajes de ef-pose-cycle salen de esos dos valores:
+     fade-in termina en   --pose-transition / ciclo            = 0.8 / 13.5 ≈ 5.93%
+     fade-out empieza en  --pose-duration / ciclo              = 33.33%
+     fade-out termina en (--pose-duration + --pose-transition) / ciclo ≈ 39.26%
+   Si cambiás solo --pose-duration, la transición escala en proporción
+   (sigue siendo fluida). Para fijarla en segundos exactos, recalculá esos
+   tres porcentajes. */
+.ef-hero-player {
+  --pose-duration: 4.5s;
+  --pose-transition: 0.8s;
+  --pose-cycle: calc(3 * var(--pose-duration));
+  --ef-sil: #262626; /* carbón, un paso más oscuro que --secondary */
+  aspect-ratio: 400 / 440; /* la posición la pone el padre (hero.tsx) */
+}
+.ef-pose {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  will-change: opacity, transform;
+}
+.ef-aura-layer {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 85%;
+  will-change: opacity, transform;
+}
+.ef-sil-layer {
+  position: relative;
+}
+.ef-energy-layer {
+  position: absolute;
+  inset: 0;
+  will-change: opacity, transform;
+}
+.ef-sil {
+  color: var(--ef-sil);
+}
+.ef-wisp {
+  position: absolute;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-emerald) 70%, transparent) 0%,
+    color-mix(in srgb, var(--color-emerald) 25%, transparent) 40%,
+    transparent 68%
+  );
+  filter: blur(6px);
+  will-change: opacity, transform;
+}
+.ef-wisp-orange {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-orange) 60%, transparent) 0%,
+    color-mix(in srgb, var(--color-orange) 22%, transparent) 40%,
+    transparent 68%
+  );
+}
+.ef-spark-impact {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--color-orange);
+  box-shadow: 0 0 8px 2px color-mix(in srgb, var(--color-orange) 60%, transparent);
+  opacity: 0;
+  will-change: opacity, transform;
+}
+
+@keyframes ef-pose-cycle {
+  0% {
+    opacity: 0;
+    transform: translateX(-3.5%);
+  }
+  5.93% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  33.33% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  39.26% {
+    opacity: 0;
+    transform: translateX(3.5%);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(3.5%);
+  }
+}
+/* Respiración del aura: sube y baja despacio, nunca parpadea. */
+@keyframes ef-breathe {
+  0%,
+  100% {
+    opacity: 0.82;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.018);
+  }
+}
+/* Vapor: nace, asciende, se abre y se disipa. */
+@keyframes ef-vapor {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.6);
+  }
+  25% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(8%, -140%, 0) scale(1.5);
+  }
+}
+/* Deriva de la energía: los trazos se mueven apenas hacia atrás y vuelven. */
+@keyframes ef-energy-drift {
+  0%,
+  100% {
+    opacity: 0.8;
+    transform: translateX(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-1.5%);
+  }
+}
+/* Partículas del impacto: salen del balón y se apagan. */
+@keyframes ef-impact-spark {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.5);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--dx), var(--dy), 0) scale(1.1);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ef-pose {
+    animation: ef-pose-cycle var(--pose-cycle) ease-in-out infinite both;
+  }
+  .ef-pose-2 {
+    animation-delay: var(--pose-duration);
+  }
+  .ef-pose-3 {
+    animation-delay: calc(2 * var(--pose-duration));
+  }
+  .ef-aura-layer {
+    animation: ef-breathe 4.2s ease-in-out infinite;
+  }
+  .ef-energy-layer {
+    animation: ef-energy-drift 3.6s ease-in-out infinite;
+  }
+  .ef-wisp {
+    animation: ef-vapor 5.2s ease-out infinite;
+  }
+  .ef-spark-impact {
+    animation: ef-impact-spark 1.9s ease-out infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Una sola pose estática (dribla), aura fija, sin vapor ni partículas. */
+  .ef-pose {
+    animation: none;
+    opacity: 0;
+  }
+  .ef-pose-2 {
+    opacity: 1;
+  }
+  .ef-aura-layer,
+  .ef-energy-layer {
+    animation: none;
+    opacity: 0.85;
+  }
+  .ef-wisp,
+  .ef-spark-impact {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Apaga también las utilidades de tw-animate-css y de Tailwind. */
+  .ef-enter,
+  .ef-speed,
+  .ef-spark,
+  .ef-reveal,
+  .animate-in,
+  .animate-out,
+  .animate-ping,
+  .animate-pulse,
+  .animate-spin,
+  .animate-bounce {
+    animation: none !important;
+  }
+  .ef-speed,
+  .ef-spark {
+    display: none;
+  }
+}
