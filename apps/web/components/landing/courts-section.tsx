@@ -2,6 +2,11 @@ import Link from 'next/link'
 import { LayoutDashboard, CalendarCheck, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
+/**
+ * Reservas: nacen `pending` y las confirma o rechaza el dueño desde el
+ * portal (no hay confirmación instantánea ni pagos). El portal de dueños
+ * mide ocupación y horarios pico a partir de las reservas — no ingresos.
+ */
 export function CourtsSection() {
   return (
     <section id="canchas" className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6">
@@ -10,7 +15,7 @@ export function CourtsSection() {
         Gestión y reservas de canchas
       </h2>
       <p className="mt-3 max-w-2xl text-muted-foreground">
-        Administra y reserva los mejores campos de juego al instante.
+        Los jugadores reservan desde la app. Los dueños administran todo desde el portal web.
       </p>
 
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
@@ -19,18 +24,20 @@ export function CourtsSection() {
             <LayoutDashboard className="h-6 w-6" />
           </span>
           <h3 className="mt-5 font-heading text-xl font-semibold uppercase tracking-wide text-card-foreground">
-            Gestión de Canchas para Dueños
+            Portal para dueños de cancha
           </h3>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Panel integral para propietarios de canchas sintéticas. Monitorea el
-            uso, mantenimiento y flujo de ingresos en tiempo real.
+            Calendario de reservas por día, semana o mes. Inventario de canchas
+            de fútbol 6, 8 y 11 con tarifas y servicios. Ocupación, horarios
+            pico y clientes frecuentes a partir de tus reservas. Cada reserva
+            que llega desde la app la confirmas o rechazas tú.
           </p>
           <Button
             render={<Link href="/admin/login" />}
             variant="outline"
             className="mt-5 font-heading font-medium uppercase tracking-wide"
           >
-            Licencia Manager <ArrowRight className="ml-1 h-4 w-4" />
+            Portal de dueños <ArrowRight className="ml-1 h-4 w-4" />
           </Button>
         </div>
 
@@ -39,18 +46,19 @@ export function CourtsSection() {
             <CalendarCheck className="h-6 w-6" />
           </span>
           <h3 className="mt-5 font-heading text-xl font-semibold uppercase tracking-wide text-card-foreground">
-            Reservas Online para Jugadores
+            Reservas desde la app
           </h3>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Sistema de reservas en tiempo real. Asegura el tiempo de
-            entrenamiento de tu equipo con confirmación instantánea y división de
-            pagos.
+            Eliges la sede, el tamaño de cancha y el horario; la app asigna
+            una cancha libre y el dueño confirma. Te avisamos con una
+            notificación cuando esté confirmada, y puedes vincular la reserva
+            a un partido de tu grupo.
           </p>
           <Button
             render={<Link href="/auth/sign-up" />}
             className="ef-cta mt-5 font-heading font-semibold uppercase tracking-wide"
           >
-            Reservar Ahora <ArrowRight className="ml-1 h-4 w-4" />
+            Crear cuenta para reservar <ArrowRight className="ml-1 h-4 w-4" />
           </Button>
         </div>
       </div>

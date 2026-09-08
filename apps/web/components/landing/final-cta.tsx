@@ -18,8 +18,7 @@ export function FinalCta() {
           ¿Listo para forjar tu legado?
         </h2>
         <p className="mt-4 text-muted-foreground">
-          Únete a miles de jugadores que ya están transformando su nivel amateur
-          en rendimiento profesional.
+          Crea tu cuenta, arma tu grupo y mídete en la cancha. Gratis.
         </p>
         <Button
           render={<Link href="/auth/sign-up" />}
@@ -64,8 +63,8 @@ export function LandingFooter() {
               <Logo />
             </Link>
             <p className="mt-3 max-w-xs text-sm text-muted-foreground">
-              Del amateur al pro: rendimiento, torneos y canchas en un solo
-              lugar.
+              Tests, grupos, partidos, comodín, reservas y campeonatos en un
+              solo lugar.
             </p>
           </div>
           {footerColumns.map((column) => (
