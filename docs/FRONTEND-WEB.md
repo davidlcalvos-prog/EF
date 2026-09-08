@@ -455,21 +455,43 @@ Tras cambiar `NEXT_PUBLIC_*` o los dominios: reconstruir la imagen (`docker comp
 
 ## Landing — secciones
 
-| Componente | Contenido |
-|------------|-----------|
-| `LandingNav` | Nav + CTAs |
-| `Hero` | “Del amateur al pro” |
-| `PerformanceSection` | Rendimiento |
-| `TournamentsSection` | Equipos / torneos (marketing) |
-| `MatchFinderSection` | Partidos |
-| `CommunitySection` | Feed mock |
-| `CourtsSection` | Canchas |
-| `DownloadSection` | Stores |
-| `FinalCta` + `LandingFooter` | CTA + footer |
+Regla desde 2026-09-07: **la landing solo promete lo que la app hace**. Cada texto tiene que poder señalarse en `apps/mobile` (pantalla, clave de `es.ts`) o en el portal admin. Si una función todavía no existe, no se anuncia — ni "próximamente", salvo las tiendas.
+
+| Componente | Tipo | Contenido |
+|------------|------|-----------|
+| `LandingNav` | cliente | Logo (lockup) + anclas Rendimiento / Comodín / Canchas + "Soy dueño de cancha", "Registro gratis", "Descargar" |
+| `Hero` | estático | Slogan **"El talento no nace. Se forja."** + balón animado; CTAs "Prueba inicial" (registro) y "Cómo funciona" (`#rendimiento`) |
+| `PerformanceSection` | estático (+ `StatsRadar` cliente) | Radar con las **6 stats reales** en el orden de `STAT_ORDER` (Ataque, Defensa, Resistencia, Velocidad, Pases, Regate); 6 tests físicos cargados a mano + test de mentalidad |
+| `TournamentsSection` | cliente | 3 cards-botón (grupo, partidos internos/VS, campeonatos) que abren `FeatureDialog` con los pasos reales de la app |
+| `MatchFinderSection` | estático (+ `MatchFinderCta` cliente) | Comodín "Cerca de mí" como **lista por municipio**; el SVG de Colombia es decorativo (`aria-hidden`); el botón abre el modal explicativo |
+| `CommunitySection` | estático | 4 posts de muestra con grupos, VS, comodín y tests; ficha de los 7 tests (reemplaza a la "progresión histórica") |
+| `CourtsSection` | estático | Portal de dueños (calendario, inventario 6/8/11, ocupación) y reservas `pending` que confirma el dueño |
+| `DownloadSection` | estático | Tiendas visibles pero **deshabilitadas** ("Próximamente"), sin `href="#"`; CTA a crear cuenta |
+| `FinalCta` + `LandingFooter` | estático | CTA + footer (Jugadores / Canchas / Legal) |
+| `FeatureDialog` | cliente | Modal reutilizable (icono, tagline, pasos numerados, nota honesta, CTA a registro) sobre `components/ui/dialog.tsx` |
+
+**Identidad (lote 2):** el logo es un lockup horizontal (`public/brand/elite-forge-lockup.png`, 540×256) generado por `scripts/generate-brand-assets.js` a partir del logo maestro de mobile — recorta emblema y wordmark por alfa (mismo criterio que `apps/mobile/scripts/generate-brand-assets.js`) y los compone en horizontal; también deja `elite-forge-emblem.png` y `elite-forge-wordmark.png`. `components/logo.tsx` lo renderiza a `h-14 sm:h-16` con un solo `<img>`, así `[&_img]:h-9` desde `app/auth/layout.tsx` / admin sigue funcionando. Regenerar con `node scripts/generate-brand-assets.js` desde `apps/web` si cambia el logo maestro.
+
+**Iconos futbolísticos:** `components/icons/football.tsx` — `SoccerBallIcon`, `PitchIcon`, `WhistleIcon`, `BootsIcon`, SVG propios con las reglas de lucide (viewBox 24, stroke 2, `currentColor`). lucide-react no trae balón, silbato, botines ni cancha. Se mantiene lucide donde funciona (Trophy, Brain, MapPin, LayoutDashboard…).
+
+**Animación (sin librerías nuevas):** `@keyframes` propios en `globals.css` (`ef-rise`, `ef-ball-roll`, `ef-ball-idle`, `ef-kick`, `ef-sweep`) + utilidades `.ef-enter` (entrada escalonada del hero), `.ef-ball-roll`, `.ef-reveal` (revelado al scroll con `animation-timeline: view()`, progresivo: donde no hay soporte se ve el estado final) y patada/destello al hover de `.ef-card-hover`. Todo dentro de `@media (prefers-reduced-motion: no-preference)`, y un bloque `reduce` apaga también `animate-in/out` de tw-animate-css y `animate-ping/pulse/spin/bounce`.
+
+**Modales:** `components/ui/dialog.tsx` es el Dialog de shadcn (estilo base-nova) sobre `@base-ui/react/dialog`, escrito a mano con la misma API que genera la CLI (`Dialog`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, `DialogClose`…) para no depender de la red en el build. Animación con tw-animate-css sobre `data-open` / `data-closed`.
+
+**Título de la landing:** `app/page.tsx` exporta su propio `metadata` ("ELITE FORGE — El talento no nace. Se forja."); `app/layout.tsx` (compartido con las páginas legales declaradas en Play Console) conserva el suyo y no se toca.
 
 ---
 
 ## Registro de cambios
+
+### 2026-09-07 — Landing veraz, identidad y cards interactivas (3 lotes)
+
+Origen: demo con usuarios reales + auditoría de promesas. Tres commits separados en `Dev-David`.
+
+- [x] **Lote 1 — veracidad.** Se eliminaron de la landing estas promesas sin respaldo en el producto (registro de por qué el copy dice lo que dice): "tecnología de rastreo técnico" / "analiza cada sprint, pase y disparo"; "Velocidad Máxima y Aceleración"; "Mapas de Calor Posicionales"; "Eficiencia de Pases y Tiros" (como métrica por partido); radar de 5 stats (Velocidad/Defensa/Pase/Tiro/Físico); "Nivel PRO / SEMI-PRO / AMATEUR"; "Posición Ranking #5"; "Puntuación 79/100"; "Estadísticas en tiempo real"; "define tu táctica maestra"; "ligas locales, sube de división y gana recompensas"; "compara… en tu ciudad o país"; "mapa interactivo" / "Explorar Mapa" / "partidos disponibles" en el mapa; "79 km recorridos", "liga nocturna", insignias MVP/GOLEADOR; "Progresión histórica" (el backend guarda solo `latestTestResults`); "flujo de ingresos en tiempo real" del portal; "confirmación instantánea y división de pagos"; "Licencia Manager"; QR falso y tiendas con `href="#"` (el "siempre me lleva al mismo lugar" del feedback: `#` hace scroll al tope); "Únete a miles de jugadores". Lo que sí se cuenta ahora: 6 tests físicos cargados a mano + test de mentalidad, grupos y amigos, partidos internos con "Sortear equipos", VS entre grupos amigos, comodín "Cerca de mí" por municipio, reservas `pending` que confirma el dueño, campeonatos con rankings por torneo, feed con fotos reales.
+- [x] **Lote 2 — identidad.** Slogan "El talento no nace. Se forja."; lockup horizontal del logo legible; iconos futbolísticos propios; animación de "saque inicial" con reduced-motion; `hero-player.png` (1,28 MB sin uso) y el PNG cuadrado del logo borrados. Ver [Landing — secciones](#landing--secciones).
+- [x] **Lote 3 — cards interactivas.** Las 3 cards de "Grupos, partidos y campeonatos" y el botón de "Cerca de mí" abren un modal (`FeatureDialog`) con los pasos tal cual existen en la app y una nota honesta de límites (sin invitación con aceptación, sin transferir creador, sin goles por jugador, sin tabla global, sin mapa). El CTA a registro vive dentro del modal; el hero suma "Cómo funciona" para que la landing no sea un embudo único a `/auth/sign-up`.
+- Restricción vigente: `app/legal/*`, `components/legal/*`, `app/auth/*` y `app/layout.tsx` no se tocan (la URL de privacidad está declarada en Play Console). `next build` en verde en cada lote antes de commitear.
 
 ### 2026-07 — Base monorepo + NestJS
 

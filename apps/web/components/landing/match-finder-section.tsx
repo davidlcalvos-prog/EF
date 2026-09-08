@@ -1,7 +1,5 @@
-import Link from 'next/link'
 import { MapPin } from 'lucide-react'
-import { BootsIcon } from '@/components/icons/football'
-import { Button } from '@/components/ui/button'
+import { MatchFinderCta } from './match-finder-cta'
 
 /**
  * Silueta de Colombia (viewBox 360x500), proyección equirectangular
@@ -146,14 +144,7 @@ export function MatchFinderSection() {
             <li className="flex gap-2"><span className="text-primary">2.</span> Un grupo publica hasta 5 vacantes por partido, por posición.</li>
             <li className="flex gap-2"><span className="text-primary">3.</span> Te postulas desde la lista; si te aceptan, quedas en la planilla del partido.</li>
           </ul>
-          <Button
-            render={<Link href="/auth/sign-up" />}
-            size="lg"
-            className="ef-cta mt-6 h-12 px-6 font-heading font-semibold uppercase tracking-wide"
-          >
-            <BootsIcon className="mr-1 h-5 w-5" />
-            Quiero ser comodín
-          </Button>
+          <MatchFinderCta />
         </div>
       </div>
     </section>
