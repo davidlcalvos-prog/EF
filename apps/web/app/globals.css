@@ -395,6 +395,11 @@
 .ef-sil-layer {
   position: relative;
 }
+.ef-energy-layer {
+  position: absolute;
+  inset: 0;
+  will-change: opacity, transform;
+}
 .ef-sil {
   color: var(--ef-sil);
 }
@@ -473,6 +478,18 @@
     transform: translate3d(8%, -140%, 0) scale(1.5);
   }
 }
+/* Deriva de la energía: los trazos se mueven apenas hacia atrás y vuelven. */
+@keyframes ef-energy-drift {
+  0%,
+  100% {
+    opacity: 0.8;
+    transform: translateX(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-1.5%);
+  }
+}
 /* Partículas del impacto: salen del balón y se apagan. */
 @keyframes ef-impact-spark {
   0% {
@@ -501,6 +518,9 @@
   .ef-aura-layer {
     animation: ef-breathe 4.2s ease-in-out infinite;
   }
+  .ef-energy-layer {
+    animation: ef-energy-drift 3.6s ease-in-out infinite;
+  }
   .ef-wisp {
     animation: ef-vapor 5.2s ease-out infinite;
   }
@@ -517,7 +537,8 @@
   .ef-pose-2 {
     opacity: 1;
   }
-  .ef-aura-layer {
+  .ef-aura-layer,
+  .ef-energy-layer {
     animation: none;
     opacity: 0.85;
   }

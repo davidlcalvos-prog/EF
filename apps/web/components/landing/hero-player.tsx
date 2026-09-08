@@ -1,202 +1,380 @@
 'use client'
 
 /**
- * Silueta de futbolista en SVG con aura de "calor corporal", que cicla tres
- * poses de una jugada: recibe (control de pecho) → dribla (conducción) →
- * tira (remate). Sin JavaScript de animación: cada pose es un <div> con su
- * propio <svg>, y el ciclo (crossfade + leve desplazamiento hacia la
- * derecha, sentido de la jugada) lo hace CSS en globals.css:
+ * Silueta de futbolista en SVG con aura de energía, que cicla tres poses de
+ * una jugada: recibe (control de pecho) → dribla (conducción) → tira
+ * (remate). Sin JavaScript de animación: cada pose es un <div> con tres
+ * <svg> (energía, aura, silueta), y el ciclo (crossfade + leve desplazamiento
+ * hacia la derecha, sentido de la jugada) lo hace CSS en globals.css:
  *
- *   .ef-hero-player  → --pose-duration / --pose-transition (tiempos)
- *   .ef-pose         → @keyframes ef-pose-cycle
- *   .ef-aura-layer   → @keyframes ef-breathe (respiración del aura)
- *   .ef-wisp         → @keyframes ef-vapor  (vapor que asciende)
+ *   .ef-hero-player   → --pose-duration / --pose-transition (tiempos)
+ *   .ef-pose          → @keyframes ef-pose-cycle
+ *   .ef-aura-layer    → @keyframes ef-breathe (respiración del aura)
+ *   .ef-energy-layer  → @keyframes ef-energy-drift (deriva de los trazos)
+ *   .ef-wisp          → @keyframes ef-vapor  (vapor que asciende)
  *
- * Por qué cada pose vive en su propio <svg> dentro de un <div>: la animación
- * de opacity/transform corre sobre elementos HTML, que el navegador
- * compone en GPU sin volver a rasterizar el filtro del aura (un transform
- * sobre un <g> interno de SVG re-aplicaría el filtro en cada frame).
+ * Por qué cada capa vive en su propio <svg> dentro de un <div>: la animación
+ * de opacity/transform corre sobre elementos HTML, que el navegador compone
+ * en GPU sin volver a rasterizar los filtros (un transform sobre un <g>
+ * interno de SVG re-aplicaría el filtro en cada frame).
  *
- * Colores: solo tokens del proyecto — var(--color-emerald) #00cec8 para el
- * aura, var(--color-orange) #ff8c00 para el impacto del balón, y carbón
- * (--ef-sil, #262626, un paso más oscuro que --secondary #2e2e2e) para el
- * relleno. Nada de verde lima.
+ * Las figuras se construyen por partes a partir de un esqueleto de
+ * articulaciones (`Joints`): segmentos cónicos (muslo ancho en la cadera y
+ * fino en la rodilla, pantorrilla con gemelo, antebrazo), torso con cintura,
+ * mangas y pantalón con dobladillo, botines con suela, puños, cabeza con
+ * mentón, pelo en puntas y un ojo que brilla. Para retocar una pose se
+ * cambian coordenadas en POSES; todo lo demás se recalcula.
+ *
+ * Colores: solo tokens del proyecto — var(--color-emerald) #00cec8 para
+ * aura, energía y ojo; var(--color-orange) #ff8c00 para el impacto del
+ * balón; carbón (--ef-sil, #262626) para el relleno. Nada de verde lima.
  *
  * Con prefers-reduced-motion: una sola pose (dribla) estática, aura fija,
- * sin vapor ni partículas (globals.css).
+ * sin vapor, deriva ni partículas (globals.css).
  */
 
 type Pt = [number, number]
 
-const pts = (points: Pt[]) => points.map((p) => p.join(',')).join(' ')
-
-/** Extremidad: polilínea gruesa con extremos y codos/rodillas redondos. */
-function Limb({ points, width }: { points: Pt[]; width: number }) {
-  return (
-    <polyline
-      points={pts(points)}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={width}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  )
+/* ── Vectores ─────────────────────────────────────────────────────────── */
+const add = (a: Pt, b: Pt): Pt => [a[0] + b[0], a[1] + b[1]]
+const sub = (a: Pt, b: Pt): Pt => [a[0] - b[0], a[1] - b[1]]
+const mul = (a: Pt, k: number): Pt => [a[0] * k, a[1] * k]
+const len = (a: Pt) => Math.hypot(a[0], a[1])
+const unit = (a: Pt): Pt => {
+  const l = len(a) || 1
+  return [a[0] / l, a[1] / l]
 }
+/** Normal (perpendicular, rotada -90°: "arriba" para un vector que va a la derecha). */
+const perp = (a: Pt): Pt => [a[1], -a[0]]
+const lerp = (a: Pt, b: Pt, t: number): Pt => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
+const f = (n: number) => Math.round(n * 10) / 10
+const pts = (points: Pt[]) => points.map((p) => `${f(p[0])},${f(p[1])}`).join(' ')
 
-/** Brazo: húmero más grueso que el antebrazo, mano redonda. */
-function Arm({ shoulder, elbow, wrist }: { shoulder: Pt; elbow: Pt; wrist: Pt }) {
+/* ── Piezas ───────────────────────────────────────────────────────────── */
+
+/** Segmento cónico entre dos articulaciones, con extremos redondos. */
+function Seg({ a, b, wa, wb }: { a: Pt; b: Pt; wa: number; wb: number }) {
+  const n = perp(unit(sub(b, a)))
+  const poly: Pt[] = [
+    add(a, mul(n, wa / 2)),
+    add(b, mul(n, wb / 2)),
+    sub(b, mul(n, wb / 2)),
+    sub(a, mul(n, wa / 2)),
+  ]
   return (
     <>
-      <Limb points={[shoulder, elbow]} width={15} />
-      <Limb points={[elbow, wrist]} width={12} />
-      <circle cx={wrist[0]} cy={wrist[1]} r={6.5} fill="currentColor" />
+      <polygon points={pts(poly)} fill="currentColor" />
+      <circle cx={f(a[0])} cy={f(a[1])} r={f(wa / 2)} fill="currentColor" />
+      <circle cx={f(b[0])} cy={f(b[1])} r={f(wb / 2)} fill="currentColor" />
     </>
   )
 }
 
-/** Pierna: muslo, pantorrilla y pie (del tobillo a la punta). */
-function Leg({ hip, knee, ankle, toe }: { hip: Pt; knee: Pt; ankle: Pt; toe: Pt }) {
-  return (
-    <>
-      <Limb points={[hip, knee]} width={23} />
-      <Limb points={[knee, ankle]} width={17} />
-      <Limb points={[ankle, toe]} width={12} />
-    </>
-  )
+/** Botín: talón, suela, punta y empeine, orientado del tobillo a la punta. */
+function Boot({ ankle, toe }: { ankle: Pt; toe: Pt }) {
+  const d = unit(sub(toe, ankle))
+  const n = perp(d)
+  const poly: Pt[] = [
+    add(add(ankle, mul(n, 9)), mul(d, -2)), // empeine alto
+    add(add(ankle, mul(n, 2)), mul(d, -9)), // talón
+    add(add(ankle, mul(n, -6)), mul(d, -7)), // talón bajo
+    add(toe, mul(n, -5)), // suela punta
+    add(add(toe, mul(n, 1)), mul(d, 4)), // punta
+    add(add(toe, mul(n, 6)), mul(d, -6)), // empeine punta
+    add(add(lerp(ankle, toe, 0.45), mul(n, 9)), mul(d, 0)),
+  ]
+  return <polygon points={pts(poly)} fill="currentColor" />
 }
 
-function Head({ c }: { c: Pt }) {
-  return (
-    <>
-      <circle cx={c[0]} cy={c[1]} r={15.5} fill="currentColor" />
-      {/* cuello */}
-      <Limb points={[[c[0], c[1] + 13], [c[0] - 2, c[1] + 31]]} width={12} />
-    </>
-  )
-}
+/** Pelo en puntas (coordenadas locales, cabeza mirando a la derecha). */
+const HAIR: Pt[] = [
+  [7, -13],
+  [12, -26],
+  [3, -16],
+  [-1, -31],
+  [-7, -15],
+  [-15, -28],
+  [-13, -10],
+  [-28, -17],
+  [-15, -3],
+  [-30, -1],
+  [-14, 5],
+  [-25, 12],
+  [-10, 9],
+  [0, 4],
+]
 
-/** Balón: carbón con costuras cian (pentágono central). */
-function Ball({ c, r = 18 }: { c: Pt; r?: number }) {
-  const k = r / 18
-  const pent: Pt[] = [
-    [0, -7],
-    [6.66, -2.16],
-    [4.11, 5.66],
-    [-4.11, 5.66],
-    [-6.66, -2.16],
-  ].map(([x, y]) => [c[0] + x * k, c[1] + y * k] as Pt)
+function Head({ c, tilt }: { c: Pt; tilt: number }) {
   return (
-    <g>
-      <circle
-        cx={c[0]}
-        cy={c[1]}
-        r={r}
-        fill="currentColor"
-        stroke="var(--color-emerald)"
-        strokeWidth={2.5}
-      />
-      <polygon
-        points={pts(pent)}
-        fill="none"
-        stroke="var(--color-emerald)"
-        strokeWidth={2}
-        strokeLinejoin="round"
-        opacity={0.9}
-      />
+    <g transform={`translate(${f(c[0])} ${f(c[1])}) rotate(${tilt})`}>
+      <circle r={15.5} fill="currentColor" />
+      {/* mentón y mandíbula hacia el frente */}
+      <polygon points="6,4 15,1 13,12 4,16 -4,14" fill="currentColor" />
+      <polygon points={pts(HAIR)} fill="currentColor" />
+      {/* ojo que brilla */}
+      <ellipse cx={8.5} cy={-2.5} rx={3.2} ry={1.6} fill="var(--color-emerald)" opacity={0.95} />
     </g>
   )
+}
+
+/** Balón: carbón con costuras cian. */
+function Ball({ c, r = 19 }: { c: Pt; r?: number }) {
+  const k = r / 18
+  const pent: Pt[] = (
+    [
+      [0, -7],
+      [6.66, -2.16],
+      [4.11, 5.66],
+      [-4.11, 5.66],
+      [-6.66, -2.16],
+    ] as Pt[]
+  ).map(([x, y]) => [c[0] + x * k, c[1] + y * k] as Pt)
+  return (
+    <g>
+      <circle cx={c[0]} cy={c[1]} r={r} fill="currentColor" stroke="var(--color-emerald)" strokeWidth={2.5} />
+      <polygon points={pts(pent)} fill="none" stroke="var(--color-emerald)" strokeWidth={2} strokeLinejoin="round" opacity={0.9} />
+      {pent.map((p, i) => {
+        const out = add(c, mul(unit(sub(p, c)), r - 1))
+        return <line key={i} x1={f(p[0])} y1={f(p[1])} x2={f(out[0])} y2={f(out[1])} stroke="var(--color-emerald)" strokeWidth={1.6} opacity={0.7} />
+      })}
+    </g>
+  )
+}
+
+/* ── Esqueleto → figura ────────────────────────────────────────────────── */
+
+interface Joints {
+  head: Pt
+  headTilt: number
+  neck: Pt
+  shoulderL: Pt
+  shoulderR: Pt
+  elbowL: Pt
+  wristL: Pt
+  elbowR: Pt
+  wristR: Pt
+  hipL: Pt
+  hipR: Pt
+  kneeL: Pt
+  ankleL: Pt
+  toeL: Pt
+  kneeR: Pt
+  ankleR: Pt
+  toeR: Pt
+  ball: Pt
+}
+
+function Arm({ s, e, w }: { s: Pt; e: Pt; w: Pt }) {
+  const fist = add(w, mul(unit(sub(w, e)), 4))
+  return (
+    <>
+      {/* manga */}
+      <Seg a={s} b={lerp(s, e, 0.48)} wa={25} wb={22} />
+      <Seg a={s} b={e} wa={17} wb={13} />
+      <Seg a={e} b={lerp(e, w, 0.35)} wa={13} wb={15} />
+      <Seg a={lerp(e, w, 0.35)} b={w} wa={15} wb={10} />
+      <circle cx={f(fist[0])} cy={f(fist[1])} r={8} fill="currentColor" />
+    </>
+  )
+}
+
+function Leg({ h, k, a, t }: { h: Pt; k: Pt; a: Pt; t: Pt }) {
+  const calf = lerp(k, a, 0.38)
+  return (
+    <>
+      {/* pantalón */}
+      <Seg a={h} b={lerp(h, k, 0.52)} wa={33} wb={31} />
+      <Seg a={h} b={k} wa={26} wb={19} />
+      <Seg a={k} b={calf} wa={19} wb={22} />
+      <Seg a={calf} b={a} wa={22} wb={11} />
+      {/* media alta */}
+      <Seg a={lerp(k, a, 0.55)} b={a} wa={19} wb={13} />
+      <Boot ankle={a} toe={t} />
+    </>
+  )
+}
+
+function Torso({ j }: { j: Joints }) {
+  const { neck, shoulderL: SL, shoulderR: SR, hipL: HL, hipR: HR } = j
+  const towards = (from: Pt, to: Pt, k: number) => add(from, mul(unit(sub(to, from)), k))
+  const armpitL = towards(lerp(SL, HL, 0.2), lerp(SR, HR, 0.2), 5)
+  const armpitR = towards(lerp(SR, HR, 0.2), lerp(SL, HL, 0.2), 5)
+  const waistL = towards(lerp(SL, HL, 0.62), lerp(SR, HR, 0.62), 9)
+  const waistR = towards(lerp(SR, HR, 0.62), lerp(SL, HL, 0.62), 9)
+  const poly: Pt[] = [
+    add(neck, [-9, 2]),
+    add(SL, [0, -3]),
+    armpitL,
+    waistL,
+    add(HL, [-2, 4]),
+    add(HR, [2, 4]),
+    waistR,
+    armpitR,
+    add(SR, [0, -3]),
+    add(neck, [9, 2]),
+  ]
+  return (
+    <>
+      <polygon points={pts(poly)} fill="currentColor" />
+      {/* hombros redondeados y pecho */}
+      <circle cx={f(SL[0])} cy={f(SL[1])} r={11} fill="currentColor" />
+      <circle cx={f(SR[0])} cy={f(SR[1])} r={11} fill="currentColor" />
+      <Seg a={j.head} b={neck} wa={12} wb={13} />
+    </>
+  )
+}
+
+function Figure({ j }: { j: Joints }) {
+  return (
+    <>
+      {/* lejos → cerca: brazo lejano, pierna lejana, torso, pierna cercana, brazo cercano, cabeza */}
+      <Arm s={j.shoulderL} e={j.elbowL} w={j.wristL} />
+      <Leg h={j.hipL} k={j.kneeL} a={j.ankleL} t={j.toeL} />
+      <Torso j={j} />
+      <Leg h={j.hipR} k={j.kneeR} a={j.ankleR} t={j.toeR} />
+      <Arm s={j.shoulderR} e={j.elbowR} w={j.wristR} />
+      <Head c={j.head} tilt={j.headTilt} />
+      <Ball c={j.ball} />
+    </>
+  )
+}
+
+/* ── Poses (viewBox 0 0 400 440, suelo ≈ y 395, juega hacia la derecha) ── */
+
+const POSES: { id: 1 | 2 | 3; label: string; j: Joints; trail: Pt }[] = [
+  {
+    // RECIBE: control de pecho. Tronco atrás, pecho al balón, brazos
+    // abiertos para equilibrar, rodilla cercana arriba, pie lejano en punta.
+    id: 1,
+    label: 'recibe',
+    trail: [-0.85, 0.4],
+    j: {
+      head: [190, 58],
+      headTilt: -12,
+      neck: [188, 84],
+      shoulderL: [160, 98],
+      shoulderR: [214, 102],
+      elbowL: [126, 130],
+      wristL: [112, 170],
+      elbowR: [252, 122],
+      wristR: [242, 162],
+      hipL: [162, 212],
+      hipR: [198, 214],
+      kneeL: [150, 300],
+      ankleL: [146, 380],
+      toeL: [176, 392],
+      kneeR: [238, 262],
+      ankleR: [226, 330],
+      toeR: [250, 348],
+      ball: [240, 130],
+    },
+  },
+  {
+    // DRIBLA: conducción en carrera. Tronco adelante, puños en péndulo,
+    // pierna delantera lleva el balón, la trasera va flexionada atrás.
+    id: 2,
+    label: 'dribla',
+    trail: [-1, 0.12],
+    j: {
+      head: [214, 70],
+      headTilt: 16,
+      neck: [206, 94],
+      shoulderL: [176, 104],
+      shoulderR: [228, 110],
+      elbowL: [214, 142],
+      wristL: [254, 126],
+      elbowR: [206, 152],
+      wristR: [168, 180],
+      hipL: [150, 214],
+      hipR: [190, 216],
+      kneeL: [120, 282],
+      ankleL: [96, 332],
+      toeL: [78, 358],
+      kneeR: [254, 282],
+      ankleR: [270, 368],
+      toeR: [302, 380],
+      ball: [330, 374],
+    },
+  },
+  {
+    // TIRA: remate. Pierna de apoyo plantada, pierna de golpeo extendida
+    // tras el impacto, tronco atrás, brazos abiertos; el balón sale arriba.
+    id: 3,
+    label: 'tira',
+    trail: [-0.9, 0.3],
+    j: {
+      head: [150, 72],
+      headTilt: -22,
+      neck: [152, 96],
+      shoulderL: [122, 106],
+      shoulderR: [178, 112],
+      elbowL: [92, 136],
+      wristL: [100, 180],
+      elbowR: [214, 120],
+      wristR: [250, 92],
+      hipL: [144, 218],
+      hipR: [186, 220],
+      kneeL: [140, 304],
+      ankleL: [134, 384],
+      toeL: [168, 392],
+      kneeR: [244, 260],
+      ankleR: [300, 236],
+      toeR: [326, 214],
+      ball: [348, 186],
+    },
+  },
+]
+
+/* ── Energía: trazos quebrados que salen del cuerpo hacia atrás ─────────
+   Determinista (LCG con semilla por pose) para que servidor y cliente
+   rendericen lo mismo. ──────────────────────────────────────────────── */
+function lcg(seed: number) {
+  let s = seed >>> 0
+  return () => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0
+    return s / 4294967296
+  }
+}
+
+function energyStreaks(j: Joints, trail: Pt, seed: number) {
+  const rand = lcg(seed)
+  const anchors: Pt[] = [
+    add(j.head, [-14, -6]),
+    j.shoulderL,
+    j.elbowL,
+    lerp(j.shoulderL, j.hipL, 0.5),
+    j.hipL,
+    j.kneeL,
+    j.ankleL,
+    lerp(j.hipR, j.kneeR, 0.5),
+    j.kneeR,
+    j.elbowR,
+  ]
+  const dir = unit(trail)
+  const n = perp(dir)
+  const out: { d: string; w: number; o: number }[] = []
+  for (const a of anchors) {
+    const count = 1 + Math.floor(rand() * 2)
+    for (let c = 0; c < count; c++) {
+      const start = add(a, [rand() * 16 - 8, rand() * 16 - 8])
+      const length = 40 + rand() * 110
+      const segs = 4 + Math.floor(rand() * 3)
+      let p = start
+      const points: Pt[] = [p]
+      for (let s = 1; s <= segs; s++) {
+        const t = s / segs
+        const along = mul(dir, (length / segs) * (0.7 + rand() * 0.6))
+        const side = mul(n, (rand() - 0.5) * 22 * (1 - t * 0.5))
+        p = add(add(p, along), side)
+        points.push(p)
+      }
+      out.push({ d: pts(points), w: 1.2 + rand() * 2.6, o: 0.3 + rand() * 0.55 })
+    }
+  }
+  return out
 }
 
 const VIEWBOX = '0 0 400 440'
-
-/* ── Pose 1 · RECIBE: control de pecho. Parado, leve inclinación atrás,
-   pecho hacia el balón, brazos abiertos para equilibrar, pie trasero en
-   punta. ─────────────────────────────────────────────────────────────── */
-function PoseReceive() {
-  return (
-    <g id="ef-sil-1" className="ef-sil">
-      <Head c={[176, 60]} />
-      <polygon points="146,96 206,100 210,140 197,170 199,214 151,214 153,170 144,140" fill="currentColor" />
-      <polygon points="148,206 200,206 204,258 144,258" fill="currentColor" />
-      {/* brazo lejano (detrás) */}
-      <Arm shoulder={[152, 104]} elbow={[116, 148]} wrist={[120, 190]} />
-      {/* pierna lejana, en punta */}
-      <Leg hip={[160, 214]} knee={[146, 300]} ankle={[140, 376]} toe={[170, 388]} />
-      {/* pierna cercana, plantada */}
-      <Leg hip={[188, 214]} knee={[200, 300]} ankle={[200, 380]} toe={[236, 386]} />
-      {/* brazo cercano */}
-      <Arm shoulder={[200, 106]} elbow={[238, 146]} wrist={[228, 190]} />
-      <Ball c={[230, 126]} />
-    </g>
-  )
-}
-
-/* ── Pose 2 · DRIBLA: conducción en carrera. Tronco inclinado adelante,
-   brazos en péndulo, pierna delantera lleva el balón al pie, la trasera
-   queda flexionada atrás. ─────────────────────────────────────────────── */
-function PoseDribble() {
-  return (
-    <g id="ef-sil-2" className="ef-sil">
-      <Head c={[206, 64]} />
-      <polygon points="176,96 232,102 228,146 212,172 194,214 154,212 160,170 164,146" fill="currentColor" />
-      <polygon points="152,206 196,208 206,256 142,254" fill="currentColor" />
-      {/* brazo lejano, adelante */}
-      <Arm shoulder={[182, 104]} elbow={[214, 140]} wrist={[252, 118]} />
-      {/* pierna trasera, flexionada */}
-      <Leg hip={[160, 214]} knee={[126, 286]} ankle={[100, 344]} toe={[82, 370]} />
-      {/* pierna delantera, al balón */}
-      <Leg hip={[190, 214]} knee={[250, 284]} ankle={[268, 368]} toe={[300, 378]} />
-      {/* brazo cercano, atrás */}
-      <Arm shoulder={[226, 108]} elbow={[204, 152]} wrist={[170, 186]} />
-      <Ball c={[326, 372]} />
-    </g>
-  )
-}
-
-/* ── Pose 3 · TIRA: remate. Pierna de apoyo plantada, pierna de golpeo
-   extendida tras el impacto, tronco atrás, brazos abiertos; el balón sale
-   arriba a la derecha con impacto naranja. ────────────────────────────── */
-function PoseShoot() {
-  return (
-    <g id="ef-sil-3" className="ef-sil">
-      <Head c={[150, 66]} />
-      <polygon points="122,98 182,102 192,146 188,172 188,216 144,216 140,172 132,146" fill="currentColor" />
-      <polygon points="144,208 190,208 202,254 140,258" fill="currentColor" />
-      {/* brazo lejano, atrás para equilibrar */}
-      <Arm shoulder={[128, 106]} elbow={[96, 136]} wrist={[106, 180]} />
-      {/* pierna de apoyo */}
-      <Leg hip={[152, 216]} knee={[142, 300]} ankle={[132, 380]} toe={[166, 386]} />
-      {/* pierna de golpeo, extendida */}
-      <Leg hip={[184, 216]} knee={[246, 258]} ankle={[300, 236]} toe={[326, 220]} />
-      {/* brazo cercano, adelante y arriba */}
-      <Arm shoulder={[176, 108]} elbow={[216, 120]} wrist={[254, 96]} />
-      <Ball c={[346, 190]} />
-    </g>
-  )
-}
-
-/** Estelas del balón tras el remate (naranja, estáticas dentro de la pose). */
-function ShotStreaks() {
-  const streaks: [Pt, Pt][] = [
-    [[322, 200], [298, 208]],
-    [[318, 184], [290, 186]],
-    [[326, 172], [306, 160]],
-  ]
-  return (
-    <g stroke="var(--color-orange)" strokeWidth={3} strokeLinecap="round" opacity={0.75}>
-      {streaks.map(([a, b], i) => (
-        <line key={i} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} />
-      ))}
-    </g>
-  )
-}
-
-const POSES = [
-  { id: 1, Shape: PoseReceive, label: 'recibe' },
-  { id: 2, Shape: PoseDribble, label: 'dribla' },
-  { id: 3, Shape: PoseShoot, label: 'tira' },
-] as const
 
 /** Vapor: posiciones (en % de la caja) sobre cabeza y hombros, y desfase. */
 const WISPS = [
@@ -207,7 +385,7 @@ const WISPS = [
   { left: 52, top: 16, delay: 0.8, size: 12 },
 ]
 
-/** Partículas del impacto (pose 3), alrededor del balón (86.5 %, 43 %). */
+/** Partículas del impacto (pose 3), alrededor del balón (87 %, 42 %). */
 const SPARKS = [
   { dx: 26, dy: -18, delay: 0 },
   { dx: 32, dy: 6, delay: 0.5 },
@@ -220,110 +398,112 @@ const SPARKS = [
 export function HeroPlayer({ className = '' }: { className?: string }) {
   return (
     <div aria-hidden="true" className={`ef-hero-player ${className}`}>
-      {/* Definiciones compartidas: el filtro del aura y el impacto naranja. */}
+      {/* Definiciones compartidas: filtros del aura y la energía, impacto. */}
       <svg width={0} height={0} className="absolute" focusable="false">
         <defs>
-          <filter
-            id="ef-aura-filter"
-            x="-40%"
-            y="-30%"
-            width="180%"
-            height="160%"
-            colorInterpolationFilters="sRGB"
-          >
-            {/* Contorno brillante: la silueta dilatada 3 px, apenas difusa. */}
+          <filter id="ef-aura-filter" x="-40%" y="-30%" width="180%" height="160%" colorInterpolationFilters="sRGB">
+            {/* Contorno brillante: la silueta dilatada 2.5 px, apenas difusa. */}
             <feMorphology in="SourceAlpha" operator="dilate" radius="2.5" result="edge" />
-            <feGaussianBlur in="edge" stdDeviation="1.6" result="edgeSoft" />
-            <feFlood
-              floodColor="#00cec8"
-              floodOpacity="0.8"
-              style={{ floodColor: 'var(--color-emerald)' }}
-              result="cyan"
-            />
+            <feGaussianBlur in="edge" stdDeviation="1.4" result="edgeSoft" />
+            <feFlood floodColor="#00cec8" floodOpacity="0.92" style={{ floodColor: 'var(--color-emerald)' }} result="cyan" />
             <feComposite in="cyan" in2="edgeSoft" operator="in" result="ring" />
-            {/* Halo de calor: dilatada 10 px, muy difusa, y deformada con
-                ruido para que el borde sea orgánico (vapor, no neón). */}
-            <feMorphology in="SourceAlpha" operator="dilate" radius="12" result="wide" />
-            <feGaussianBlur in="wide" stdDeviation="20" result="halo" />
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency="0.018"
-              numOctaves="2"
-              seed="7"
-              result="noise"
-            />
-            <feDisplacementMap
-              in="halo"
-              in2="noise"
-              scale="42"
-              xChannelSelector="R"
-              yChannelSelector="G"
-              result="haloWarp"
-            />
-            <feFlood
-              floodColor="#00cec8"
-              floodOpacity="0.45"
-              style={{ floodColor: 'var(--color-emerald)' }}
-              result="cyanSoft"
-            />
+            {/* Halo de energía: dilatada, difusa y deformada con ruido para
+                que el borde sea quebrado y orgánico. */}
+            <feMorphology in="SourceAlpha" operator="dilate" radius="11" result="wide" />
+            <feGaussianBlur in="wide" stdDeviation="15" result="halo" />
+            <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed="7" result="noise" />
+            <feDisplacementMap in="halo" in2="noise" scale="64" xChannelSelector="R" yChannelSelector="G" result="haloWarp" />
+            <feFlood floodColor="#00cec8" floodOpacity="0.55" style={{ floodColor: 'var(--color-emerald)' }} result="cyanSoft" />
             <feComposite in="cyanSoft" in2="haloWarp" operator="in" result="haloColored" />
             <feMerge>
               <feMergeNode in="haloColored" />
               <feMergeNode in="ring" />
             </feMerge>
           </filter>
+          <filter id="ef-streak-glow" x="-25%" y="-25%" width="150%" height="150%" colorInterpolationFilters="sRGB">
+            <feGaussianBlur stdDeviation="4" result="wide" />
+            <feComponentTransfer in="wide" result="wideSoft">
+              <feFuncA type="linear" slope="0.9" />
+            </feComponentTransfer>
+            <feGaussianBlur stdDeviation="0.7" result="core" />
+            <feMerge>
+              <feMergeNode in="wideSoft" />
+              <feMergeNode in="core" />
+            </feMerge>
+          </filter>
+          <filter id="ef-ground-blur" x="-20%" y="-200%" width="140%" height="500%">
+            <feGaussianBlur stdDeviation="6" />
+          </filter>
           <radialGradient id="ef-impact" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#ff8c00" style={{ stopColor: 'var(--color-orange)' }} stopOpacity="0.85" />
+            <stop offset="0%" stopColor="#ff8c00" style={{ stopColor: 'var(--color-orange)' }} stopOpacity="0.9" />
             <stop offset="45%" stopColor="#ff8c00" style={{ stopColor: 'var(--color-orange)' }} stopOpacity="0.35" />
             <stop offset="100%" stopColor="#ff8c00" style={{ stopColor: 'var(--color-orange)' }} stopOpacity="0" />
           </radialGradient>
         </defs>
       </svg>
 
-      {POSES.map(({ id, Shape, label }) => (
-        <div key={id} className={`ef-pose ef-pose-${id}`} data-pose={label}>
-          {/* Aura: la misma silueta pasada por el filtro, en su propia capa
-              para que la respiración (opacity/transform) no re-rasterice. */}
-          <div className="ef-aura-layer">
-            <svg viewBox={VIEWBOX} className="h-full w-full" focusable="false">
-              {id === 3 && <circle cx={346} cy={190} r={64} fill="url(#ef-impact)" />}
-              <use href={`#ef-sil-${id}`} filter="url(#ef-aura-filter)" />
+      {POSES.map(({ id, label, j, trail }) => {
+        const streaks = energyStreaks(j, trail, 1000 + id * 97)
+        const feet = lerp(j.toeL, j.toeR, 0.5)
+        return (
+          <div key={id} className={`ef-pose ef-pose-${id}`} data-pose={label}>
+            {/* Energía: trazos que salen del cuerpo hacia atrás + luz de suelo. */}
+            <div className="ef-energy-layer">
+              <svg viewBox={VIEWBOX} className="h-full w-full" focusable="false">
+                <ellipse cx={f(feet[0])} cy={396} rx={110} ry={9} fill="var(--color-emerald)" opacity={0.28} filter="url(#ef-ground-blur)" />
+                <g fill="none" stroke="var(--color-emerald)" strokeLinecap="round" strokeLinejoin="round" filter="url(#ef-streak-glow)">
+                  {streaks.map((s, i) => (
+                    <polyline key={i} points={s.d} strokeWidth={f(s.w)} opacity={f(s.o)} />
+                  ))}
+                </g>
+              </svg>
+            </div>
+            {/* Aura: la misma silueta pasada por el filtro, en su propia capa
+                para que la respiración (opacity/transform) no re-rasterice. */}
+            <div className="ef-aura-layer">
+              <svg viewBox={VIEWBOX} className="h-full w-full" focusable="false">
+                {id === 3 && <circle cx={j.ball[0]} cy={j.ball[1]} r={66} fill="url(#ef-impact)" />}
+                <use href={`#ef-sil-${id}`} filter="url(#ef-aura-filter)" />
+              </svg>
+            </div>
+            <svg viewBox={VIEWBOX} className="ef-sil-layer h-full w-full" focusable="false">
+              <g id={`ef-sil-${id}`} className="ef-sil">
+                <Figure j={j} />
+              </g>
+              {id === 3 && (
+                <g stroke="var(--color-orange)" strokeWidth={3} strokeLinecap="round" opacity={0.8}>
+                  <line x1={322} y1={198} x2={296} y2={206} />
+                  <line x1={318} y1={182} x2={288} y2={184} />
+                  <line x1={326} y1={168} x2={304} y2={154} />
+                </g>
+              )}
             </svg>
+            {id === 3 &&
+              SPARKS.map((s, i) => (
+                <span
+                  key={i}
+                  className="ef-spark-impact"
+                  style={
+                    {
+                      left: '87%',
+                      top: '42.3%',
+                      '--dx': `${s.dx}px`,
+                      '--dy': `${s.dy}px`,
+                      animationDelay: `${s.delay}s`,
+                    } as React.CSSProperties
+                  }
+                />
+              ))}
           </div>
-          <svg viewBox={VIEWBOX} className="ef-sil-layer h-full w-full" focusable="false">
-            <Shape />
-            {id === 3 && <ShotStreaks />}
-          </svg>
-          {id === 3 &&
-            SPARKS.map((s, i) => (
-              <span
-                key={i}
-                className="ef-spark-impact"
-                style={
-                  {
-                    left: '86.5%',
-                    top: '43.2%',
-                    '--dx': `${s.dx}px`,
-                    '--dy': `${s.dy}px`,
-                    animationDelay: `${s.delay}s`,
-                  } as React.CSSProperties
-                }
-              />
-            ))}
-        </div>
-      ))}
+        )
+      })}
 
       {/* Vapor que asciende desde cabeza y hombros (común a las tres poses). */}
       {WISPS.map((w, i) => (
         <span
           key={i}
           className="ef-wisp"
-          style={{
-            left: `${w.left}%`,
-            top: `${w.top}%`,
-            width: `${w.size}%`,
-            animationDelay: `${w.delay}s`,
-          }}
+          style={{ left: `${w.left}%`, top: `${w.top}%`, width: `${w.size}%`, animationDelay: `${w.delay}s` }}
         />
       ))}
     </div>
