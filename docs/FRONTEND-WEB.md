@@ -460,7 +460,7 @@ Regla desde 2026-09-07: **la landing solo promete lo que la app hace**. Cada tex
 | Componente | Tipo | Contenido |
 |------------|------|-----------|
 | `LandingNav` | cliente | Logo (lockup) + anclas Rendimiento / Comodín / Canchas + "Soy dueño de cancha", "Registro gratis", "Descargar" |
-| `Hero` | estático | Slogan **"El talento no nace. Se forja."** + balón animado; CTAs "Prueba inicial" (registro) y "Cómo funciona" (`#rendimiento`) |
+| `Hero` | estático (server, lee `public/` con `fs`) | Composición a sangre: imagen de fondo (si existe) + overlay oscuro + líneas de velocidad en SVG; eyebrow "ELITE FORGE"; slogan en dos líneas **"El talento no nace." / "Se forja."** (blanco / cian) a la izquierda; CTAs "Prueba inicial" (registro) y "Cómo funciona" (`#rendimiento`). Sin balón. Ver [Hero: imagen a sangre](#hero-imagen-a-sangre) |
 | `PerformanceSection` | estático (+ `StatsRadar` cliente) | Radar con las **6 stats reales** en el orden de `STAT_ORDER` (Ataque, Defensa, Resistencia, Velocidad, Pases, Regate); 6 tests físicos cargados a mano + test de mentalidad |
 | `TournamentsSection` | cliente | 3 cards-botón (grupo, partidos internos/VS, campeonatos) que abren `FeatureDialog` con los pasos reales de la app |
 | `MatchFinderSection` | estático (+ `MatchFinderCta` cliente) | Comodín "Cerca de mí" como **lista por municipio**; el SVG de Colombia es decorativo (`aria-hidden`); el botón abre el modal explicativo |
@@ -474,15 +474,39 @@ Regla desde 2026-09-07: **la landing solo promete lo que la app hace**. Cada tex
 
 **Iconos futbolísticos:** `components/icons/football.tsx` — `SoccerBallIcon`, `PitchIcon`, `WhistleIcon`, `BootsIcon`, SVG propios con las reglas de lucide (viewBox 24, stroke 2, `currentColor`). lucide-react no trae balón, silbato, botines ni cancha. Se mantiene lucide donde funciona (Trophy, Brain, MapPin, LayoutDashboard…).
 
-**Animación (sin librerías nuevas):** `@keyframes` propios en `globals.css` (`ef-rise`, `ef-ball-roll`, `ef-ball-idle`, `ef-kick`, `ef-sweep`) + utilidades `.ef-enter` (entrada escalonada del hero), `.ef-ball-roll`, `.ef-reveal` (revelado al scroll con `animation-timeline: view()`, progresivo: donde no hay soporte se ve el estado final) y patada/destello al hover de `.ef-card-hover`. Todo dentro de `@media (prefers-reduced-motion: no-preference)`, y un bloque `reduce` apaga también `animate-in/out` de tw-animate-css y `animate-ping/pulse/spin/bounce`.
+**Animación (sin librerías nuevas):** `@keyframes` propios en `globals.css` (`ef-rise`, `ef-speed`, `ef-spark`, `ef-kick`, `ef-sweep`) + utilidades `.ef-enter` (entrada escalonada del hero), `.ef-speed` / `.ef-spark` (líneas de velocidad y partículas del hero; con reduced-motion se ocultan), `.ef-reveal` (revelado al scroll con `animation-timeline: view()`, progresivo: donde no hay soporte se ve el estado final) y patada/destello al hover de `.ef-card-hover`. Todo dentro de `@media (prefers-reduced-motion: no-preference)`, y un bloque `reduce` apaga también `animate-in/out` de tw-animate-css y `animate-ping/pulse/spin/bounce`.
 
 **Modales:** `components/ui/dialog.tsx` es el Dialog de shadcn (estilo base-nova) sobre `@base-ui/react/dialog`, escrito a mano con la misma API que genera la CLI (`Dialog`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, `DialogClose`…) para no depender de la red en el build. Animación con tw-animate-css sobre `data-open` / `data-closed`.
+
+### Hero: imagen a sangre
+
+El hero está preparado para una ilustración a ancho completo que **todavía no existe en el repo** (se encarga aparte). `components/landing/hero.tsx` busca en build `public/hero-player.webp` y, si no, `public/hero-player.png` (`resolveHeroImage`, con `fs.existsSync` sobre `process.cwd()/public`, que en el standalone de producción es la copia que hace `scripts/copy-standalone-assets.js`). Mientras no exista ninguno, el hero no pide nada y deja ver `landing-bg.svg`, el fondo fijo de toda la landing. Cuando la imagen aparezca hay que **rebuildear** (la página es estática).
+
+Capas, de atrás hacia adelante: imagen (`bg-cover`, foco en `70% center`) → overlay `from-background via-background/80 to-background/10` de izquierda a derecha + fundido inferior de 10 rem → glow naranja → líneas de velocidad (`SpeedLines`, SVG `viewBox 0 0 100 100`, animadas con `ef-speed`/`ef-spark`) → texto.
+
+**Especificación para el ilustrador / la imagen:**
+
+| Aspecto | Valor |
+|---|---|
+| Formato | `.webp` (preferido) o `.png`; nombre exacto `hero-player.webp` / `hero-player.png` en `apps/web/public/` |
+| Dimensiones | 2560 × 1440 px (16:9). Mínimo 1920 × 1080. El hero mide ~82 vh, así que en pantallas altas se recorta arriba/abajo y en móviles se recorta a los lados: nada importante en los bordes |
+| Peso | ≤ 400 KB en webp (≤ 900 KB en png). `images.unoptimized` está activo: se sirve tal cual |
+| Foco | El sujeto (jugador) en la **mitad derecha**, centro de interés alrededor del 70 % del ancho y 50 % del alto (`background-position: 70% center`) |
+| Zona segura (despejada o muy oscura) | **Mitad izquierda**: del 0 % al 55 % del ancho, entre el 30 % y el 80 % del alto. Ahí caen el eyebrow, el titular de dos líneas, el subtítulo y los dos botones. El overlay la oscurece igual, pero el sujeto no debe pasar por ahí |
+| Tono | Fondo oscuro en la gama carbón (#424242 → #2e2e2e) para fundirse con el overlay y con `landing-bg.svg` en el borde inferior; acentos cian #00cec8 / naranja #ff8c00 opcionales |
+| Móvil | En < 640 px el texto ocupa casi todo el ancho: la imagen se ve como fondo detrás del overlay. Que el sujeto siga reconocible aunque quede parcialmente tapado |
 
 **Título de la landing:** `app/page.tsx` exporta su propio `metadata` ("ELITE FORGE — El talento no nace. Se forja."); `app/layout.tsx` (compartido con las páginas legales declaradas en Play Console) conserva el suyo y no se toca.
 
 ---
 
 ## Registro de cambios
+
+### 2026-09-07 — Ajuste del hero: sin balón, titular a la izquierda, composición a sangre
+
+- [x] Fuera el balón del slogan (`SoccerBallIcon` sigue en `components/icons/football.tsx` para las cards). Titular en dos líneas y dos pesos ("El talento no nace." blanco / "Se forja." cian), alineado a la izquierda, `text-4xl → lg:text-6xl` (antes llegaba a `text-8xl`), `leading-[0.9]` y `tracking-[-0.03em]` para que lea como bloque; itálica, bold y mayúsculas como el titular original.
+- [x] Dirección de arte: imagen a sangre con overlay oscuro de izquierda a derecha + fundido inferior, eyebrow "ELITE FORGE" con `tracking-[0.35em]`, líneas de velocidad y partículas en SVG animadas por CSS (`ef-speed`, `ef-spark`; ocultas con reduced-motion). Sin librerías nuevas.
+- [x] Placeholder de la ilustración: `hero-player.webp/png` se detecta en build y, si falta, se ve `landing-bg.svg`. Especificación de dimensiones, formato, foco y zona segura en [Hero: imagen a sangre](#hero-imagen-a-sangre).
 
 ### 2026-09-07 — Landing veraz, identidad y cards interactivas (3 lotes)
 

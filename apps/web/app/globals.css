@@ -253,27 +253,34 @@
     transform: none;
   }
 }
-@keyframes ef-ball-roll {
+/* Líneas de velocidad del hero: cruzan de derecha a izquierda y se
+   desvanecen; las partículas parpadean y derivan hacia la izquierda. */
+@keyframes ef-speed {
   0% {
+    transform: translateX(0);
     opacity: 0;
-    transform: translateX(-160%) rotate(-540deg);
   }
-  70% {
+  10% {
     opacity: 1;
-    transform: translateX(6%) rotate(20deg);
   }
   100% {
-    opacity: 1;
-    transform: none;
+    transform: translateX(-160%);
+    opacity: 0;
   }
 }
-@keyframes ef-ball-idle {
+@keyframes ef-spark {
   0%,
   100% {
-    transform: translateY(0) rotate(0deg);
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
   }
-  50% {
-    transform: translateY(-6%) rotate(12deg);
+  30% {
+    opacity: 0.9;
+    transform: translate(-6px, -2px) scale(1);
+  }
+  70% {
+    opacity: 0.4;
+    transform: translate(-16px, -5px) scale(0.8);
   }
 }
 @keyframes ef-kick {
@@ -303,10 +310,13 @@
   .ef-enter {
     animation: ef-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
-  .ef-ball-roll {
-    animation:
-      ef-ball-roll 1.1s cubic-bezier(0.22, 1, 0.36, 1) both,
-      ef-ball-idle 3.2s ease-in-out 1.6s infinite;
+  .ef-speed {
+    animation: ef-speed 2.6s linear infinite;
+  }
+  .ef-spark {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: ef-spark 3.4s ease-in-out infinite;
   }
   .ef-card-hover:hover .ef-chip svg {
     animation: ef-kick 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -346,7 +356,8 @@
 @media (prefers-reduced-motion: reduce) {
   /* Apaga también las utilidades de tw-animate-css y de Tailwind. */
   .ef-enter,
-  .ef-ball-roll,
+  .ef-speed,
+  .ef-spark,
   .ef-reveal,
   .animate-in,
   .animate-out,
@@ -355,5 +366,9 @@
   .animate-spin,
   .animate-bounce {
     animation: none !important;
+  }
+  .ef-speed,
+  .ef-spark {
+    display: none;
   }
 }
