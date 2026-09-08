@@ -418,44 +418,85 @@ export function HeroPlayer({ className = '' }: { className?: string }) {
       {/* Definiciones compartidas: filtros del aura y la energía, impacto. */}
       <svg width={0} height={0} className="absolute" focusable="false">
         <defs>
-          <filter id="ef-aura-filter" x="-90%" y="-70%" width="280%" height="240%" colorInterpolationFilters="sRGB">
-            {/* Contorno brillante: la silueta dilatada 2.5 px, apenas difusa. */}
-            <feMorphology in="SourceAlpha" operator="dilate" radius="2.5" result="edge" />
-            <feGaussianBlur in="edge" stdDeviation="1.4" result="edgeSoft" />
-            <feFlood floodColor="#00cec8" floodOpacity="0.92" style={{ floodColor: 'var(--color-emerald)' }} result="cyan" />
-            <feComposite in="cyan" in2="edgeSoft" operator="in" result="ring" />
-            {/* Niebla en tres capas, de afuera hacia adentro: bruma lejana
-                cian, niebla naranja y halo cian pegado al cuerpo. Cada una
-                dilata la silueta, la difumina y la deforma con ruido distinto
-                para que los bordes sean quebrados y orgánicos y los dos
-                colores se entremezclen sin parecer un contorno. */}
-            <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed="7" result="noise" />
-            <feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="2" seed="3" result="noiseWide" />
-            {/* bruma lejana (cian, tenue, muy extendida) */}
-            <feMorphology in="SourceAlpha" operator="dilate" radius="28" result="far" />
-            <feGaussianBlur in="far" stdDeviation="34" result="farBlur" />
-            <feDisplacementMap in="farBlur" in2="noiseWide" scale="140" xChannelSelector="R" yChannelSelector="G" result="farWarp" />
-            <feFlood floodColor="#00cec8" floodOpacity="0.34" style={{ floodColor: 'var(--color-emerald)' }} result="cyanFar" />
-            <feComposite in="cyanFar" in2="farWarp" operator="in" result="fogFar" />
-            {/* niebla naranja (media) */}
-            <feMorphology in="SourceAlpha" operator="dilate" radius="18" result="mid" />
-            <feGaussianBlur in="mid" stdDeviation="24" result="midBlur" />
-            <feDisplacementMap in="midBlur" in2="noiseWide" scale="96" xChannelSelector="G" yChannelSelector="R" result="midWarp" />
-            <feFlood floodColor="#ff8c00" floodOpacity="0.46" style={{ floodColor: 'var(--color-orange)' }} result="orangeMid" />
-            <feComposite in="orangeMid" in2="midWarp" operator="in" result="fogOrange" />
-            {/* halo cian pegado al cuerpo */}
-            <feMorphology in="SourceAlpha" operator="dilate" radius="12" result="wide" />
-            <feGaussianBlur in="wide" stdDeviation="16" result="halo" />
-            <feDisplacementMap in="halo" in2="noise" scale="64" xChannelSelector="R" yChannelSelector="G" result="haloWarp" />
-            <feFlood floodColor="#00cec8" floodOpacity="0.68" style={{ floodColor: 'var(--color-emerald)' }} result="cyanSoft" />
-            <feComposite in="cyanSoft" in2="haloWarp" operator="in" result="haloColored" />
-            <feMerge>
-              <feMergeNode in="fogFar" />
-              <feMergeNode in="fogOrange" />
-              <feMergeNode in="haloColored" />
-              <feMergeNode in="ring" />
-            </feMerge>
-          </filter>
+          {/* Un filtro por pose (semilla de ruido y deriva propias) para que
+              las tres nieblas no se parezcan. Cómo se logra "densa pegada al
+              cuerpo y se apaga al alejarse, sin patrón": cada capa parte de la
+              silueta difuminada (la distancia al cuerpo queda codificada en el
+              alfa), una curva feFuncA table concentra la densidad cerca del
+              cuerpo y la apaga rápido, y luego el alfa se MULTIPLICA por ruido
+              fractal (feComposite arithmetic) — ahí la densidad deja de ser
+              uniforme y aparecen claros y grumos irregulares — antes de
+              deformar el borde con otro ruido. La bruma lejana además se corre
+              hacia la estela (feOffset), así el aura es asimétrica. */}
+          {POSES.map(({ id, trail: vectorTrail }, index) => {
+            const trail = RASTER_POSES?.[index]?.trail ?? vectorTrail
+            const seed = 7 + id * 29
+            const dx = f(trail[0] * 26)
+            const dy = f(trail[1] * 26)
+            return (
+              <filter
+                key={id}
+                id={`ef-aura-filter-${id}`}
+                x="-90%"
+                y="-70%"
+                width="280%"
+                height="240%"
+                colorInterpolationFilters="sRGB"
+              >
+                {/* ruidos: fino (grumos cerca del cuerpo), medio y ancho (bruma) */}
+                <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" seed={seed} result="nFine" />
+                <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="3" seed={seed + 11} result="nMid" />
+                <feTurbulence type="fractalNoise" baseFrequency="0.007" numOctaves="2" seed={seed + 23} result="nFar" />
+
+                {/* contorno brillante */}
+                <feMorphology in="SourceAlpha" operator="dilate" radius="2.5" result="edge" />
+                <feGaussianBlur in="edge" stdDeviation="1.4" result="edgeSoft" />
+                <feFlood floodColor="#00cec8" floodOpacity="0.92" style={{ floodColor: 'var(--color-emerald)' }} result="cyan" />
+                <feComposite in="cyan" in2="edgeSoft" operator="in" result="ring" />
+
+                {/* capa cercana (cian, densa): cae rápido, grumos finos */}
+                <feMorphology in="SourceAlpha" operator="dilate" radius="5" result="near0" />
+                <feGaussianBlur in="near0" stdDeviation="10" result="near1" />
+                <feComponentTransfer in="near1" result="near2">
+                  <feFuncA type="table" tableValues="0 0.45 0.85 1 1" />
+                </feComponentTransfer>
+                <feComposite in="near2" in2="nMid" operator="arithmetic" k1="1.9" k2="0" k3="0" k4="0" result="near3" />
+                <feDisplacementMap in="near3" in2="nFine" scale="26" xChannelSelector="R" yChannelSelector="G" result="near4" />
+                <feFlood floodColor="#00cec8" floodOpacity="0.9" style={{ floodColor: 'var(--color-emerald)' }} result="cyanNear" />
+                <feComposite in="cyanNear" in2="near4" operator="in" result="fogNear" />
+
+                {/* capa media (naranja): más suelta, grumos medios */}
+                <feMorphology in="SourceAlpha" operator="dilate" radius="12" result="mid0" />
+                <feGaussianBlur in="mid0" stdDeviation="22" result="mid1" />
+                <feComponentTransfer in="mid1" result="mid2">
+                  <feFuncA type="table" tableValues="0 0.2 0.55 0.9 1" />
+                </feComponentTransfer>
+                <feComposite in="mid2" in2="nFar" operator="arithmetic" k1="2.1" k2="0" k3="0" k4="0" result="mid3" />
+                <feDisplacementMap in="mid3" in2="nMid" scale="80" xChannelSelector="G" yChannelSelector="R" result="mid4" />
+                <feFlood floodColor="#ff8c00" floodOpacity="0.6" style={{ floodColor: 'var(--color-orange)' }} result="orangeMid" />
+                <feComposite in="orangeMid" in2="mid4" operator="in" result="fogMid" />
+
+                {/* bruma lejana (cian, tenue): corrida hacia la estela, grumos anchos */}
+                <feMorphology in="SourceAlpha" operator="dilate" radius="24" result="far0" />
+                <feGaussianBlur in="far0" stdDeviation="38" result="far1" />
+                <feComponentTransfer in="far1" result="far2">
+                  <feFuncA type="table" tableValues="0 0.12 0.4 0.75 1" />
+                </feComponentTransfer>
+                <feOffset in="far2" dx={dx} dy={dy} result="far3" />
+                <feComposite in="far3" in2="nMid" operator="arithmetic" k1="2.3" k2="0" k3="0" k4="0" result="far4" />
+                <feDisplacementMap in="far4" in2="nFar" scale="150" xChannelSelector="R" yChannelSelector="G" result="far5" />
+                <feFlood floodColor="#00cec8" floodOpacity="0.38" style={{ floodColor: 'var(--color-emerald)' }} result="cyanFar" />
+                <feComposite in="cyanFar" in2="far5" operator="in" result="fogFar" />
+
+                <feMerge>
+                  <feMergeNode in="fogFar" />
+                  <feMergeNode in="fogMid" />
+                  <feMergeNode in="fogNear" />
+                  <feMergeNode in="ring" />
+                </feMerge>
+              </filter>
+            )
+          })}
           <filter id="ef-streak-glow" x="-60%" y="-60%" width="220%" height="220%" colorInterpolationFilters="sRGB">
             <feGaussianBlur stdDeviation="4" result="wide" />
             <feComponentTransfer in="wide" result="wideSoft">
@@ -515,7 +556,7 @@ export function HeroPlayer({ className = '' }: { className?: string }) {
             <div className="ef-aura-layer">
               <svg viewBox={VIEWBOX} className="h-full w-full overflow-visible" focusable="false">
                 {id === 3 && <circle cx={f(ball[0])} cy={f(ball[1])} r={66} fill="url(#ef-impact)" />}
-                <use href={`#ef-sil-${id}`} filter="url(#ef-aura-filter)" />
+                <use href={`#ef-sil-${id}`} filter={`url(#ef-aura-filter-${id})`} />
               </svg>
             </div>
             <svg viewBox={VIEWBOX} className="ef-sil-layer h-full w-full overflow-visible" focusable="false">
