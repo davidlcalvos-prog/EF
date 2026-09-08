@@ -364,7 +364,7 @@ function energyStreaks(anchors: Pt[], trail: Pt, seed: number) {
   const rand = lcg(seed)
   const dir = unit(trail)
   const n = perp(dir)
-  const out: { d: string; w: number; o: number }[] = []
+  const out: { d: string; w: number; o: number; orange: boolean }[] = []
   for (const a of anchors) {
     const count = 1 + Math.floor(rand() * 2)
     for (let c = 0; c < count; c++) {
@@ -380,7 +380,7 @@ function energyStreaks(anchors: Pt[], trail: Pt, seed: number) {
         p = add(add(p, along), side)
         points.push(p)
       }
-      out.push({ d: pts(points), w: 1.2 + rand() * 2.6, o: 0.3 + rand() * 0.55 })
+      out.push({ d: pts(points), w: 1.2 + rand() * 2.6, o: 0.3 + rand() * 0.55, orange: rand() < 0.35 })
     }
   }
   return out
@@ -390,11 +390,16 @@ const VIEWBOX = '0 0 400 440'
 
 /** Vapor: posiciones (en % de la caja) sobre cabeza y hombros, y desfase. */
 const WISPS = [
-  { left: 36, top: 8, delay: 0, size: 16 },
-  { left: 47, top: 4, delay: 1.4, size: 20 },
-  { left: 56, top: 10, delay: 2.6, size: 14 },
-  { left: 41, top: 18, delay: 3.5, size: 18 },
-  { left: 52, top: 16, delay: 0.8, size: 12 },
+  { left: 36, top: 8, delay: 0, size: 18, orange: false },
+  { left: 47, top: 4, delay: 1.4, size: 22, orange: true },
+  { left: 56, top: 10, delay: 2.6, size: 16, orange: false },
+  { left: 41, top: 18, delay: 3.5, size: 20, orange: true },
+  { left: 52, top: 16, delay: 0.8, size: 14, orange: false },
+  // detrás del cuerpo (lado de la estela)
+  { left: 4, top: 30, delay: 2.1, size: 26, orange: false },
+  { left: 12, top: 48, delay: 0.4, size: 24, orange: true },
+  { left: 2, top: 62, delay: 3.1, size: 22, orange: false },
+  { left: 16, top: 72, delay: 1.7, size: 20, orange: true },
 ]
 
 /** Partículas del impacto (pose 3), alrededor del balón (87 %, 42 %). */
@@ -413,26 +418,45 @@ export function HeroPlayer({ className = '' }: { className?: string }) {
       {/* Definiciones compartidas: filtros del aura y la energía, impacto. */}
       <svg width={0} height={0} className="absolute" focusable="false">
         <defs>
-          <filter id="ef-aura-filter" x="-40%" y="-30%" width="180%" height="160%" colorInterpolationFilters="sRGB">
+          <filter id="ef-aura-filter" x="-90%" y="-70%" width="280%" height="240%" colorInterpolationFilters="sRGB">
             {/* Contorno brillante: la silueta dilatada 2.5 px, apenas difusa. */}
             <feMorphology in="SourceAlpha" operator="dilate" radius="2.5" result="edge" />
             <feGaussianBlur in="edge" stdDeviation="1.4" result="edgeSoft" />
             <feFlood floodColor="#00cec8" floodOpacity="0.92" style={{ floodColor: 'var(--color-emerald)' }} result="cyan" />
             <feComposite in="cyan" in2="edgeSoft" operator="in" result="ring" />
-            {/* Halo de energía: dilatada, difusa y deformada con ruido para
-                que el borde sea quebrado y orgánico. */}
-            <feMorphology in="SourceAlpha" operator="dilate" radius="11" result="wide" />
-            <feGaussianBlur in="wide" stdDeviation="15" result="halo" />
+            {/* Niebla en tres capas, de afuera hacia adentro: bruma lejana
+                cian, niebla naranja y halo cian pegado al cuerpo. Cada una
+                dilata la silueta, la difumina y la deforma con ruido distinto
+                para que los bordes sean quebrados y orgánicos y los dos
+                colores se entremezclen sin parecer un contorno. */}
             <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed="7" result="noise" />
+            <feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="2" seed="3" result="noiseWide" />
+            {/* bruma lejana (cian, tenue, muy extendida) */}
+            <feMorphology in="SourceAlpha" operator="dilate" radius="28" result="far" />
+            <feGaussianBlur in="far" stdDeviation="34" result="farBlur" />
+            <feDisplacementMap in="farBlur" in2="noiseWide" scale="140" xChannelSelector="R" yChannelSelector="G" result="farWarp" />
+            <feFlood floodColor="#00cec8" floodOpacity="0.34" style={{ floodColor: 'var(--color-emerald)' }} result="cyanFar" />
+            <feComposite in="cyanFar" in2="farWarp" operator="in" result="fogFar" />
+            {/* niebla naranja (media) */}
+            <feMorphology in="SourceAlpha" operator="dilate" radius="18" result="mid" />
+            <feGaussianBlur in="mid" stdDeviation="24" result="midBlur" />
+            <feDisplacementMap in="midBlur" in2="noiseWide" scale="96" xChannelSelector="G" yChannelSelector="R" result="midWarp" />
+            <feFlood floodColor="#ff8c00" floodOpacity="0.46" style={{ floodColor: 'var(--color-orange)' }} result="orangeMid" />
+            <feComposite in="orangeMid" in2="midWarp" operator="in" result="fogOrange" />
+            {/* halo cian pegado al cuerpo */}
+            <feMorphology in="SourceAlpha" operator="dilate" radius="12" result="wide" />
+            <feGaussianBlur in="wide" stdDeviation="16" result="halo" />
             <feDisplacementMap in="halo" in2="noise" scale="64" xChannelSelector="R" yChannelSelector="G" result="haloWarp" />
-            <feFlood floodColor="#00cec8" floodOpacity="0.55" style={{ floodColor: 'var(--color-emerald)' }} result="cyanSoft" />
+            <feFlood floodColor="#00cec8" floodOpacity="0.68" style={{ floodColor: 'var(--color-emerald)' }} result="cyanSoft" />
             <feComposite in="cyanSoft" in2="haloWarp" operator="in" result="haloColored" />
             <feMerge>
+              <feMergeNode in="fogFar" />
+              <feMergeNode in="fogOrange" />
               <feMergeNode in="haloColored" />
               <feMergeNode in="ring" />
             </feMerge>
           </filter>
-          <filter id="ef-streak-glow" x="-25%" y="-25%" width="150%" height="150%" colorInterpolationFilters="sRGB">
+          <filter id="ef-streak-glow" x="-60%" y="-60%" width="220%" height="220%" colorInterpolationFilters="sRGB">
             <feGaussianBlur stdDeviation="4" result="wide" />
             <feComponentTransfer in="wide" result="wideSoft">
               <feFuncA type="linear" slope="0.9" />
@@ -471,11 +495,17 @@ export function HeroPlayer({ className = '' }: { className?: string }) {
           <div key={id} className={`ef-pose ef-pose-${id}`} data-pose={label}>
             {/* Energía: trazos que salen del cuerpo hacia atrás + luz de suelo. */}
             <div className="ef-energy-layer">
-              <svg viewBox={VIEWBOX} className="h-full w-full" focusable="false">
+              <svg viewBox={VIEWBOX} className="h-full w-full overflow-visible" focusable="false">
                 <ellipse cx={f(feet[0])} cy={396} rx={110} ry={9} fill="var(--color-emerald)" opacity={0.28} filter="url(#ef-ground-blur)" />
-                <g fill="none" stroke="var(--color-emerald)" strokeLinecap="round" strokeLinejoin="round" filter="url(#ef-streak-glow)">
+                <g fill="none" strokeLinecap="round" strokeLinejoin="round" filter="url(#ef-streak-glow)">
                   {streaks.map((s, i) => (
-                    <polyline key={i} points={s.d} strokeWidth={f(s.w)} opacity={f(s.o)} />
+                    <polyline
+                      key={i}
+                      points={s.d}
+                      stroke={s.orange ? 'var(--color-orange)' : 'var(--color-emerald)'}
+                      strokeWidth={f(s.w)}
+                      opacity={f(s.o)}
+                    />
                   ))}
                 </g>
               </svg>
@@ -483,12 +513,12 @@ export function HeroPlayer({ className = '' }: { className?: string }) {
             {/* Aura: la misma silueta pasada por el filtro, en su propia capa
                 para que la respiración (opacity/transform) no re-rasterice. */}
             <div className="ef-aura-layer">
-              <svg viewBox={VIEWBOX} className="h-full w-full" focusable="false">
+              <svg viewBox={VIEWBOX} className="h-full w-full overflow-visible" focusable="false">
                 {id === 3 && <circle cx={f(ball[0])} cy={f(ball[1])} r={66} fill="url(#ef-impact)" />}
                 <use href={`#ef-sil-${id}`} filter="url(#ef-aura-filter)" />
               </svg>
             </div>
-            <svg viewBox={VIEWBOX} className="ef-sil-layer h-full w-full" focusable="false">
+            <svg viewBox={VIEWBOX} className="ef-sil-layer h-full w-full overflow-visible" focusable="false">
               <g id={`ef-sil-${id}`} className="ef-sil">
                 {raster ? (
                   <image
@@ -535,7 +565,7 @@ export function HeroPlayer({ className = '' }: { className?: string }) {
       {WISPS.map((w, i) => (
         <span
           key={i}
-          className="ef-wisp"
+          className={`ef-wisp ${w.orange ? 'ef-wisp-orange' : ''}`}
           style={{ left: `${w.left}%`, top: `${w.top}%`, width: `${w.size}%`, animationDelay: `${w.delay}s` }}
         />
       ))}

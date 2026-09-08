@@ -418,6 +418,14 @@
   filter: blur(6px);
   will-change: opacity, transform;
 }
+.ef-wisp-orange {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-orange) 60%, transparent) 0%,
+    color-mix(in srgb, var(--color-orange) 22%, transparent) 40%,
+    transparent 68%
+  );
+}
 .ef-spark-impact {
   position: absolute;
   width: 6px;
@@ -456,7 +464,7 @@
 @keyframes ef-breathe {
   0%,
   100% {
-    opacity: 0.72;
+    opacity: 0.82;
     transform: scale(1);
   }
   50% {
