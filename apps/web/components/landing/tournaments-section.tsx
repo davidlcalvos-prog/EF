@@ -1,4 +1,5 @@
-import { Users, Trophy, BarChart3 } from 'lucide-react'
+import { Trophy } from 'lucide-react'
+import { BootsIcon, SoccerBallIcon } from '@/components/icons/football'
 
 /**
  * Las tres funciones existen tal cual en la app (Grupos, Partidos internos /
@@ -7,17 +8,17 @@ import { Users, Trophy, BarChart3 } from 'lucide-react'
  */
 const cards = [
   {
-    icon: Users,
+    icon: BootsIcon,
     title: 'Arma tu grupo',
     desc: 'Crea el grupo, suma a tus amigos y define quién lidera. Cada uno con su posición favorita y su foto real.',
   },
   {
-    icon: Trophy,
+    icon: SoccerBallIcon,
     title: 'Partidos internos y VS',
     desc: 'Arma partidos entre los del grupo con equipos al azar, o desafía a otro grupo a un VS. Si falta uno, pides un comodín.',
   },
   {
-    icon: BarChart3,
+    icon: Trophy,
     title: 'Campeonatos con rankings',
     desc: 'Inscribe a tu grupo en los campeonatos abiertos y sigue la tabla de goleadores y la mejor defensa de cada torneo.',
   },
@@ -40,7 +41,7 @@ export function TournamentsSection() {
         {cards.map((card, i) => (
           <div
             key={card.title}
-            className={`ef-card ef-card-hover rounded-2xl p-6 ${i === 1 ? 'ef-card-orange' : ''}`}
+            className={`ef-card ef-card-hover ef-reveal rounded-2xl p-6 ${i === 1 ? 'ef-card-orange' : ''}`}
           >
             <span className={`ef-chip h-12 w-12 ${i === 1 ? 'ef-chip-orange' : ''}`}>
               <card.icon className="h-6 w-6" />

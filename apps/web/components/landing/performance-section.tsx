@@ -1,4 +1,5 @@
-import { Brain, ClipboardCheck, Timer } from 'lucide-react'
+import { Brain } from 'lucide-react'
+import { PitchIcon, WhistleIcon } from '@/components/icons/football'
 import { StatsRadar } from '@/components/stats-radar'
 
 /**
@@ -8,13 +9,13 @@ import { StatsRadar } from '@/components/stats-radar'
  */
 const features = [
   {
-    icon: ClipboardCheck,
+    icon: PitchIcon,
     label: '6 tests físicos con protocolo',
     detail:
       'Tiros desde 16 m, control defensivo, Beep test, Sprint 30 m, pase Loughborough y agilidad Illinois.',
   },
   {
-    icon: Timer,
+    icon: WhistleIcon,
     label: 'Tú mides, tú cargas el resultado',
     detail:
       'Un cronómetro, un balón y una cancha. Cada resultado actualiza una de las 6 estadísticas.',
@@ -47,7 +48,7 @@ export function PerformanceSection() {
       <div className="relative grid items-center gap-12 lg:grid-cols-2">
         {/* Stats card — perfil de ejemplo con los 6 stats reales */}
         <div className="order-2 lg:order-1">
-          <div className="ef-card rounded-2xl p-5 shadow-[0_20px_70px_-20px] shadow-emerald/20">
+          <div className="ef-card ef-reveal rounded-2xl p-5 shadow-[0_20px_70px_-20px] shadow-emerald/20">
             <div className="flex items-center gap-3 border-b border-white/10 pb-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/15 font-heading font-bold text-primary ring-1 ring-primary/40">
                 JP

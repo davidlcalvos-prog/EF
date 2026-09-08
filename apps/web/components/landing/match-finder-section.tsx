@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { MapPin, Search } from 'lucide-react'
+import { MapPin } from 'lucide-react'
+import { BootsIcon } from '@/components/icons/football'
 import { Button } from '@/components/ui/button'
 
 /**
@@ -44,7 +45,7 @@ export function MatchFinderSection() {
     <section id="buscador" className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
       <div className="grid items-center gap-10 lg:grid-cols-2">
         {/* Map visual */}
-        <div className="ef-card relative aspect-[4/3] overflow-hidden rounded-2xl">
+        <div className="ef-card ef-reveal relative aspect-[4/3] overflow-hidden rounded-2xl">
           <div
             className="absolute inset-0 opacity-40"
             style={{
@@ -150,7 +151,7 @@ export function MatchFinderSection() {
             size="lg"
             className="ef-cta mt-6 h-12 px-6 font-heading font-semibold uppercase tracking-wide"
           >
-            <Search className="mr-1 h-5 w-5" />
+            <BootsIcon className="mr-1 h-5 w-5" />
             Quiero ser comodín
           </Button>
         </div>

@@ -19,7 +19,7 @@ export function DownloadSection() {
         aria-hidden
         className="ef-glow-orange absolute -right-32 bottom-0 h-[24rem] w-[32rem]"
       />
-      <div className="ef-card ef-card-orange relative overflow-hidden rounded-3xl p-8 shadow-[0_0_90px_-30px] shadow-orange/25 sm:p-12">
+      <div className="ef-card ef-card-orange ef-reveal relative overflow-hidden rounded-3xl p-8 shadow-[0_0_90px_-30px] shadow-orange/25 sm:p-12">
         <div
           aria-hidden
           className="ef-glow-orange absolute -right-24 -top-24 h-72 w-96"

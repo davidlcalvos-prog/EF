@@ -65,7 +65,7 @@ export function CommunitySection() {
         {posts.map((post) => (
           <div
             key={post.name}
-            className="ef-card ef-card-hover rounded-2xl p-5"
+            className="ef-card ef-card-hover ef-reveal rounded-2xl p-5"
           >
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-sm font-heading font-bold text-primary ring-1 ring-primary/40">
@@ -97,7 +97,7 @@ export function CommunitySection() {
 
       {/* Tests + copy */}
       <div className="mt-16 grid items-center gap-10 lg:grid-cols-2">
-        <div className="ef-card rounded-2xl p-6">
+        <div className="ef-card ef-reveal rounded-2xl p-6">
           <p className="mb-5 font-heading text-sm font-semibold uppercase tracking-wide text-card-foreground">
             Tu ficha de tests
           </p>

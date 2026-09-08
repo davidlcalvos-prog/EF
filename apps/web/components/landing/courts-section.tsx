@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { LayoutDashboard, CalendarCheck, ArrowRight } from 'lucide-react'
+import { LayoutDashboard, ArrowRight } from 'lucide-react'
+import { PitchIcon } from '@/components/icons/football'
 import { Button } from '@/components/ui/button'
 
 /**
@@ -19,7 +20,7 @@ export function CourtsSection() {
       </p>
 
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
-        <div className="ef-card ef-card-hover rounded-2xl p-7">
+        <div className="ef-card ef-card-hover ef-reveal rounded-2xl p-7">
           <span className="ef-chip h-12 w-12">
             <LayoutDashboard className="h-6 w-6" />
           </span>
@@ -41,9 +42,9 @@ export function CourtsSection() {
           </Button>
         </div>
 
-        <div className="ef-card ef-card-orange ef-card-hover rounded-2xl p-7">
+        <div className="ef-card ef-card-orange ef-card-hover ef-reveal rounded-2xl p-7">
           <span className="ef-chip ef-chip-orange h-12 w-12">
-            <CalendarCheck className="h-6 w-6" />
+            <PitchIcon className="h-6 w-6" />
           </span>
           <h3 className="mt-5 font-heading text-xl font-semibold uppercase tracking-wide text-card-foreground">
             Reservas desde la app
