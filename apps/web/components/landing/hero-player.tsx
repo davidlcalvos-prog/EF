@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Silueta de futbolista en SVG con aura de energía, que cicla tres poses de
+ * Silueta de futbolista en SVG con aura de energía alrededor del cuerpo, que cicla tres poses de
  * una jugada: recibe (control de pecho) → dribla (conducción) → tira
  * (remate). Sin JavaScript de animación: cada pose es un <div> con tres
  * <svg> (energía, aura, silueta), y el ciclo (crossfade + leve desplazamiento
@@ -10,7 +10,7 @@
  *   .ef-hero-player   → --pose-duration / --pose-transition (tiempos)
  *   .ef-pose          → @keyframes ef-pose-cycle
  *   .ef-aura-layer    → @keyframes ef-breathe (respiración del aura)
- *   .ef-energy-layer  → @keyframes ef-energy-drift (deriva de los trazos)
+ *   .ef-energy-layer  → @keyframes ef-energy-drift (deriva de la luz de suelo)
  *   .ef-wisp          → @keyframes ef-vapor  (vapor que asciende)
  *
  * Por qué cada capa vive en su propio <svg> dentro de un <div>: la animación
@@ -334,57 +334,8 @@ const POSES: { id: 1 | 2 | 3; label: string; j: Joints; trail: Pt }[] = [
   },
 ]
 
-/* ── Energía: trazos quebrados que salen del cuerpo hacia atrás ─────────
-   Determinista (LCG con semilla por pose) para que servidor y cliente
-   rendericen lo mismo. ──────────────────────────────────────────────── */
-function lcg(seed: number) {
-  let s = seed >>> 0
-  return () => {
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0
-    return s / 4294967296
-  }
-}
-
-function jointAnchors(j: Joints): Pt[] {
-  return [
-    add(j.head, [-14, -6]),
-    j.shoulderL,
-    j.elbowL,
-    lerp(j.shoulderL, j.hipL, 0.5),
-    j.hipL,
-    j.kneeL,
-    j.ankleL,
-    lerp(j.hipR, j.kneeR, 0.5),
-    j.kneeR,
-    j.elbowR,
-  ]
-}
-
-function energyStreaks(anchors: Pt[], trail: Pt, seed: number) {
-  const rand = lcg(seed)
-  const dir = unit(trail)
-  const n = perp(dir)
-  const out: { d: string; w: number; o: number; orange: boolean }[] = []
-  for (const a of anchors) {
-    const count = 1 + Math.floor(rand() * 2)
-    for (let c = 0; c < count; c++) {
-      const start = add(a, [rand() * 16 - 8, rand() * 16 - 8])
-      const length = 40 + rand() * 110
-      const segs = 4 + Math.floor(rand() * 3)
-      let p = start
-      const points: Pt[] = [p]
-      for (let s = 1; s <= segs; s++) {
-        const t = s / segs
-        const along = mul(dir, (length / segs) * (0.7 + rand() * 0.6))
-        const side = mul(n, (rand() - 0.5) * 22 * (1 - t * 0.5))
-        p = add(add(p, along), side)
-        points.push(p)
-      }
-      out.push({ d: pts(points), w: 1.2 + rand() * 2.6, o: 0.3 + rand() * 0.55, orange: rand() < 0.35 })
-    }
-  }
-  return out
-}
+/* ── (Los trazos de energía que salían hacia atrás se quitaron a pedido del
+   usuario: el aura queda solo alrededor del cuerpo.) ─────────────────── */
 
 const VIEWBOX = '0 0 400 440'
 
@@ -395,11 +346,6 @@ const WISPS = [
   { left: 56, top: 10, delay: 2.6, size: 16, orange: false },
   { left: 41, top: 18, delay: 3.5, size: 20, orange: true },
   { left: 52, top: 16, delay: 0.8, size: 14, orange: false },
-  // detrás del cuerpo (lado de la estela)
-  { left: 4, top: 30, delay: 2.1, size: 26, orange: false },
-  { left: 12, top: 48, delay: 0.4, size: 24, orange: true },
-  { left: 2, top: 62, delay: 3.1, size: 22, orange: false },
-  { left: 16, top: 72, delay: 1.7, size: 20, orange: true },
 ]
 
 /** Partículas del impacto (pose 3), alrededor del balón (87 %, 42 %). */
@@ -426,13 +372,10 @@ export function HeroPlayer({ className = '' }: { className?: string }) {
               cuerpo y la apaga rápido, y luego el alfa se MULTIPLICA por ruido
               fractal (feComposite arithmetic) — ahí la densidad deja de ser
               uniforme y aparecen claros y grumos irregulares — antes de
-              deformar el borde con otro ruido. La bruma lejana además se corre
-              hacia la estela (feOffset), así el aura es asimétrica. */}
-          {POSES.map(({ id, trail: vectorTrail }, index) => {
-            const trail = RASTER_POSES?.[index]?.trail ?? vectorTrail
+              deformar el borde con otro ruido. Solo lo que queda alrededor del
+              cuerpo: sin bruma lejana ni trazos que se estiren hacia atrás. */}
+          {POSES.map(({ id }) => {
             const seed = 7 + id * 29
-            const dx = f(trail[0] * 26)
-            const dy = f(trail[1] * 26)
             return (
               <filter
                 key={id}
@@ -443,7 +386,7 @@ export function HeroPlayer({ className = '' }: { className?: string }) {
                 height="240%"
                 colorInterpolationFilters="sRGB"
               >
-                {/* ruidos: fino (grumos cerca del cuerpo), medio y ancho (bruma) */}
+                {/* ruidos: fino (grumos cerca del cuerpo), medio y ancho */}
                 <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" seed={seed} result="nFine" />
                 <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="3" seed={seed + 11} result="nMid" />
                 <feTurbulence type="fractalNoise" baseFrequency="0.007" numOctaves="2" seed={seed + 23} result="nFar" />
@@ -476,20 +419,8 @@ export function HeroPlayer({ className = '' }: { className?: string }) {
                 <feFlood floodColor="#ff8c00" floodOpacity="0.6" style={{ floodColor: 'var(--color-orange)' }} result="orangeMid" />
                 <feComposite in="orangeMid" in2="mid4" operator="in" result="fogMid" />
 
-                {/* bruma lejana (cian, tenue): corrida hacia la estela, grumos anchos */}
-                <feMorphology in="SourceAlpha" operator="dilate" radius="24" result="far0" />
-                <feGaussianBlur in="far0" stdDeviation="38" result="far1" />
-                <feComponentTransfer in="far1" result="far2">
-                  <feFuncA type="table" tableValues="0 0.12 0.4 0.75 1" />
-                </feComponentTransfer>
-                <feOffset in="far2" dx={dx} dy={dy} result="far3" />
-                <feComposite in="far3" in2="nMid" operator="arithmetic" k1="2.3" k2="0" k3="0" k4="0" result="far4" />
-                <feDisplacementMap in="far4" in2="nFar" scale="150" xChannelSelector="R" yChannelSelector="G" result="far5" />
-                <feFlood floodColor="#00cec8" floodOpacity="0.38" style={{ floodColor: 'var(--color-emerald)' }} result="cyanFar" />
-                <feComposite in="cyanFar" in2="far5" operator="in" result="fogFar" />
 
                 <feMerge>
-                  <feMergeNode in="fogFar" />
                   <feMergeNode in="fogMid" />
                   <feMergeNode in="fogNear" />
                   <feMergeNode in="ring" />
@@ -497,17 +428,6 @@ export function HeroPlayer({ className = '' }: { className?: string }) {
               </filter>
             )
           })}
-          <filter id="ef-streak-glow" x="-60%" y="-60%" width="220%" height="220%" colorInterpolationFilters="sRGB">
-            <feGaussianBlur stdDeviation="4" result="wide" />
-            <feComponentTransfer in="wide" result="wideSoft">
-              <feFuncA type="linear" slope="0.9" />
-            </feComponentTransfer>
-            <feGaussianBlur stdDeviation="0.7" result="core" />
-            <feMerge>
-              <feMergeNode in="wideSoft" />
-              <feMergeNode in="core" />
-            </feMerge>
-          </filter>
           <filter id="ef-ground-blur" x="-20%" y="-200%" width="140%" height="500%">
             <feGaussianBlur stdDeviation="6" />
           </filter>
@@ -519,11 +439,8 @@ export function HeroPlayer({ className = '' }: { className?: string }) {
         </defs>
       </svg>
 
-      {POSES.map(({ id, label, j, trail: vectorTrail }, index) => {
+      {POSES.map(({ id, label, j }, index) => {
         const raster: RasterPose | undefined = RASTER_POSES?.[index]
-        const trail: Pt = raster ? raster.trail : vectorTrail
-        const anchors: Pt[] = raster ? raster.anchors : jointAnchors(j)
-        const streaks = energyStreaks(anchors, trail, 1000 + id * 97)
         const feet: Pt = raster ? [raster.x + raster.w / 2, 396] : lerp(j.toeL, j.toeR, 0.5)
         // Balón para el impacto (pose 3): detectado en la imagen o, si quedó
         // pegado al cuerpo y no se pudo separar, arriba a la derecha de la figura.
@@ -534,21 +451,10 @@ export function HeroPlayer({ className = '' }: { className?: string }) {
           : j.ball
         return (
           <div key={id} className={`ef-pose ef-pose-${id}`} data-pose={label}>
-            {/* Energía: trazos que salen del cuerpo hacia atrás + luz de suelo. */}
+            {/* Luz de suelo bajo los pies. */}
             <div className="ef-energy-layer">
               <svg viewBox={VIEWBOX} className="h-full w-full overflow-visible" focusable="false">
                 <ellipse cx={f(feet[0])} cy={396} rx={110} ry={9} fill="var(--color-emerald)" opacity={0.28} filter="url(#ef-ground-blur)" />
-                <g fill="none" strokeLinecap="round" strokeLinejoin="round" filter="url(#ef-streak-glow)">
-                  {streaks.map((s, i) => (
-                    <polyline
-                      key={i}
-                      points={s.d}
-                      stroke={s.orange ? 'var(--color-orange)' : 'var(--color-emerald)'}
-                      strokeWidth={f(s.w)}
-                      opacity={f(s.o)}
-                    />
-                  ))}
-                </g>
               </svg>
             </div>
             {/* Aura: la misma silueta pasada por el filtro, en su propia capa

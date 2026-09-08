@@ -108,7 +108,7 @@ export function Hero() {
             ocupa la mitad derecha, fuera del bloque de texto; en móvil se
             reduce, se corre a la derecha y baja de opacidad, y un degradado
             extra por encima garantiza el contraste del titular. */}
-        <HeroPlayer className="absolute bottom-0 right-[-30%] h-[48%] opacity-60 sm:right-[-8%] sm:h-[62%] sm:opacity-85 md:right-[4%] md:h-[74%] md:opacity-100 lg:right-[9%] lg:h-[80%]" />
+        <HeroPlayer className="absolute bottom-0 right-[-30%] h-[48%] opacity-60 sm:right-[-8%] sm:h-[62%] sm:opacity-85 md:right-[0%] md:h-[74%] md:opacity-100 lg:right-[1%] lg:h-[80%]" />
         <div className="absolute inset-0 bg-gradient-to-r from-background/85 via-background/45 to-transparent md:hidden" />
       </div>
 
