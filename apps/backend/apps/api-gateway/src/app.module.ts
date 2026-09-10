@@ -17,6 +17,7 @@ import { MatchGuestRequestsProxyModule } from './match-guest-requests/match-gues
 import { ReservationsProxyModule } from './reservations/reservations-proxy.module';
 import { FeedProxyModule } from './feed/feed-proxy.module';
 import { PushTokensProxyModule } from './push-tokens/push-tokens-proxy.module';
+import { PendingProxyModule } from './pending/pending-proxy.module';
 import { TournamentsProxyModule } from './tournaments/tournaments-proxy.module';
 import { HealthController } from './health/health.controller';
 
@@ -50,6 +51,7 @@ import { HealthController } from './health/health.controller';
     ReservationsProxyModule,
     FeedProxyModule,
     PushTokensProxyModule,
+    PendingProxyModule,
     TournamentsProxyModule,
   ],
   controllers: [HealthController],

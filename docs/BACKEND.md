@@ -481,7 +481,37 @@ Decisiones: (1) "vacante ocupada", "rechazada" y "cancelada" van a `NearbyGuestR
 
 **Cómo agregar una notificación nueva sin tocar la app:** un `sendToUser(userId, título, cuerpo, { v: 1, type: '<nuevo>', screen: '<pantalla de PushScreen>', params: { ...strings } })`. Agregar el `type` a `PushType` (es un literal: TypeScript lo exige). Si `screen` ya existe en `PushScreen`, la app navega sin cambios. Solo hace falta tocar la app si el destino es una **pantalla nueva** (agregarla a `PushScreen` y a `PUSH_SCREENS` en mobile con su conversor de params) o si la pantalla necesita un param que hoy no acepta.
 
+## Pendientes: `GET /api/me/pending` (Fase B, indicadores en el drawer — 2026-09-10)
+
+**Ruta:** `GET /api/me/pending` (gateway `api-gateway/src/pending/`, `@Controller('me')`, JWT obligatorio) → `MESSAGE_PATTERNS.PENDING.COUNTS` → users-service `src/pending/` (`PendingController` → `PendingService` → `PendingRepository`). Contrato: `libs/contracts/src/pending` (`PendingCountsDto`, `PENDING_KINDS`, `GetPendingCountsPayload`).
+
+**Respuesta:** `Record<PendingKind, number>` — las claves son **exactamente** `PendingKind` del contrato `PushData`, así que un push con `pending: 'friendRequests'` toca la misma clave que devuelve este endpoint.
+
+```json
+{ "friendRequests": 2, "groupFriendRequests": 0, "matchChallenges": 1, "guestApplications": 0 }
+```
+
+**Cómo se cuenta (cuatro `count` de Prisma, nunca listas):**
+
+| Clave | Predicado | Mismo predicado que autoriza… |
+|---|---|---|
+| `friendRequests` | `user_friendships` con `addresseeId = yo` y `status = pending` | aceptar/rechazar en `UserFriendshipsService` |
+| `groupFriendRequests` | `group_friendships` `pending` donde uno de los dos grupos es uno que **lidero** (`creator`/`admin`) y `requestedByGroupId` **no** es uno mío (el receptor es el par que no la pidió) | responder en `GroupFriendshipsService.requireLeadership` |
+| `matchChallenges` | `matches` con `status = pending_opponent` y `opponentGroupId` en los grupos que lidero | `MatchesService.requireOpponentLeadership` |
+| `guestApplications` | `match_guest_applications` `pending` cuya vacante (`request`) es mía (`requestedBy = yo`) y sigue `open` | `MatchGuestRequestsService.requireLeader` + `requireOpenRequest` |
+
+Los grupos que lidero se resuelven una vez (`group_memberships` con `role in (creator, admin)`), y los tres `count` que dependen de ellos se saltean si la lista está vacía. Cinco consultas como máximo.
+
+**Qué NO cuenta:** eventos informativos (solicitud aceptada, comodín aceptado/rechazado, vacante ocupada, reserva confirmada/reasignada, recordatorio de 30 min) — no esperan una acción. Reservas `pending`: son del dueño de cancha y viven en el portal web.
+
+**Cómo agregar un contador nuevo:** (1) la clave en `PendingKind` (`libs/contracts/src/push`) y en `PENDING_KINDS`; (2) un `count` más en `PendingRepository.countForUser` con el **mismo predicado** que autoriza la acción en su servicio; (3) en el push que lo genera, `pending: '<clave>'`. En la app: la clave en `PENDING_KINDS` de `services/api/types.ts` y su ítem en `PENDING_DRAWER_ITEM` (`FeedDrawer.tsx`); ningún componente cambia. Ver [FRONTEND.md](./FRONTEND.md#indicadores-de-pendientes-fase-b-2026-09-10).
+
 ## Registro de cambios
+
+### 2026-09-10 — Fase B: `GET /api/me/pending`, conteo de pendientes para el drawer
+
+- Nuevo módulo `pending` en users-service (repositorio con 4 `count`, sin listas) y proxy `me/pending` en el gateway; `MESSAGE_PATTERNS.PENDING.COUNTS`; contrato `libs/contracts/src/pending`. Claves = `PendingKind`.
+- Ver [Pendientes: `GET /api/me/pending`](#pendientes-get-apimepending-fase-b-indicadores-en-el-drawer--2026-09-10).
 
 ### 2026-09-10 — Fase A: contrato `PushData` y los 12 disparos declaran su destino
 
