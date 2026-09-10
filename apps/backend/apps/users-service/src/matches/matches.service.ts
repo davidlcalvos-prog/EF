@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -20,23 +21,30 @@ import {
 } from '@ef/contracts';
 import { GroupFriendshipsService } from '../group-friendships/group-friendships.service';
 import { GroupRepository } from '../groups/repositories/group.repository';
+import { NotificationsService } from '../notifications/notifications.service';
 import { MatchRepository } from './repositories/match.repository';
 import { randomizeTeams as computeTeamAssignments } from './team-randomizer';
 
 type GroupRole = 'creator' | 'admin' | 'member';
 
+/** Anti-ráfaga del aviso "partido creado": un mismo grupo no avisa dos veces en esta ventana. */
+export const MATCH_CREATED_PUSH_COOLDOWN_MS = 10 * 60 * 1000;
+
 @Injectable()
 export class MatchesService {
+  private readonly logger = new Logger(MatchesService.name);
+
   constructor(
     private readonly matchRepository: MatchRepository,
     private readonly groupRepository: GroupRepository,
     private readonly groupFriendshipsService: GroupFriendshipsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(payload: CreateMatchPayload): Promise<MatchDto> {
     const { requesterId, originGroupId, opponentGroupId, type } = payload;
 
-    await this.requireGroupExists(originGroupId);
+    const originGroup = await this.requireGroupExists(originGroupId);
     const requesterRole = await this.requireGroupMembership(originGroupId, requesterId);
 
     // Fase L.0 — sede: con venueId se copian las coordenadas de la cancha;
@@ -48,7 +56,7 @@ export class MatchesService {
     );
 
     if (type === 'internal') {
-      return this.matchRepository.create({
+      const created = await this.matchRepository.create({
         originGroupId,
         type: 'internal',
         format: payload.format,
@@ -58,6 +66,8 @@ export class MatchesService {
         createdBy: requesterId,
         ...location,
       });
+      await this.notifyMatchCreated(created.id, originGroupId, originGroup.name, requesterId);
+      return created;
     }
 
     // type === 'vs'
@@ -95,7 +105,75 @@ export class MatchesService {
       createdBy: requesterId,
       ...location,
     });
+    await this.notifyMatchCreated(match.id, originGroupId, originGroup.name, requesterId);
+    await this.notifyChallenge(match.id, opponentGroupId!, originGroup.name);
     return this.applyVisibility(match, requesterId);
+  }
+
+  /**
+   * "Se ha creado un partido con tu grupo: {nombre}" a todos los miembros del
+   * grupo origen menos el creador (2026-09-10, reporte de testers: al crear un
+   * partido no llegaba nada). Best-effort y fuera de la transacción: un fallo
+   * de push nunca hace fallar la creación. Anti-ráfaga: si el mismo grupo creó
+   * otro partido hace menos de 10 min, no se repite el aviso.
+   */
+  private async notifyMatchCreated(
+    matchId: string,
+    originGroupId: string,
+    groupName: string,
+    createdBy: string,
+  ): Promise<void> {
+    try {
+      const burst = await this.matchRepository.hasOtherRecentMatchInGroup(
+        originGroupId,
+        matchId,
+        MATCH_CREATED_PUSH_COOLDOWN_MS,
+      );
+      if (burst) {
+        this.logger.log(
+          `Push "partido creado" omitido por anti-ráfaga: grupo ${originGroupId} creó otro partido hace < 10 min`,
+        );
+        return;
+      }
+      const memberIds = await this.groupRepository.findMemberUserIds(originGroupId, createdBy);
+      await this.notificationsService.sendToUsers(
+        memberIds,
+        'Nuevo partido',
+        `Se ha creado un partido con tu grupo: ${groupName}`,
+        { v: 1, type: 'match_created', screen: 'MatchDetail', params: { matchId } },
+      );
+    } catch (error) {
+      this.logger.error(`Failed to notify match created ${matchId}: ${String(error)}`);
+    }
+  }
+
+  /**
+   * Desafío VS: los líderes del grupo rival tienen que aceptar o rechazar
+   * (`pending_opponent`). Hasta el 2026-09-10 solo subía el contador de
+   * pendientes sin ningún push.
+   */
+  private async notifyChallenge(
+    matchId: string,
+    opponentGroupId: string,
+    originGroupName: string,
+  ): Promise<void> {
+    try {
+      const leaderIds = await this.groupRepository.findLeaderUserIds(opponentGroupId);
+      await this.notificationsService.sendToUsers(
+        leaderIds,
+        'Desafío de partido VS',
+        `${originGroupName} desafió a tu grupo a un partido VS. Aceptalo o rechazalo en la app.`,
+        {
+          v: 1,
+          type: 'match_challenge',
+          screen: 'MatchDetail',
+          params: { matchId },
+          pending: 'matchChallenges',
+        },
+      );
+    } catch (error) {
+      this.logger.error(`Failed to notify VS challenge ${matchId}: ${String(error)}`);
+    }
   }
 
   /** Fase L.0: venueId → coords de la cancha (validando que exista); si no → coords del grupo origen. */

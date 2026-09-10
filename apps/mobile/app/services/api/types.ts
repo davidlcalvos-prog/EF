@@ -559,6 +559,9 @@ export const PUSH_DATA_VERSION = 1 as const
 export type PushType =
   | "friendship_request"
   | "friendship_accepted"
+  | "match_created"
+  | "match_challenge"
+  | "match_reminder"
   | "match_guest_request"
   | "match_guest_application"
   | "match_guest_accepted"

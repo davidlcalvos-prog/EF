@@ -21,6 +21,10 @@ export const PUSH_DATA_VERSION = 1 as const;
 export type PushType =
   | 'friendship_request'
   | 'friendship_accepted'
+  /** 2026-09-10, notificaciones por evento: partido creado en mi grupo, desafío VS al grupo rival, recordatorio 12 h / 3 h. */
+  | 'match_created'
+  | 'match_challenge'
+  | 'match_reminder'
   | 'match_guest_request'
   | 'match_guest_application'
   | 'match_guest_accepted'

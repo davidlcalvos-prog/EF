@@ -163,6 +163,26 @@ export class MatchRepository {
   }
 
   /**
+   * Anti-ráfaga del push "partido creado" (2026-09-10): true si el mismo grupo
+   * ya creó OTRO partido hace menos de `withinMs` (crear, borrar, volver a
+   * crear no avisa tres veces a 20 personas).
+   */
+  async hasOtherRecentMatchInGroup(
+    originGroupId: string,
+    excludeMatchId: string,
+    withinMs: number,
+  ): Promise<boolean> {
+    const count = await this.prisma.match.count({
+      where: {
+        originGroupId,
+        id: { not: excludeMatchId },
+        createdAt: { gte: new Date(Date.now() - withinMs) },
+      },
+    });
+    return count > 0;
+  }
+
+  /**
    * Chequeo de cupo + insert en la MISMA transacción, serializados por partido
    * con un lock de fila (SELECT ... FOR UPDATE sobre `matches`): dos joins
    * concurrentes al mismo partido se ejecutan uno detrás del otro y el segundo

@@ -122,6 +122,19 @@ export class GroupRepository {
     });
   }
 
+  /**
+   * userIds de TODOS los miembros (cualquier rol), opcionalmente sin uno
+   * (el creador del partido no se avisa a sí mismo). Fase de notificaciones
+   * por evento, 2026-09-10.
+   */
+  async findMemberUserIds(groupId: string, excludeUserId?: string): Promise<string[]> {
+    const rows = await this.prisma.groupMembership.findMany({
+      where: { groupId, ...(excludeUserId ? { userId: { not: excludeUserId } } : {}) },
+      select: { userId: true },
+    });
+    return rows.map((row) => row.userId);
+  }
+
   /** userIds de creator/admin de un grupo (puede haber más de un admin). */
   async findLeaderUserIds(groupId: string): Promise<string[]> {
     const rows = await this.prisma.groupMembership.findMany({
