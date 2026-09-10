@@ -12,7 +12,11 @@ import {
 import { useMMKVString } from "react-native-mmkv"
 
 import { api } from "@/services/api"
-import { unregisterPushToken } from "@/utils/pushNotifications"
+import {
+  registerPushToken,
+  unregisterPushToken,
+  watchPushRegistration,
+} from "@/utils/pushNotifications"
 
 import { AUTH_TOKEN_STORAGE_KEY } from "./authTokenStorage"
 
@@ -65,6 +69,19 @@ export const AuthProvider: FC<PropsWithChildren<AuthProviderProps>> = ({ childre
       cancelled = true
     }
   }, [authUserId, authToken])
+
+  // Registro del push token mientras haya sesión. Cubre lo que el login solo
+  // no cubría: arranque con sesión guardada (nunca se volvía a registrar —
+  // ni tras reinstalar el build, ni si FCM rotaba el token), vuelta a primer
+  // plano (permiso activado a mano en Ajustes) y rotación del token. En el
+  // login, LoginScreen ya llamó registerPushToken({ prompt: "always" }) un
+  // tick antes; esta llamada se suma a esa misma promesa en curso (dedupe en
+  // pushNotifications.ts), así que no hay doble diálogo ni doble POST.
+  useEffect(() => {
+    if (!authToken) return
+    void registerPushToken({ prompt: "ifUndetermined" })
+    return watchPushRegistration()
+  }, [authToken])
 
   const logout = useCallback(() => {
     if (authToken) void unregisterPushToken(authToken)
