@@ -444,6 +444,12 @@ Pendientes (no implementados aún):
 
 ## Registro de cambios
 
+### 2026-09-09 — Push en Android (build 5): rastro del registro del token y qué NO cambia en el servidor
+
+- `PushTokensService.register` loguea `Push token registrado: usuario …, android, …XXXXXXXX` (últimos 8 caracteres). Con los `warn` del build 4 ("Push omitido", "Push rechazado por Expo …"), `docker compose logs users-service | grep -i push` cuenta la historia completa de un push: registro → intento → resultado. Los mismos 8 caracteres aparecen en el `adb logcat` del teléfono (`[push] token registrado …XXXXXXXX`) para cruzar teléfono ↔ `push_tokens` ↔ envío.
+- **El backend no necesita ninguna credencial de Firebase**: `expo-server-sdk` manda a `exp.host` y es Expo quien reenvía a FCM con la credencial FCM V1 cargada en EAS (`eas credentials --platform android` → Push Notifications, ver [FRONTEND.md](./FRONTEND.md#notificaciones-push-en-android-firebasefcm-y-registro-del-token-build-5-2026-09-09)). Si esa credencial falta o pertenece a otro proyecto Firebase, Expo responde tickets `InvalidCredentials` / `MismatchSenderId`, que desde el build 4 quedan en el log.
+- `EXPO_ACCESS_TOKEN` sigue opcional (se lee desde el build 4). Expo lo exige solo si se activa "Enhanced Security for Push Notifications" en el proyecto o para volúmenes altos; se genera en expo.dev → Account settings → Access tokens y se pone en `.env.production` del VPS.
+
 ### 2026-09-09 — Push: tickets de error de Expo dejan de descartarse en silencio (testers build 3, Grupo E1)
 
 - `NotificationsService` (users-service y venues-service, copias idénticas): `cleanupInvalidTokens` solo miraba `DeviceNotRegistered`; cualquier otro ticket con `status: 'error'` — `InvalidCredentials`/`MismatchSenderId` (FCM sin configurar en EAS), `MessageRateExceeded`, etc. — se descartaba sin log, así que "no me llega la notificación" no tenía ninguna pista del lado del servidor. Ahora `handleTickets` loguea un `warn` por cada ticket de error con `userId`, últimos 8 caracteres del token, código, mensaje de Expo y título del aviso; `DeviceNotRegistered` además sigue borrando el token.
