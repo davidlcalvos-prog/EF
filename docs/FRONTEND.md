@@ -427,7 +427,7 @@ Flujo en `PhysicalTestSessionScreen`: **protocolo → medir → confirmar**.
 `pickProfileImageFromGallery(userKey, previousUri)`:
 
 - Copia la imagen a `document/profile-avatars/{userKey}.{ext}`.
-- URI persistente en MMKV; sobrevive reinicios de app.
+- URI persistente en MMKV; sobrevive reinicios de app. Si MMKV no tiene `avatarUri` (instalación nueva, datos borrados), `ProfileAvatar` cae a `photoBase64` = `authAvatarBase64` de `AuthContext` (la foto que ya tiene el servidor) — fix 2026-09-09, ver registro de cambios.
 - En **ProfileScreen**, tocar avatar abre galería y guarda al instante (`updateProfile`).
 
 Plugin en `app.json`: `expo-image-picker` con permiso de fotos.
@@ -660,6 +660,7 @@ Generados (mismos nombres que los placeholders de Ignite, así `app.json` no cam
 
 - **Grupo A (modal de crear publicación: "se tilda al cerrar el teclado", "sale de su carril", "despegado hacia arriba")** — `FeedComposeModal`: se quita el `KeyboardAvoidingView` que la QA del 2026-09-05 le había puesto encima de su manejo manual del teclado (regresión nuestra). Queda un solo mecanismo (listener + sheet absoluto), `isSmallScreen` medido sobre la pantalla física, y un comentario de cabecera que prohíbe volver a envolverlo. Ver [Teclado en modales](#teclado-en-modales-y-pantallas-fixes-de-qa-en-dispositivo-real-2026-09-05) → Excepción.
 - **Grupo B1/B2 (feed: "loop infinito al entrar", "se queda cargando y no muestra los posts")** — no era un `loading` colgado (apisauce tiene timeout de 10 s y `refresh` siempre lo baja): era el spinner del footer en bucle. `onEndReached` de VirtualizedList dispara también sobre una lista vacía (`cellsAroundViewport.last === -1 === itemCount - 1`), `loadMore` pedía la página 2, y en error no bajaba `hasMore`; como cada aparición/desaparición del spinner cambia el `contentLength`, la lista volvía a disparar `onEndReached` sin fin (y podía pegarle al throttler del gateway, 120 req/min). `useFeed.loadMore` ahora no corre sin posts ni durante la carga inicial, y en error corta la paginación (`hasMore = false`; pull-to-refresh la reactiva). `refresh` gana `{ silent }` y `FeedScreen` la llama con `useFocusEffect` al **volver** al Feed (antes no había recarga al recuperar foco: la pantalla queda montada bajo el stack y los posts nuevos de otros no aparecían sin tirar hacia abajo). El primer foco se saltea porque coincide con la carga del montaje.
+- **Grupo B3 (la foto de perfil "no aparece hasta volver a subirla")** — `avatarUri` vive solo en MMKV como ruta `file://` local, `ProfileScreen`/`ProfileEditScreen` eran las únicas lectoras y nada lo rehidrataba desde el servidor: instalación nueva o datos borrados = inicial de color aunque el backend tuviera la foto (y el feed la mostrara). `ProfileAvatar` gana `photoBase64` con el mismo contrato que `FeedAvatar` (`data:image/jpeg;base64,…`), `ProfileHeader` lo pasa como `avatarBase64`, y ambas pantallas lo alimentan con `authAvatarBase64` de `AuthContext` (que ya se repuebla con `getMyProfile()` al loguear). Prioridad: archivo local recién elegido > foto del servidor > inicial. El flujo de subida (`handlePickAvatar` → `updateProfile` + `setAuthAvatarBase64` + `syncAvatarToBackend`) no cambia; no se escribe nada nuevo en MMKV ni en disco.
 
 ### 2026-09-07 — Fix de QA: texto invisible en dos `TextField` + rastro del registro del push token
 

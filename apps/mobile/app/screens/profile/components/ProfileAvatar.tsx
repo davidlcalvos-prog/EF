@@ -10,7 +10,15 @@ export interface ProfileAvatarProps {
   label: string
   color: string
   size?: number
+  /** Archivo local recién elegido (`file://`, MMKV). Gana sobre `photoBase64`. */
   imageUri?: string | null
+  /**
+   * Foto que ya tiene el servidor (`authAvatarBase64` de `AuthContext`), mismo
+   * contrato que `FeedAvatar.photoBase64`. Es el respaldo cuando MMKV no tiene
+   * `avatarUri` — instalación nueva o datos borrados: antes la foto "desaparecía"
+   * hasta volver a subirla (testers build 3).
+   */
+  photoBase64?: string | null
   onPress?: () => void
   showEditBadge?: boolean
 }
@@ -20,17 +28,19 @@ export function ProfileAvatar({
   color,
   size = 72,
   imageUri,
+  photoBase64,
   onPress,
   showEditBadge = false,
 }: ProfileAvatarProps) {
   const motion = useInteractiveMotion("social")
   const initial = label.trim().charAt(0).toUpperCase() || "?"
+  const resolvedUri = imageUri || (photoBase64 ? `data:image/jpeg;base64,${photoBase64}` : null)
 
   const content = (
     <YStack width={size} height={size} position="relative">
-      {imageUri ? (
+      {resolvedUri ? (
         <Image
-          source={{ uri: imageUri }}
+          source={{ uri: resolvedUri }}
           style={{
             width: size,
             height: size,
