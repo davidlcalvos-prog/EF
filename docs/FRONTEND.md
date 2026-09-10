@@ -654,11 +654,96 @@ Generados (mismos nombres que los placeholders de Ignite, así `app.json` no cam
 
 **Lo que NO era la causa** (verificado durante la investigación): los 13 `TextField` y los 7 `Input` (Tamagui, color `$efWhite` fijo en `ui/Input.tsx`) tienen `color` y `placeholderTextColor` explícitos, y el cambio de `parentTheme` `"Light"` → `"Default"` no afecta el color del texto (el default del tema solo aplica cuando `color` no está seteado).
 
+## Notificaciones push en Android: Firebase/FCM y registro del token (build 5, 2026-09-09)
+
+**Por qué nunca llegó ningún push (testers build 3):** en Android, `Notifications.getExpoPushTokenAsync()` necesita Firebase Cloud Messaging debajo. La app no tenía `google-services.json` ni `android.googleServicesFile`, así que la llamada lanzaba `Default FirebaseApp is not initialized`, `registerPushToken` la atrapaba y salía por el `console.warn("[push] registerPushToken lanzó excepción")`, y el `POST /api/push-tokens` nunca ocurría. `push_tokens` quedaba vacía y el backend logueaba "Push omitido … 0 válidos" para todos — incluidas las solicitudes de amistad que en su momento parecieron un bug del backend. Además, aunque hubiera token, el servicio de push de Expo necesita la **credencial FCM V1** del proyecto Firebase cargada en EAS para entregar en Android.
+
+### Paso 1 — Firebase (lo hace David en la consola; no se puede automatizar)
+
+1. Entrar a <https://console.firebase.google.com> con la cuenta de Google del proyecto → **Agregar proyecto** → nombre `Elite Forge` (el nombre es libre) → Google Analytics: **desactivar** (no se usa) → Crear.
+2. En la portada del proyecto → **Agregar app** → ícono **Android**.
+   - **Nombre del paquete de Android:** `com.eliteforge.app` — **exactamente** ese, es el `android.package` de `apps/mobile/app.json`. Si no coincide, Firebase entrega igual el archivo, el build compila igual, y FCM rechaza el token en silencio: es el error más fácil de cometer y el más difícil de ver.
+   - Apodo: `Elite Forge Android` (opcional). **Certificado SHA-1: dejar vacío** — solo hace falta para Google Sign-In / Dynamic Links, no para push.
+   - Registrar app.
+3. **Descargar `google-services.json`** y guardarlo en **`apps/mobile/google-services.json`** (raíz de la app móvil, al lado de `app.json`). Está en `.gitignore`: **no se commitea**. Los pasos siguientes de la consola ("Agregar el SDK de Firebase" con Gradle) **se saltean** — Expo los hace en el prebuild.
+4. Verificar el archivo: tiene que contener `"package_name": "com.eliteforge.app"` dentro de `client[].client_info.android_client_info`. Si dice otra cosa, se registró mal la app: borrarla en Firebase y repetir el paso 2.
+5. **Credencial FCM V1** (para que Expo pueda enviar): en Firebase → ⚙️ **Configuración del proyecto** → pestaña **Cuentas de servicio** → **Generar nueva clave privada** → se descarga un JSON (`elite-forge-xxxxx-firebase-adminsdk-….json`). Guardarlo **fuera del repo** (p. ej. `~/Documentos/elite-forge-fcm-v1.json`). Es una credencial de administrador: no compartirla ni commitearla. No usar la "clave del servidor" legada (Cloud Messaging API heredada): está discontinuada.
+
+### Paso 2 — Subir el `google-services.json` a EAS (lo consume el build en la nube)
+
+`apps/mobile/app.config.ts` fija `android.googleServicesFile = process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json"`: en EAS el archivo llega como **variable de entorno de tipo file** (EAS la escribe en disco y pone la ruta en la variable); en local se usa el archivo de `apps/mobile/`. Como el archivo está ignorado por git, EAS **no lo sube con el proyecto** — de ahí la variable. Desde `apps/mobile`, una vez por entorno (eas-cli 23.x):
+
+```bash
+npx eas-cli env:create --scope project --name GOOGLE_SERVICES_JSON --type file --visibility secret --environment production --value ./google-services.json
+```
+
+```bash
+npx eas-cli env:create --scope project --name GOOGLE_SERVICES_JSON --type file --visibility secret --environment preview --value ./google-services.json
+```
+
+```bash
+npx eas-cli env:create --scope project --name GOOGLE_SERVICES_JSON --type file --visibility secret --environment development --value ./google-services.json
+```
+
+Comprobar con `npx eas-cli env:list --environment production` (la variable figura como `file`, valor oculto). Los perfiles de `eas.json` declaran ahora `"environment"` explícito (`production` / `preview` / `development`) para que no haya ambigüedad sobre qué variables recibe cada build. Alternativa si algún día se prefiere commitear el archivo (Firebase lo considera seguro de embeber, no da acceso a nada por sí solo): quitar la línea de `.gitignore` y no hace falta la variable — el fallback `./google-services.json` lo toma.
+
+### Paso 3 — Cargar la credencial FCM V1 en EAS (para el envío)
+
+Desde `apps/mobile`, interactivo (no hay forma no-interactiva para este paso):
+
+```bash
+npx eas-cli credentials --platform android
+```
+
+Elegir el perfil **`production`** → **Push Notifications: Manage your FCM V1 service account key** → **Set up a Google Service Account Key for Push Notifications (FCM V1)** → **Upload a new service account key** → pegar la ruta del JSON del paso 1.5. La credencial queda asociada a la app Android del proyecto EAS `@david.c18/elite-forge` (8494aae2-…), no al perfil: se carga **una sola vez** y sirve para todos los builds. Verificar: repetir `eas credentials`, mismo menú, tiene que mostrar la cuenta de servicio cargada. El backend no cambia: `expo-server-sdk` manda a `exp.host` y Expo reenvía a FCM con esa credencial.
+
+### Paso 4 — Rebuild nativo
+
+- **Sí, hace falta rebuild**: `google-services.json` lo consume el plugin de Gradle de Google Services en tiempo de compilación; ningún OTA/`expo start` lo aplica.
+- **Prebuild: no hace falta correrlo a mano.** `apps/mobile/android` e `ios` están en `.gitignore` (flujo managed): EAS corre `expo prebuild` en la nube en cada build a partir de `app.json` + `app.config.ts`. Si alguna vez se compila **en local**, sí: `npx expo prebuild --clean` primero, porque la carpeta `android/` local que hay en la máquina de David es de un prebuild viejo y no tiene el archivo.
+- **versionCode:** `appVersionSource: remote` + `autoIncrement: true` en el perfil `production` — EAS lo incrementa solo en cada build de producción; no hay que tocar nada. Los perfiles `preview`/`development` no incrementan (APK de instalación manual).
+- **Firma:** sin cambios. La keystore la administra EAS y FCM no exige SHA-1 para push. El `.aab` nuevo se sube a la misma pista de pruebas cerradas de Play Console.
+- Build para los testers: `npx eas-cli build -p android --profile production` (AAB para Play) o `--profile preview` (APK directo).
+
+### Registro del token: cuándo se intenta (antes solo en el login)
+
+`utils/pushNotifications.ts` → `registerPushToken({ prompt })` + `watchPushRegistration()`, enganchados en `AuthContext` con un efecto sobre `authToken`:
+
+| Momento | Quién | `prompt` | Pide permiso |
+|---|---|---|---|
+| Login | `LoginScreen` | `"always"` | Sí, es el momento natural |
+| Arranque con sesión guardada | efecto de `AuthContext` | `"ifUndetermined"` | Solo si nunca se preguntó (si ya lo negó, no se lo molesta en cada apertura) |
+| App vuelve a primer plano | `watchPushRegistration` (AppState `active`) | `"never"` | No; aprovecha si lo activó en Ajustes del sistema |
+| FCM rota el token del dispositivo | `watchPushRegistration` (`addPushTokenListener`) | `"never"`, `force` | No; vuelve a pedir el Expo token y lo registra |
+| Logout | `unregisterPushToken` | — | Borra el token en el backend y limpia el caché local |
+
+Es idempotente dentro de la sesión de JS (`lastRegisteredToken`: mismo token → sin POST) y las llamadas concurrentes comparten la misma promesa (`inFlight`): en el login, `LoginScreen` y el efecto de `AuthContext` disparan casi a la vez y solo hay un diálogo y un POST. El backend hace upsert por `(userId, token)`, así que un registro repetido no duplica filas.
+
+### Permisos: ¿queda muerto si lo niega?
+
+- **Android 13+**: el diálogo se puede volver a mostrar mientras `canAskAgain` sea `true` (una negativa). Tras la segunda negativa el sistema lo bloquea (`canAskAgain: false`) y `requestPermissionsAsync` devuelve `denied` sin mostrar nada: la única vía es **Ajustes del sistema → Apps → Elite Forge → Notificaciones**. Android < 13 no pide permiso (siempre `granted`).
+- **iOS**: el sistema pregunta **una sola vez**; después, solo Ajustes.
+- Con este cambio, si el usuario lo activa en Ajustes, la app lo detecta sola al volver a primer plano y registra el token (antes quedaba muerto hasta el próximo login). Lo que **no** está todavía: un atajo en la app a Ajustes (`Linking.openSettings()`) cuando el toggle "avisarme si falta un jugador cerca" de `ProfileEditScreen` se activa con el permiso negado — implica texto en 7 idiomas; queda anotado como mejora.
+
+### Cómo diagnosticar en producción (el logging del build 4 + este)
+
+- **Teléfono** (`adb logcat | grep "\[push\]"`): `token registrado …XXXXXXXX (prompt=…)` en el camino feliz; si no, uno de: `permiso de notificaciones "denied" (canAskAgain=…)`, `Expo no devolvió token`, `el backend rechazó el token …: <kind>` o `registerPushToken lanzó excepción` (en Android, `Default FirebaseApp is not initialized` = falta `google-services.json` en el build; `MismatchSenderId`/`SenderId mismatch` = el paquete registrado en Firebase no es `com.eliteforge.app`).
+- **Servidor** (`docker compose logs users-service | grep -i push`): `Push token registrado: usuario …, android, …XXXXXXXX` al registrar (nuevo), `Push omitido: … 0 válidos` cuando el destinatario no tiene token, y `Push rechazado por Expo … InvalidCredentials|MismatchSenderId|DeviceNotRegistered|…` cuando Expo no puede entregar (`InvalidCredentials` = falta o está mal la credencial FCM V1 del paso 3). Los últimos 8 caracteres del token permiten cruzar teléfono ↔ `push_tokens` ↔ envío.
+- Prueba end-to-end: dos cuentas, enviar solicitud de amistad desde una; en el log del servidor tiene que aparecer el envío sin "omitido" ni "rechazado" y la notificación en el otro teléfono con la app **cerrada**.
+
+**Pendiente de decisión de producto:** el canal Android `default` se crea con `AndroidImportance.DEFAULT` — la notificación entra en la bandeja sin banner flotante ni sonido "heads-up". Para que una solicitud de amistad "salte", el canal tendría que ser `HIGH`; Android cachea la configuración del canal por instalación, así que el cambio solo aplica a instalaciones nuevas (o a un canal con otro id). No se cambió en esta fase.
+
 ## Notificaciones push: registro del token con rastro (fix 2026-09-07)
 
 `utils/pushNotifications.ts` → `registerPushToken()` (se llama una vez al hacer login) es best-effort: si el usuario niega el permiso, Expo no devuelve token (falta `projectId` de EAS) o el backend rechaza el `POST /api/push-tokens`, **no reintenta ni bloquea** — pero ahora deja un `console.warn("[push] ...")` **fuera de `__DEV__`** con el motivo (antes salía en silencio y solo logueaba la excepción en dev). El comportamiento funcional no cambió; el punto es que "no me llegó la solicitud de amistad" sea diagnosticable desde el log del dispositivo (`adb logcat`) en vez de parecer un bug del backend. Contraparte en el backend: [BACKEND.md](./BACKEND.md#registro-de-cambios) (`NotificationsService.sendToUser` loguea warning cuando el destinatario no tiene tokens).
 
 ## Registro de cambios (sesión de implementación)
+
+### 2026-09-09 — Build 5: push en Android (Firebase/FCM) + registro del token fuera del login
+
+- `app.config.ts`: `android.googleServicesFile = process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json"`; el archivo queda en `.gitignore` de `apps/mobile` y llega al build como variable EAS de tipo file. `eas.json`: cada perfil declara `"environment"` explícito. **Requiere que David genere `google-services.json` y la credencial FCM V1 en Firebase, cargue ambas en EAS y recompile** — pasos exactos en [Notificaciones push en Android](#notificaciones-push-en-android-firebasefcm-y-registro-del-token-build-5-2026-09-09).
+- `pushNotifications.ts`: `registerPushToken({ prompt, force })` con política de diálogo (`always` en login, `ifUndetermined` al arrancar con sesión, `never` al volver a primer plano), caché `lastRegisteredToken` + dedupe de llamadas concurrentes, `console.info` al registrar; nuevo `watchPushRegistration()` (AppState `active` + `addPushTokenListener`). `AuthContext`: efecto sobre `authToken` que registra al arrancar con sesión y mantiene el watch; `LoginScreen` no cambia.
+- Sin cambios de `versionCode` manuales (remoto, autoincremento en `production`) ni de firma. Prebuild solo si se compila en local.
 
 ### 2026-09-09 — Build 4: fixes rápidos de la ronda 1 de testers (build 3, 17 personas)
 

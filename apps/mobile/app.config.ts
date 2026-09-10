@@ -19,6 +19,17 @@ module.exports = ({ config }: ConfigContext): Partial<ExpoConfig> => {
 
   return {
     ...config,
+    android: {
+      ...config.android,
+      // Firebase (FCM) — obligatorio para que expo-notifications genere el
+      // Expo push token en Android; sin este archivo getExpoPushTokenAsync
+      // lanza "Default FirebaseApp is not initialized" y ningún push llega
+      // (testers build 3). El archivo NO se commitea (ver .gitignore): en EAS
+      // llega como variable de entorno de tipo file GOOGLE_SERVICES_JSON
+      // (`eas env:create`), y en local se lee de apps/mobile/google-services.json.
+      // Pasos completos: docs/FRONTEND.md → "Notificaciones push en Android".
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
+    },
     ios: {
       ...config.ios,
       // This privacyManifests is to get you started.

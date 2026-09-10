@@ -90,3 +90,5 @@ web-build/
 # Dependency Graph Visualizations
 app-dependency-graph.svg
 app-dependency-graph.png
+# Firebase (FCM): se provee por EAS como env var de tipo file GOOGLE_SERVICES_JSON, no se commitea
+google-services.json
