@@ -28,6 +28,7 @@ import { TamaguiProvider } from "tamagui"
 
 import { AppAlertProvider } from "./components/AppAlert"
 import { AuthProvider } from "./context/AuthContext"
+import { PendingProvider } from "./context/PendingContext"
 import { initI18n } from "./i18n"
 import tamaguiConfig from "../tamagui.config"
 import { AppNavigator } from "./navigators/AppNavigator"
@@ -127,15 +128,18 @@ export function App() {
         <SystemBars style="light" />
         <KeyboardProvider>
           <AuthProvider>
-            <ThemeProvider>
-              <AppAlertProvider>
-                <AppNavigator
-                  linking={linking}
-                  initialState={initialNavigationState}
-                  onStateChange={onNavigationStateChange}
-                />
-              </AppAlertProvider>
-            </ThemeProvider>
+            {/* Pendientes (Fase B): necesita el token de AuthProvider; llega por contexto al drawer y al botón hamburguesa. */}
+            <PendingProvider>
+              <ThemeProvider>
+                <AppAlertProvider>
+                  <AppNavigator
+                    linking={linking}
+                    initialState={initialNavigationState}
+                    onStateChange={onNavigationStateChange}
+                  />
+                </AppAlertProvider>
+              </ThemeProvider>
+            </PendingProvider>
           </AuthProvider>
         </KeyboardProvider>
       </SafeAreaProvider>

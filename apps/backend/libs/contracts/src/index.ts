@@ -6,6 +6,7 @@ export * from './user-friendships';
 export * from './groups';
 export * from './matches';
 export * from './match-guest-requests';
+export * from './pending';
 export * from './profile-stats';
 export * from './push';
 export * from './push-tokens';

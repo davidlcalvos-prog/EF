@@ -5,13 +5,16 @@ import { Text, XStack, YStack } from "tamagui"
 
 import { EliteForgeLogo } from "@/components/ui"
 import { useAuth } from "@/context/AuthContext"
+import { usePending } from "@/context/PendingContext"
 import { useInteractiveMotion } from "@/hooks/useInteractiveMotion"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
+import { PENDING_KINDS, type PendingKind } from "@/services/api/types"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 import { getUserColor } from "@/utils/avatarColor"
 
 import { FeedAvatar } from "./FeedAvatar"
+import { PendingDot } from "./PendingDot"
 
 export type FeedDrawerItemId =
   | "profile"
@@ -21,6 +24,25 @@ export type FeedDrawerItemId =
   | "nearbyGuestRequests"
   | "tournaments"
   | "reservations"
+
+/**
+ * Qué ítem del drawer enciende cada contador de pendientes (Fase B). Objeto
+ * estático: un contador nuevo = una clave más acá (y en `PendingKind`), sin
+ * tocar ningún componente. Varios contadores pueden apuntar al mismo ítem.
+ */
+export const PENDING_DRAWER_ITEM: Record<PendingKind, FeedDrawerItemId> = {
+  friendRequests: "friends",
+  groupFriendRequests: "groups",
+  matchChallenges: "matches",
+  guestApplications: "matches",
+}
+
+function pendingForItem(counts: Record<PendingKind, number>, itemId: FeedDrawerItemId): number {
+  return PENDING_KINDS.reduce(
+    (acc, kind) => (PENDING_DRAWER_ITEM[kind] === itemId ? acc + counts[kind] : acc),
+    0,
+  )
+}
 
 export interface FeedDrawerProps {
   onClose: () => void
@@ -57,11 +79,14 @@ function DrawerMenuItem({
   label,
   onPress,
   subtitle,
+  pendingCount = 0,
 }: {
   icon: keyof typeof Ionicons.glyphMap
   label: string
   onPress: () => void
   subtitle?: string
+  /** > 0 pinta el punto de pendiente junto al chevron (Fase B). */
+  pendingCount?: number
 }) {
   const motion = useInteractiveMotion("button")
 
@@ -104,7 +129,10 @@ function DrawerMenuItem({
               {subtitle ?? translate("feedDrawer:comingSoon")}
             </Text>
           </YStack>
-          <Ionicons name="chevron-forward" size={18} color={eliteForgeColors.emerald} />
+          <XStack alignItems="center" gap={8}>
+            <PendingDot visible={pendingCount > 0} absolute={false} />
+            <Ionicons name="chevron-forward" size={18} color={eliteForgeColors.emerald} />
+          </XStack>
         </XStack>
       </Animated.View>
     </Pressable>
@@ -114,6 +142,7 @@ function DrawerMenuItem({
 export function FeedDrawer({ onClose, onItemPress, onLogout }: FeedDrawerProps) {
   const { authEmail, authAvatarBase64 } = useAuth()
   const { insets } = useResponsiveLayout()
+  const { counts: pendingCounts } = usePending()
   const logoutMotion = useInteractiveMotion("button")
 
   // Layout: cabecera fija + lista SCROLLEABLE + "Cerrar sesión" fijo al pie
@@ -189,6 +218,7 @@ export function FeedDrawer({ onClose, onItemPress, onLogout }: FeedDrawerProps) 
                           : translate("reservationsScreen:title")
               }
               onPress={() => onItemPress(item.id)}
+              pendingCount={pendingForItem(pendingCounts, item.id)}
             />
           ))}
         </ScrollView>

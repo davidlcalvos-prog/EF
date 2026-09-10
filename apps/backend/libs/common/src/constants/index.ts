@@ -104,6 +104,9 @@ export const MESSAGE_PATTERNS = {
     REGISTER: 'push_tokens.register',
     REMOVE: 'push_tokens.remove',
   },
+  PENDING: {
+    COUNTS: 'pending.counts',
+  },
   TOURNAMENTS: {
     LIST_MINE: 'tournaments.list_mine',
     GET_MINE: 'tournaments.get_mine',

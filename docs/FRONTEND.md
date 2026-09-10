@@ -654,6 +654,49 @@ Generados (mismos nombres que los placeholders de Ignite, así `app.json` no cam
 
 **Lo que NO era la causa** (verificado durante la investigación): los 13 `TextField` y los 7 `Input` (Tamagui, color `$efWhite` fijo en `ui/Input.tsx`) tienen `color` y `placeholderTextColor` explícitos, y el cambio de `parentTheme` `"Light"` → `"Default"` no afecta el color del texto (el default del tema solo aplica cuando `color` no está seteado).
 
+## Indicadores de pendientes (Fase B, 2026-09-10)
+
+Punto naranja en el botón hamburguesa del feed cuando hay algo que resolver, y sobre el ítem del drawer correspondiente al abrirlo (Amigos, Grupos, Partidos).
+
+**Estado — `context/pendingStore.ts` + `context/PendingContext.tsx`.** El store es puro (sin React, testeado en `pendingStore.test.ts`, 13 casos) y `PendingProvider` lo expone con `useSyncExternalStore`. Vive en `app.tsx` dentro de `AuthProvider`. `usePending()` devuelve `{ counts, total, refresh, bump }`; fuera del provider devuelve ceros y no-ops (showroom/tests no rompen).
+
+- `refresh({ force? })`: deduplicado (las llamadas concurrentes comparten la promesa en vuelo) y con **throttle de 60 s** salvo `force`. Nunca rechaza. Si `GET /api/me/pending` falla, se conservan las cifras anteriores y **no hay estado de error**: el punto no aparece y la UI no se entera. Claves desconocidas del backend se ignoran; valores inválidos quedan en 0.
+- `bump(kind, delta)`: ajuste optimista, nunca baja de 0. Siempre seguido de `refresh({ force: true })` por quien lo llama, para corregir con el dato real.
+- Sin sesión (`authToken` vacío) el store se resetea a cero y **no se llama al endpoint**; una respuesta de la sesión anterior que llegue tarde se descarta (contador de generación).
+
+**Cuándo se refresca — sin polling, nadie llama por tiempo:**
+
+| Disparador | Dónde | Llamada |
+|---|---|---|
+| Arranque con sesión / login | efecto de `PendingProvider` sobre `authToken` | `refresh({ force })` |
+| Vuelta a primer plano | `AppState` → `active` | `refresh()` (respeta el throttle) |
+| Push recibido con la app abierta | `addPushReceivedListener` | si `data.pending` es una clave válida → `bump(+1)`; siempre `refresh({ force })` |
+| Tap en un push | `addPushResponseListener` (segundo listener, además del despachador de la Fase A) | `refresh({ force })` |
+| El usuario resuelve un pendiente | `useFriends.accept/remove` (solo recibidas), `GroupFriendsScreen` aceptar/rechazar, `MatchDetailScreen` aceptar/rechazar desafío y aceptar/rechazar postulante | `bump(-1)` + `refresh({ force })` |
+
+**UI — de contexto, no por props.** `FeedMenuButton` lee `usePending().total` y pinta `PendingDot` en su esquina; `FeedDrawer` lee `counts` y pasa `pendingCount` a cada `DrawerMenuItem`. `FeedScreen` y `FeedNavbar` no cambian ni saben del contador.
+
+**Mapeo clave → ítem, objeto estático** (`FeedDrawer.tsx`):
+
+```ts
+export const PENDING_DRAWER_ITEM: Record<PendingKind, FeedDrawerItemId> = {
+  friendRequests: "friends",
+  groupFriendRequests: "groups",
+  matchChallenges: "matches",
+  guestApplications: "matches",
+}
+```
+
+Varias claves pueden apuntar al mismo ítem (Partidos suma desafíos y postulantes).
+
+**Color: naranja `#FF8C00`, no cian.** El cian/esmeralda ya es el color de todos los íconos y chevrons del navbar y del drawer, así que un punto cian se lee como decoración más; el naranja es el color de "atención" de la marca (mitad del degradado, botón de cerrar sesión), contrasta ~7,5:1 sobre carbón y se distingue de los íconos cian de al lado. `PendingDot` lleva borde carbón para no fundirse con el ícono cuando se superpone.
+
+**Cómo agregar un contador nuevo sin tocar componentes:** (1) la clave en `PendingKind` y `PENDING_KINDS` (`services/api/types.ts`, calcado del contrato); (2) su ítem en `PENDING_DRAWER_ITEM`; (3) en la pantalla que resuelve ese pendiente, `bump(clave, -1)` + `refresh({ force: true })` tras la acción; (4) en el backend, el `count` y el `pending: '<clave>'` en el push (ver [BACKEND.md](./BACKEND.md#pendientes-get-apimepending-fase-b-indicadores-en-el-drawer--2026-09-10)). `FeedMenuButton`, `FeedDrawer`, `DrawerMenuItem` y `PendingProvider` no cambian.
+
+**La pestaña "Solicitudes" de Amigos se dejó como está** (`FriendsScreen.tsx`, badge = `incoming.length` de `useFriends`). Se evaluó pasarla al contexto y no conviene: ese badge etiqueta la lista que la pantalla acaba de cargar, así que es la cifra exacta de lo que el usuario ve; el contexto es optimista y con throttle, y podría discrepar unos segundos de la lista de al lado. Además `useFriends` ya empuja `bump`/`refresh` al aceptar o rechazar, así que las dos cifras convergen solas. Cambiarlo agregaría una dependencia de red a un número que hoy sale de datos locales, sin beneficio. Lo que sí queda anotado como deuda de esa pantalla (no de esta fase): carga tres listas completas en paralelo para pintar la pestaña.
+
+**QA en dispositivo (pendiente, build 6):** (a) recibir una solicitud de amistad con la app abierta → punto en la hamburguesa y en "Amigos" sin tocar nada; (b) aceptarla → el punto desaparece; (c) recibirla con la app cerrada → al abrir, punto tras el primer `refresh`; (d) logout → sin punto; login con otra cuenta → punto según esa cuenta; (e) sin red → sin punto, sin error.
+
 ## Deep linking desde una notificación (Fase A, 2026-09-10)
 
 **Antes:** tres listeners por tipo en `pushNotifications.ts` (`matchId` → partido, `match_guest_request` → Cerca de mí, `reservation_status` → reserva). La solicitud de amistad no coincidía con ninguno y el tap abría el Feed; con la app **cerrada** ningún tipo navegaba (el listener no reproduce la respuesta que lanzó el proceso, y `navigate()` descartaba en silencio si el contenedor no estaba listo); sin sesión, la ruta no existía y se perdía el destino.
@@ -768,6 +811,15 @@ Es idempotente dentro de la sesión de JS (`lastRegisteredToken`: mismo token �
 `utils/pushNotifications.ts` → `registerPushToken()` (se llama una vez al hacer login) es best-effort: si el usuario niega el permiso, Expo no devuelve token (falta `projectId` de EAS) o el backend rechaza el `POST /api/push-tokens`, **no reintenta ni bloquea** — pero ahora deja un `console.warn("[push] ...")` **fuera de `__DEV__`** con el motivo (antes salía en silencio y solo logueaba la excepción en dev). El comportamiento funcional no cambió; el punto es que "no me llegó la solicitud de amistad" sea diagnosticable desde el log del dispositivo (`adb logcat`) en vez de parecer un bug del backend. Contraparte en el backend: [BACKEND.md](./BACKEND.md#registro-de-cambios) (`NotificationsService.sendToUser` loguea warning cuando el destinatario no tiene tokens).
 
 ## Registro de cambios (sesión de implementación)
+
+### 2026-09-10 — Fase B: punto de pendientes en la hamburguesa y el drawer
+
+- `context/pendingStore.ts` (store puro: dedupe, throttle 60 s, `force`, `bump` optimista, sin estado de error, reset por generación) + `context/PendingContext.tsx` (`PendingProvider` en `app.tsx` dentro de `AuthProvider`; `usePending()` con valor por defecto fuera del provider). Tests: `pendingStore.test.ts` (13 casos).
+- `api.getPendingCounts()` → `GET /api/me/pending`; tipos `PendingCountsApiDto`/`PENDING_KINDS` en `types.ts`.
+- `pushNotifications.ts`: `addPushReceivedListener` (push en foreground).
+- `PendingDot` (naranja, borde carbón); `FeedMenuButton` lo pinta desde el contexto; `FeedDrawer` gana `PENDING_DRAWER_ITEM` (objeto estático) y `DrawerMenuItem.pendingCount`. `FeedScreen`/`FeedNavbar` sin cambios.
+- `useFriends`, `GroupFriendsScreen`, `MatchDetailScreen`: `bump(-1)` + `refresh({ force })` al resolver un pendiente.
+- Ver [Indicadores de pendientes](#indicadores-de-pendientes-fase-b-2026-09-10). Contraparte: [BACKEND.md](./BACKEND.md#pendientes-get-apimepending-fase-b-indicadores-en-el-drawer--2026-09-10).
 
 ### 2026-09-10 — Fase A: deep linking desde notificaciones con un solo despachador
 

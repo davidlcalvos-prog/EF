@@ -585,3 +585,15 @@ export type PushData = {
   /** Fase B (indicadores de pendientes). La Fase A lo ignora. */
   pending?: PendingKind
 }
+
+// ── Pendientes (Fase B, indicadores en el drawer) ───────────────────────────
+// Calcado de libs/contracts/src/pending. Claves = PendingKind del contrato PushData.
+
+export const PENDING_KINDS: readonly PendingKind[] = [
+  "friendRequests",
+  "groupFriendRequests",
+  "matchChallenges",
+  "guestApplications",
+] as const
+
+export type PendingCountsApiDto = Record<PendingKind, number>

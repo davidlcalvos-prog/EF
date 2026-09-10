@@ -29,6 +29,7 @@ import type {
   MatchSummaryApiDto,
   MatchTypeApi,
   MyReservationApiDto,
+  PendingCountsApiDto,
   TeamAssignmentWarningApiDto,
   PostApiDto,
   PostMediaType,
@@ -1403,6 +1404,25 @@ export class Api {
     }
     if (!response.data) return { kind: "bad-data" }
     return { kind: "ok", tournament: response.data }
+  }
+
+  /**
+   * Conteo de pendientes del usuario (Fase B): cuatro números, nunca listas.
+   * Lo consume PendingContext; si falla, el punto del drawer simplemente no
+   * aparece (nunca se muestra error por esto).
+   */
+  async getPendingCounts(): Promise<
+    { kind: "ok"; counts: PendingCountsApiDto } | GeneralApiProblem
+  > {
+    const response = await this.apisauce.get<PendingCountsApiDto>("me/pending")
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", counts: response.data }
   }
 
   /** Registra el push token de este dispositivo contra el usuario autenticado. */

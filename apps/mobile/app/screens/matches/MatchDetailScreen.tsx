@@ -5,6 +5,7 @@ import { Text, XStack, YStack } from "tamagui"
 
 import { useAppAlert } from "@/components/AppAlert"
 import { useAuth } from "@/context/AuthContext"
+import { usePending } from "@/context/PendingContext"
 import type { PlayerPositionId } from "@/data/suggestPlayerPosition"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
@@ -155,6 +156,7 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
   const { matchId } = route.params
   const { authUserId } = useAuth()
   const showAlert = useAppAlert()
+  const pending = usePending()
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
   const {
     match,
@@ -385,12 +387,16 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
             setBusy(false)
             if (result.kind !== "ok") {
               showAlert(translate("matchesScreen:actionError"), describeProblem(result))
+              return
             }
+            // Desafío respondido (Fase B): baja el punto del drawer y corrige con el dato real.
+            pending.bump("matchChallenges", -1)
+            void pending.refresh({ force: true })
           },
         },
       ],
     )
-  }, [accept, showAlert])
+  }, [accept, pending, showAlert])
 
   const handleReject = useCallback(() => {
     showAlert(
@@ -407,12 +413,15 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
             setBusy(false)
             if (result.kind !== "ok") {
               showAlert(translate("matchesScreen:actionError"), describeProblem(result))
+              return
             }
+            pending.bump("matchChallenges", -1)
+            void pending.refresh({ force: true })
           },
         },
       ],
     )
-  }, [reject, showAlert])
+  }, [pending, reject, showAlert])
 
   const runRandomizeTeams = useCallback(async () => {
     setBusy(true)
@@ -492,13 +501,16 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
     async (applicationId: string) => {
       const result = await guestRequest.accept(applicationId)
       if (result.kind === "ok") {
+        // Postulación resuelta (Fase B).
+        pending.bump("guestApplications", -1)
+        void pending.refresh({ force: true })
         await refresh()
         return true
       }
       showAlert(translate("matchesScreen:actionError"), describeProblem(result))
       return false
     },
-    [guestRequest, refresh, showAlert],
+    [guestRequest, pending, refresh, showAlert],
   )
 
   const handleRejectApplicant = useCallback(
@@ -508,9 +520,11 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
         showAlert(translate("matchesScreen:actionError"), describeProblem(result))
         return false
       }
+      pending.bump("guestApplications", -1)
+      void pending.refresh({ force: true })
       return true
     },
-    [guestRequest, showAlert],
+    [guestRequest, pending, showAlert],
   )
 
   return (

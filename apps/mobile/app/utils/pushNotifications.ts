@@ -177,6 +177,16 @@ export function addPushResponseListener(onData: (data: unknown) => void) {
 }
 
 /**
+ * Push RECIBIDO con la app abierta (no tocado). Lo usa PendingContext para
+ * el bump optimista + refresh de los contadores (Fase B).
+ */
+export function addPushReceivedListener(onData: (data: unknown) => void) {
+  return Notifications.addNotificationReceivedListener((notification) => {
+    onData(notification.request.content.data)
+  })
+}
+
+/**
  * Tap con la app CERRADA: el sistema lanza el proceso y el listener de arriba
  * NO recibe esa respuesta (expo-notifications no la reproduce). Hay que
  * leerla explícitamente al arrancar y limpiarla para no repetirla en el
