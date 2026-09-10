@@ -5,7 +5,9 @@ import { PushTokenRepository } from '../push-tokens/repositories/push-token.repo
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
-  private readonly expo = new Expo();
+  // EXPO_ACCESS_TOKEN llega por docker-compose.prod.yml; hasta el fix del
+  // 2026-09-09 la variable se inyectaba pero `new Expo()` no la leía.
+  private readonly expo = new Expo({ accessToken: process.env.EXPO_ACCESS_TOKEN || undefined });
 
   constructor(private readonly pushTokenRepository: PushTokenRepository) {}
 
@@ -43,24 +45,39 @@ export class NotificationsService {
     for (const chunk of chunks) {
       try {
         const tickets = await this.expo.sendPushNotificationsAsync(chunk);
-        await this.cleanupInvalidTokens(chunk, tickets);
+        await this.handleTickets(userId, title, chunk, tickets);
       } catch (error) {
         this.logger.error(`Failed to send push notification chunk: ${String(error)}`);
       }
     }
   }
 
-  private async cleanupInvalidTokens(
+  /**
+   * Todo ticket con `status: 'error'` queda en el log (antes solo se miraba
+   * DeviceNotRegistered y el resto — InvalidCredentials/MismatchSenderId por
+   * FCM sin configurar, MessageRateExceeded, etc. — se descartaba en silencio:
+   * "no me llega la notificación" sin ninguna pista en el servidor, testers
+   * build 3). DeviceNotRegistered además borra el token.
+   */
+  private async handleTickets(
+    userId: string,
+    title: string,
     chunk: ExpoPushMessage[],
     tickets: ExpoPushTicket[],
   ): Promise<void> {
     await Promise.all(
       tickets.map(async (ticket, index) => {
-        if (ticket.status === 'error' && ticket.details?.error === 'DeviceNotRegistered') {
-          const token = chunk[index]?.to;
-          if (typeof token === 'string') {
-            await this.pushTokenRepository.removeByTokenValue(token);
-          }
+        if (ticket.status !== 'error') return;
+
+        const token = chunk[index]?.to;
+        const tokenLabel = typeof token === 'string' ? `…${token.slice(-8)}` : 'token desconocido';
+        const code = ticket.details?.error ?? 'sin código';
+        this.logger.warn(
+          `Push rechazado por Expo para el usuario ${userId} (${tokenLabel}): ${code} — ${ticket.message} — "${title}"`,
+        );
+
+        if (code === 'DeviceNotRegistered' && typeof token === 'string') {
+          await this.pushTokenRepository.removeByTokenValue(token);
         }
       }),
     );

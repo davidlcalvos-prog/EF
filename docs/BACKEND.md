@@ -444,6 +444,13 @@ Pendientes (no implementados aún):
 
 ## Registro de cambios
 
+### 2026-09-09 — Push: tickets de error de Expo dejan de descartarse en silencio (testers build 3, Grupo E1)
+
+- `NotificationsService` (users-service y venues-service, copias idénticas): `cleanupInvalidTokens` solo miraba `DeviceNotRegistered`; cualquier otro ticket con `status: 'error'` — `InvalidCredentials`/`MismatchSenderId` (FCM sin configurar en EAS), `MessageRateExceeded`, etc. — se descartaba sin log, así que "no me llega la notificación" no tenía ninguna pista del lado del servidor. Ahora `handleTickets` loguea un `warn` por cada ticket de error con `userId`, últimos 8 caracteres del token, código, mensaje de Expo y título del aviso; `DeviceNotRegistered` además sigue borrando el token.
+- `EXPO_ACCESS_TOKEN` se inyecta desde `docker-compose.prod.yml` pero `new Expo()` no lo leía; ahora `new Expo({ accessToken })` (sin la variable sigue funcionando igual que antes).
+- La copia de venues-service no tenía el `warn` de "Push omitido" del 2026-09-07 (había divergido); quedan iguales otra vez.
+- **Lo que NO cambia acá:** la causa probable de que no llegue ningún push en Android (falta `google-services.json` / `googleServicesFile` en `apps/mobile/app.json` → `getExpoPushTokenAsync` lanza y nunca se registra el token) requiere configurar Firebase + credencial FCM V1 en EAS y recompilar la app: fase aparte. Con este cambio, cuando eso se haga, cualquier fallo de entrega queda visible con `docker compose logs users-service | grep -i "push"`.
+
 ### 2026-09-07 — Push omitido por falta de token deja de ser silencioso
 
 - `NotificationsService.sendToUser` (users-service) sigue siendo best-effort — si el destinatario no tiene tokens Expo válidos **no envía nada**, igual que antes — pero ahora loguea un `warn` con el `userId`, cuántos tokens hay en DB y el título del aviso ("Push omitido: el usuario … no tiene tokens Expo registrados …"). Hallazgo de QA: una solicitud de amistad "que no llega" se creaba bien en `user_friendships` (verificado end-to-end en local: `POST /api/friendships` → fila `pending` → `GET /api/friendships?filter=pending_received` del destinatario la devuelve); lo que faltaba era el push, y sin log era indistinguible de un fallo real. Para confirmar en producción: `docker compose logs users-service | grep "Push omitido"`. Contraparte en el cliente: [FRONTEND.md](./FRONTEND.md#notificaciones-push-registro-del-token-con-rastro-fix-2026-09-07).
