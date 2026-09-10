@@ -331,9 +331,8 @@ export function FeedComposeModal({ visible, onClose, onPost }: FeedComposeModalP
             borderTopWidth={1}
             borderTopColor="rgba(85,85,85,0.7)"
           >
+            {/* Foto y Video quitados a propósito: no existe subida de media (ver FeedComposer). */}
             <XStack gap={6}>
-              <AttachChip icon="image-outline" label={translate("feedScreen:composerPhoto")} />
-              <AttachChip icon="videocam-outline" label={translate("feedScreen:composerVideo")} />
               <AttachChip icon="football-outline" label={translate("feedScreen:composerMatch")} />
             </XStack>
           </YStack>
