@@ -1,6 +1,6 @@
-import { useCallback, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { ActivityIndicator, Pressable, RefreshControl } from "react-native"
-import { useNavigation } from "@react-navigation/native"
+import { useFocusEffect, useNavigation } from "@react-navigation/native"
 import { Drawer } from "react-native-drawer-layout"
 import Animated, { useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated"
 import { Text, XStack, YStack } from "tamagui"
@@ -45,6 +45,21 @@ export function FeedScreen(_props: AppStackScreenProps<"Feed">) {
     deletePost,
     bumpCommentsCount,
   } = useFeed()
+
+  // Recarga silenciosa al VOLVER al Feed (Perfil, Grupos, Amigos… quedan
+  // apilados encima y esta pantalla no se desmonta, así que los posts nuevos
+  // de otros nunca aparecían sin tirar hacia abajo). El primer foco coincide
+  // con el montaje, donde useFeed ya dispara la carga inicial — se lo saltea.
+  const hasFocusedOnceRef = useRef(false)
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasFocusedOnceRef.current) {
+        hasFocusedOnceRef.current = true
+        return
+      }
+      refresh({ silent: true })
+    }, [refresh]),
+  )
 
   const onScroll = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -155,7 +170,7 @@ export function FeedScreen(_props: AppStackScreenProps<"Feed">) {
           <Text color="rgba(255,255,255,0.6)" fontSize={14} textAlign="center">
             {translate("feedScreen:loadError")}
           </Text>
-          <Pressable onPress={refresh} accessibilityRole="button">
+          <Pressable onPress={() => refresh()} accessibilityRole="button">
             <XStack
               backgroundColor={eliteForgeColors.emerald}
               borderRadius={12}

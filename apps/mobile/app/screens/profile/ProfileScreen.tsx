@@ -78,7 +78,7 @@ function getUserColor(seed: string) {
 }
 
 export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
-  const { authEmail, authToken, authUserId, setAuthAvatarBase64 } = useAuth()
+  const { authEmail, authToken, authUserId, authAvatarBase64, setAuthAvatarBase64 } = useAuth()
   const showAlert = useAppAlert()
   const userKey = authEmail ?? "guest"
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
@@ -251,6 +251,7 @@ export function ProfileScreen({ navigation }: AppStackScreenProps<"Profile">) {
             email={displayEmail}
             avatarColor={getUserColor(avatarSeed)}
             avatarUri={profile.avatarUri}
+            avatarBase64={authAvatarBase64}
             tagId={getTagIdFromEmail(authEmail)}
             positionLabel={positionLabel}
             positionBadge={positionBadge}

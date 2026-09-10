@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react"
 import { useMMKVString } from "react-native-mmkv"
@@ -72,6 +73,16 @@ export const AuthProvider: FC<PropsWithChildren<AuthProviderProps>> = ({ childre
     setAuthUserId(undefined)
     setAuthAvatarBase64(null)
   }, [authToken, setAuthEmail, setAuthToken, setAuthUserId])
+
+  // Sesión vencida (401 en un endpoint protegido con token guardado, ver el
+  // monitor en services/api): mismo camino que el logout manual. Ref para que
+  // el handler registrado una sola vez use siempre el `logout` vigente.
+  const logoutRef = useRef(logout)
+  logoutRef.current = logout
+  useEffect(() => {
+    api.setUnauthorizedHandler(() => logoutRef.current())
+    return () => api.setUnauthorizedHandler(undefined)
+  }, [])
 
   const validationError = useMemo(() => {
     if (!authEmail || authEmail.length === 0) return "can't be blank"

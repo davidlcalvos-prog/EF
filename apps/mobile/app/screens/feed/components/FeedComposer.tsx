@@ -84,17 +84,16 @@ export function FeedComposer({ onPress }: FeedComposerProps) {
           </YStack>
         </XStack>
 
+        {/*
+         * Foto y Video se quitaron a propósito (testers build 3: "publicar
+         * imágenes y videos no funciona"): no existe subida de media — ni
+         * picker en el feed, ni endpoint, ni almacenamiento; el backend solo
+         * acepta `mediaUrl` como URL y el gateway limita el JSON a 1 MB.
+         * Volver a mostrarlos SOLO cuando exista la fase de media real.
+         * Las claves i18n `composerPhoto`/`composerVideo` se conservan para
+         * ese momento.
+         */}
         <XStack gap={4} justifyContent="space-around">
-          <ComposerAction
-            icon="image-outline"
-            label={translate("feedScreen:composerPhoto")}
-            onPress={onPress}
-          />
-          <ComposerAction
-            icon="videocam-outline"
-            label={translate("feedScreen:composerVideo")}
-            onPress={onPress}
-          />
           <ComposerAction
             icon="football-outline"
             label={translate("feedScreen:composerMatch")}

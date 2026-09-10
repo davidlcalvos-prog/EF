@@ -27,7 +27,7 @@ function getUserColor(seed: string) {
 }
 
 export function ProfileEditScreen({ navigation }: AppStackScreenProps<"ProfileEdit">) {
-  const { authEmail, authUserId } = useAuth()
+  const { authEmail, authUserId, authAvatarBase64 } = useAuth()
   const showAlert = useAppAlert()
   const userKey = authEmail ?? "guest"
   const { profile, saveFullProfile } = usePlayerProfile(userKey, authEmail)
@@ -147,6 +147,7 @@ export function ProfileEditScreen({ navigation }: AppStackScreenProps<"ProfileEd
                 color={getUserColor(displaySeed)}
                 size={96}
                 imageUri={form.avatarUri}
+                photoBase64={authAvatarBase64}
                 onPress={handlePickImage}
                 showEditBadge
               />

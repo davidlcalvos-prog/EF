@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Dimensions,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -33,8 +32,27 @@ const SHEET_HEIGHT_RESTING = 236
 const SHEET_HEIGHT_KEYBOARD = 200
 /** Nunca más del 38% de la pantalla */
 const SHEET_MAX_RATIO = 0.38
-/** Holgura extra sobre el teclado para que no se corten Foto/Video/Partido */
+/** Holgura extra sobre el teclado para que no se corte la fila de adjuntos */
 const KEYBOARD_BOTTOM_GAP = 22
+/** Mismos umbrales que `useResponsiveLayout`, pero medidos sobre la pantalla física (ver abajo). */
+const SMALL_SCREEN_HEIGHT = 700
+const SMALL_SCREEN_WIDTH = 360
+
+/*
+ * TECLADO — UNA SOLA FUENTE DE LAYOUT. NO ENVOLVER EN KeyboardAvoidingView.
+ *
+ * Este modal posiciona el sheet a mano: escucha `keyboardDidShow`/`Hide`,
+ * guarda la altura del teclado y ancla el sheet (`position: "absolute"`) a
+ * `bottom: keyboardHeight + KEYBOARD_BOTTOM_GAP`. Es la excepción documentada
+ * al patrón "todo modal con TextField lleva un KeyboardAvoidingView raíz"
+ * (FRONTEND.md → Teclado en modales). En la ronda de QA del 2026-09-05 se le
+ * agregó ese KAV encima sin quitar el manejo propio: el KAV (behavior
+ * "height") encogía el contenedor una altura de teclado y el sheet sumaba
+ * otra, así que quedaba a 2× teclado del fondo y "rebotaba" con cada
+ * `keyboardDidShow` repetido de Android (regresión reportada por testers,
+ * build 3). Si hace falta cambiar cómo se acomoda al teclado, tocar ESTE
+ * mecanismo — nunca sumar otro.
+ */
 
 function getUserDisplayName(email?: string) {
   if (!email) return translate("feedScreen:guestUser")
@@ -71,14 +89,26 @@ function AttachChip({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; lab
 
 export function FeedComposeModal({ visible, onClose, onPost }: FeedComposeModalProps) {
   const { authEmail, authAvatarBase64 } = useAuth()
-  const { insets, isSmallScreen } = useResponsiveLayout()
+  const { insets } = useResponsiveLayout()
   const [draft, setDraft] = useState("")
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const [posting, setPosting] = useState(false)
   const [error, setError] = useState(false)
 
-  /** Altura estable de pantalla (no se encoge al abrir el teclado → evita doble offset) */
-  const screenHeight = useMemo(() => Dimensions.get("screen").height, [])
+  /**
+   * Medidas estables de pantalla física: la "window" de RN se encoge al abrir
+   * el teclado en Android, así que `isSmallScreen` de `useResponsiveLayout`
+   * cambiaba de valor con cada evento de teclado y `sheetHeight` se
+   * recalculaba dos veces por evento (otra fuente de rebote). Acá el único
+   * disparador de layout es `keyboardHeight`.
+   */
+  const { screenHeight, isSmallScreen } = useMemo(() => {
+    const { width, height } = Dimensions.get("screen")
+    return {
+      screenHeight: height,
+      isSmallScreen: height < SMALL_SCREEN_HEIGHT || width < SMALL_SCREEN_WIDTH,
+    }
+  }, [])
 
   useEffect(() => {
     if (!visible) {
@@ -158,10 +188,8 @@ export function FeedComposeModal({ visible, onClose, onPost }: FeedComposeModalP
       onRequestClose={handleClose}
       statusBarTranslucent
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-      >
+      {/* View plana a propósito — ver el comentario de cabecera: NO KeyboardAvoidingView */}
+      <View style={{ flex: 1 }}>
         {/* Fondo atenuado: siempre se ve el feed (~62%+ sin teclado) */}
         <Pressable
           style={{
@@ -303,14 +331,13 @@ export function FeedComposeModal({ visible, onClose, onPost }: FeedComposeModalP
             borderTopWidth={1}
             borderTopColor="rgba(85,85,85,0.7)"
           >
+            {/* Foto y Video quitados a propósito: no existe subida de media (ver FeedComposer). */}
             <XStack gap={6}>
-              <AttachChip icon="image-outline" label={translate("feedScreen:composerPhoto")} />
-              <AttachChip icon="videocam-outline" label={translate("feedScreen:composerVideo")} />
               <AttachChip icon="football-outline" label={translate("feedScreen:composerMatch")} />
             </XStack>
           </YStack>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   )
 }

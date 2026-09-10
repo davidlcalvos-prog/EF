@@ -14,6 +14,8 @@ export interface ProfileHeaderProps {
   email?: string
   avatarColor: string
   avatarUri?: string | null
+  /** Foto del servidor como respaldo cuando no hay `avatarUri` local (ver `ProfileAvatar`). */
+  avatarBase64?: string | null
   tagId: string
   positionLabel: string
   positionBadge?: "favorite" | "suggested" | "default"
@@ -28,6 +30,7 @@ export function ProfileHeader({
   email,
   avatarColor,
   avatarUri,
+  avatarBase64,
   tagId,
   positionLabel,
   positionBadge = "default",
@@ -91,6 +94,7 @@ export function ProfileHeader({
           color={avatarColor}
           size={72}
           imageUri={avatarUri}
+          photoBase64={avatarBase64}
           onPress={onEditAvatar}
           showEditBadge={Boolean(onEditAvatar)}
         />
