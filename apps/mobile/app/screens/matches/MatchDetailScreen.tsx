@@ -181,6 +181,18 @@ export function MatchDetailScreen({ route, navigation }: AppStackScreenProps<"Ma
   const canManageGuestRequest = isOriginLeader && match?.type === "internal"
   const guestRequest = useMatchGuestRequest(matchId, canManageGuestRequest)
 
+  // Deep link del push "nuevo postulante a comodín" (utils/pushNavigation.ts):
+  // abre la lista de postulantes apenas la vacante esté cargada, y consume el
+  // param para que no se reabra al volver a esta pantalla. Si la vacante ya
+  // no está abierta (destino inexistente), no hace nada: queda el detalle.
+  const openApplicantsParam = route.params.openApplicants === true
+  useEffect(() => {
+    if (!openApplicantsParam || !canManageGuestRequest) return
+    if (guestRequest.request?.status !== "open") return
+    setApplicantsModalVisible(true)
+    navigation.setParams({ openApplicants: undefined })
+  }, [openApplicantsParam, canManageGuestRequest, guestRequest.request?.status, navigation])
+
   const checkGroupMembership = useCallback(
     async (groupId: string) => {
       if (!authUserId) return { isMember: false, isLeader: false }

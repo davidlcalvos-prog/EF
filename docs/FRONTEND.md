@@ -654,6 +654,36 @@ Generados (mismos nombres que los placeholders de Ignite, así `app.json` no cam
 
 **Lo que NO era la causa** (verificado durante la investigación): los 13 `TextField` y los 7 `Input` (Tamagui, color `$efWhite` fijo en `ui/Input.tsx`) tienen `color` y `placeholderTextColor` explícitos, y el cambio de `parentTheme` `"Light"` → `"Default"` no afecta el color del texto (el default del tema solo aplica cuando `color` no está seteado).
 
+## Deep linking desde una notificación (Fase A, 2026-09-10)
+
+**Antes:** tres listeners por tipo en `pushNotifications.ts` (`matchId` → partido, `match_guest_request` → Cerca de mí, `reservation_status` → reserva). La solicitud de amistad no coincidía con ninguno y el tap abría el Feed; con la app **cerrada** ningún tipo navegaba (el listener no reproduce la respuesta que lanzó el proceso, y `navigate()` descartaba en silencio si el contenedor no estaba listo); sin sesión, la ruta no existía y se perdía el destino.
+
+**Ahora — un solo despachador, `utils/pushNavigation.ts`:**
+
+1. **Contrato.** El backend manda `data: PushData` (`services/api/types.ts`, calcado de `libs/contracts/src/push`): `{ v: 1, type, screen?, params?, pending? }`. El destino lo declara el backend; la app no lo deduce del `type`.
+2. **Lista blanca.** `PUSH_SCREENS` mapea cada `PushScreen` permitida (`Feed`, `Friends`, `MatchDetail`, `NearbyGuestRequests`, `ReservationDetail`, `GroupDetail`) a un conversor que transforma los params del push (siempre strings) en los params tipados de la ruta y devuelve `null` si falta algo imprescindible. `resolvePushTarget(data)` valida `v`, `screen ∈ PUSH_SCREENS` y los params; **nunca se navega a un `screen` que no esté en la lista**, venga de donde venga (`"Login"`, `"ProfileEdit"`, `"__proto__"` → null, cubierto por tests).
+3. **Cola.** `dispatchPushNavigation` navega solo si `navigationRef.isReady()` **y la ruta existe en el estado raíz** (la rama autenticada del `AppStack` está montada). Si no, guarda el destino (solo el último, en memoria) y lo consumen `flushPendingPushNavigation()` desde `AppNavigator` (`onReady` del `NavigationContainer`) y desde `AppStack` (efecto sobre `isAuthenticated`: login después del tap). `logout` la descarta (`clearPendingPushNavigation`) para no arrastrar un destino a otra sesión.
+4. **App cerrada.** `consumeLaunchNotificationData()` (`pushNotifications.ts`) lee `Notifications.getLastNotificationResponse()` una vez al montar `App` y lo limpia con `clearLastNotificationResponseAsync()` para no repetirlo en el próximo arranque; el `data` pasa por el mismo `handlePushResponse` → cola → `onReady`.
+5. **Abierta / segundo plano.** `addPushResponseListener(handlePushResponse)`, único listener de `addNotificationResponseReceivedListener`.
+6. **Compatibilidad.** Payload sin `v` (backend anterior a la Fase A) → `LEGACY_PUSH_MAP` traduce `type` + ids al nivel raíz (y `matchId` solo = recordatorio de 30 min) al contrato. En el otro sentido, el backend espeja `matchId`/`reservationId` al nivel raíz para builds ≤ 5 (ver [BACKEND.md](./BACKEND.md#notificaciones-push-contrato-pushdata-fase-a-deep-linking--2026-09-10)). Ambos son temporales.
+7. **Destinos inexistentes.** El despachador **siempre navega** si el `data` es válido; decide la pantalla: `MatchDetail` y `ReservationDetail` ya muestran "no encontrado" + volver; `Friends` con la pestaña Solicitudes vacía si la solicitud ya se resolvió; `NearbyGuestRequests` simplemente no lista la vacante cerrada. No se consulta la API antes de navegar.
+
+**Params nuevos de ruta** (`navigationTypes.ts`): `Friends: { initialTab?: "requests" }` — `FriendsScreen` arranca en esa pestaña y reacciona si el param cambia con la pantalla ya montada; `MatchDetail: { matchId; openApplicants?: boolean }` — `MatchDetailScreen` abre `GuestApplicantsModal` apenas la vacante carga (solo si el usuario puede gestionarla y la vacante sigue abierta) y consume el param con `setParams` para que no se reabra al volver.
+
+**Cómo agregar un tipo nuevo SIN tocar la app:** en el backend, `sendToUser(..., { v: 1, type: '<nuevo>', screen: '<una de PushScreen>', params: {...} })`. Si el `screen` ya está en `PUSH_SCREENS`, la app lo navega tal cual. La app solo cambia cuando el destino es una **pantalla nueva** (agregar la entrada a `PUSH_SCREENS` con su conversor de params, y el literal a `PushScreen` en `types.ts` y en el contrato del backend) o cuando una pantalla existente necesita un param que hoy no acepta (agregarlo a `navigationTypes.ts` y al conversor).
+
+**Cómo probar sin mandar un push real:** Reactotron → comando **Simulate push tap** (`pushTap`) con el `data` en JSON, por ejemplo `{"v":1,"type":"friendship_request","screen":"Friends","params":{"initialTab":"requests"}}`. Pasa por el mismo despachador que producción (lista blanca + cola), así que sirve para probar destinos, params inválidos y el caso sin sesión (ejecutarlo en Login: queda en cola y navega al loguearse).
+
+**Matriz de QA en dispositivo (pendiente de correr en el build 6, no se pudo en la sesión de implementación):**
+
+| Estado de la app | Con sesión | Sin sesión (logout previo) |
+|---|---|---|
+| Abierta | tap → navega en el acto | tap → cola → login → navega |
+| Segundo plano | tap → navega al volver | tap → cola → login → navega |
+| Cerrada (proceso muerto) | tap → arranca → `onReady` → navega | tap → arranca en Login → cola → login → navega |
+
+Para los cuatro destinos: amistad (`Friends`/Solicitudes), nuevo postulante (`MatchDetail` + modal), comodín cerca (`NearbyGuestRequests`), reserva (`ReservationDetail`). Extra: tocar una notificación cuya solicitud ya fue aceptada (pestaña vacía, sin crash) y una de un partido borrado ("no encontrado"). Lo cubierto por tests unitarios (`utils/pushNavigation.test.ts`, 17 casos): lista blanca, contrato, payload viejo, cola en los tres estados, logout.
+
 ## Notificaciones push en Android: Firebase/FCM y registro del token (build 5, 2026-09-09)
 
 **Por qué nunca llegó ningún push (testers build 3):** en Android, `Notifications.getExpoPushTokenAsync()` necesita Firebase Cloud Messaging debajo. La app no tenía `google-services.json` ni `android.googleServicesFile`, así que la llamada lanzaba `Default FirebaseApp is not initialized`, `registerPushToken` la atrapaba y salía por el `console.warn("[push] registerPushToken lanzó excepción")`, y el `POST /api/push-tokens` nunca ocurría. `push_tokens` quedaba vacía y el backend logueaba "Push omitido … 0 válidos" para todos — incluidas las solicitudes de amistad que en su momento parecieron un bug del backend. Además, aunque hubiera token, el servicio de push de Expo necesita la **credencial FCM V1** del proyecto Firebase cargada en EAS para entregar en Android.
@@ -738,6 +768,15 @@ Es idempotente dentro de la sesión de JS (`lastRegisteredToken`: mismo token �
 `utils/pushNotifications.ts` → `registerPushToken()` (se llama una vez al hacer login) es best-effort: si el usuario niega el permiso, Expo no devuelve token (falta `projectId` de EAS) o el backend rechaza el `POST /api/push-tokens`, **no reintenta ni bloquea** — pero ahora deja un `console.warn("[push] ...")` **fuera de `__DEV__`** con el motivo (antes salía en silencio y solo logueaba la excepción en dev). El comportamiento funcional no cambió; el punto es que "no me llegó la solicitud de amistad" sea diagnosticable desde el log del dispositivo (`adb logcat`) en vez de parecer un bug del backend. Contraparte en el backend: [BACKEND.md](./BACKEND.md#registro-de-cambios) (`NotificationsService.sendToUser` loguea warning cuando el destinatario no tiene tokens).
 
 ## Registro de cambios (sesión de implementación)
+
+### 2026-09-10 — Fase A: deep linking desde notificaciones con un solo despachador
+
+- Nuevo `utils/pushNavigation.ts`: `resolvePushTarget` (contrato `PushData` + lista blanca `PUSH_SCREENS` + `LEGACY_PUSH_MAP` para payloads viejos), `dispatchPushNavigation` con cola en memoria, `flushPendingPushNavigation` (consumida en `AppNavigator.onReady` y en `AppStack` al montar la rama autenticada), `clearPendingPushNavigation` (logout). Tests: `pushNavigation.test.ts` (17 casos).
+- `pushNotifications.ts`: los tres listeners por tipo se reemplazan por `addPushResponseListener` + `consumeLaunchNotificationData` (`getLastNotificationResponse` + `clearLastNotificationResponseAsync`, app cerrada). `app.tsx` los usa.
+- `navigationTypes.ts`: `Friends.initialTab`, `MatchDetail.openApplicants`; `FriendsScreen` y `MatchDetailScreen` los consumen.
+- `services/api/types.ts`: `PushData` y tipos asociados, calcados del contrato del backend.
+- Reactotron: comando `pushTap` para simular el tap con un `data` JSON.
+- Ver [Deep linking desde una notificación](#deep-linking-desde-una-notificación-fase-a-2026-09-10). Contraparte: [BACKEND.md](./BACKEND.md#notificaciones-push-contrato-pushdata-fase-a-deep-linking--2026-09-10).
 
 ### 2026-09-09 — Build 5: push en Android (Firebase/FCM) + registro del token fuera del login
 

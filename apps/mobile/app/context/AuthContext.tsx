@@ -12,6 +12,7 @@ import {
 import { useMMKVString } from "react-native-mmkv"
 
 import { api } from "@/services/api"
+import { clearPendingPushNavigation } from "@/utils/pushNavigation"
 import {
   registerPushToken,
   unregisterPushToken,
@@ -85,6 +86,8 @@ export const AuthProvider: FC<PropsWithChildren<AuthProviderProps>> = ({ childre
 
   const logout = useCallback(() => {
     if (authToken) void unregisterPushToken(authToken)
+    // Un deep link en cola no debe arrastrarse a la próxima sesión (otro usuario).
+    clearPendingPushNavigation()
     setAuthToken(undefined)
     setAuthEmail("")
     setAuthUserId(undefined)
