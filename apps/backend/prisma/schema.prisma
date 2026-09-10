@@ -630,6 +630,8 @@ model Match {
 
   /// Vacantes de comodín publicadas para este partido (Fase 11).
   guestRequests MatchGuestRequest[]
+  /// Recordatorios 12 h / 3 h ya reclamados/enviados (2026-09-10).
+  reminders     MatchReminder[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -638,6 +640,29 @@ model Match {
   @@index([opponentGroupId])
   @@index([latitude, longitude])
   @@map("matches")
+}
+
+/**
+ * Recordatorio de partido reclamado/enviado (2026-09-10). Una fila por
+ * (partido, umbral): el @@unique ES la idempotencia — el cron inserta ANTES
+ * de enviar y, si otra corrida/instancia ya insertó, la violación corta el
+ * envío. `scheduledAtSnapshot` guarda con qué hora se mandó (para una futura
+ * reprogramación); `sentAt`/`recipients` auditan "¿se mandó? ¿a cuántos?".
+ * Tabla y no flags en `matches` (como alertSent*) por esas dos razones.
+ */
+model MatchReminder {
+  id                  String    @id @default(uuid()) @db.Uuid
+  matchId             String    @db.Uuid
+  match               Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  /// '12h' | '3h' (String a propósito: un umbral nuevo no necesita migración).
+  kind                String
+  scheduledAtSnapshot DateTime
+  claimedAt           DateTime  @default(now())
+  sentAt              DateTime?
+  recipients          Int       @default(0)
+
+  @@unique([matchId, kind])
+  @@map("match_reminders")
 }
 
 enum MatchTeam {
