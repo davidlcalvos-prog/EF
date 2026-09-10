@@ -163,6 +163,28 @@ export class Api {
         request.headers.Authorization = `Bearer ${token}`
       }
     })
+
+    // Sesión vencida → cerrar sesión. El JWT dura 7 días (auth-service) y el
+    // token queda en MMKV para siempre: un tester que volvía con sesión vieja
+    // seguía "logueado" con un feed que respondía 401 en cada carga (testers
+    // build 3, "loop infinito"/"se queda cargando"). Cualquier 401 de un
+    // endpoint protegido, habiendo token guardado, avisa a AuthContext (que
+    // limpia MMKV y el navegador cae a Login). Se excluye `auth/*`: un 401 de
+    // login es "credenciales inválidas", no sesión vencida.
+    this.apisauce.addMonitor((response) => {
+      if (response.status !== 401) return
+      const url = response.config?.url ?? ""
+      if (url.startsWith("auth/") || url.includes("/auth/")) return
+      if (!loadString(AUTH_TOKEN_STORAGE_KEY)) return
+      this.unauthorizedHandler?.()
+    })
+  }
+
+  private unauthorizedHandler?: () => void
+
+  /** Registrado por AuthContext; `undefined` para desregistrar. */
+  setUnauthorizedHandler(handler?: () => void) {
+    this.unauthorizedHandler = handler
   }
 
   /**
