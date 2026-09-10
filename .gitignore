@@ -61,3 +61,7 @@ coverage/
 .cache/
 .deploy-staging/
 deploy-hostinger.zip
+
+# Residuos de `eas init` corrido en la raiz (2026-09-09): la config de EAS vive SOLO en apps/mobile
+/app.json
+/eas.json
