@@ -6,6 +6,7 @@ import { Text, XStack, YStack } from "tamagui"
 import { useAppAlert } from "@/components/AppAlert"
 import { GroupSearchModal } from "@/components/GroupSearchModal"
 import { useAuth } from "@/context/AuthContext"
+import { usePending } from "@/context/PendingContext"
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
 import type { AppStackScreenProps } from "@/navigators/navigationTypes"
@@ -50,6 +51,7 @@ export function GroupFriendsScreen({ route, navigation }: AppStackScreenProps<"G
   const { groupId } = route.params
   const { authUserId } = useAuth()
   const showAlert = useAppAlert()
+  const pending = usePending()
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
   const { group } = useGroupDetail(groupId)
   const {
@@ -78,10 +80,14 @@ export function GroupFriendsScreen({ route, navigation }: AppStackScreenProps<"G
         setBusyId(null)
         if (result.kind !== "ok") {
           showAlert(translate("groupFriendsScreen:actionError"), describeProblem(result))
+          return
         }
+        // Pendiente resuelto (Fase B): baja el punto del drawer y corrige con el dato real.
+        pending.bump("groupFriendRequests", -1)
+        void pending.refresh({ force: true })
       })
     },
-    [accept, showAlert],
+    [accept, pending, showAlert],
   )
 
   const handleRemove = useCallback(
@@ -101,14 +107,17 @@ export function GroupFriendsScreen({ route, navigation }: AppStackScreenProps<"G
                 setBusyId(null)
                 if (result.kind !== "ok") {
                   showAlert(translate("groupFriendsScreen:actionError"), describeProblem(result))
+                  return
                 }
+                // Rechazar una pendiente recibida también resuelve un pendiente (Fase B).
+                void pending.refresh({ force: true })
               })
             },
           },
         ],
       )
     },
-    [groupId, remove, showAlert],
+    [groupId, pending, remove, showAlert],
   )
 
   return (

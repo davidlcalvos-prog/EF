@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
+import { usePending } from "@/context/PendingContext"
 import { api, type UserFriendshipApiDto } from "@/services/api"
 import type { GeneralApiProblem } from "@/services/api/apiProblem"
 
@@ -12,6 +13,7 @@ type SimpleResult = { kind: "ok" } | GeneralApiProblem
  * reload queda para el pull-to-refresh y el primer render.
  */
 export function useFriends() {
+  const pending = usePending()
   const [friends, setFriends] = useState<UserFriendshipApiDto[]>([])
   const [incoming, setIncoming] = useState<UserFriendshipApiDto[]>([])
   const [outgoing, setOutgoing] = useState<UserFriendshipApiDto[]>([])
@@ -50,26 +52,42 @@ export function useFriends() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const accept = useCallback(async (friendship: UserFriendshipApiDto): Promise<SimpleResult> => {
-    const result = await api.acceptFriendship(friendship.id)
-    if (result.kind === "ok") {
-      setIncoming((prev) => prev.filter((f) => f.id !== friendship.id))
-      setFriends((prev) => [result.friendship, ...prev])
-      return { kind: "ok" }
-    }
-    return result
-  }, [])
+  const accept = useCallback(
+    async (friendship: UserFriendshipApiDto): Promise<SimpleResult> => {
+      const result = await api.acceptFriendship(friendship.id)
+      if (result.kind === "ok") {
+        setIncoming((prev) => prev.filter((f) => f.id !== friendship.id))
+        setFriends((prev) => [result.friendship, ...prev])
+        // Pendiente resuelto (Fase B): baja el punto del drawer al instante y corrige con el dato real.
+        pending.bump("friendRequests", -1)
+        void pending.refresh({ force: true })
+        return { kind: "ok" }
+      }
+      return result
+    },
+    [pending],
+  )
 
   /** Rechazar (recibida), cancelar (enviada) o eliminar (aceptada). */
-  const remove = useCallback(async (friendship: UserFriendshipApiDto): Promise<SimpleResult> => {
-    const result = await api.removeFriendship(friendship.id)
-    if (result.kind === "ok") {
-      setFriends((prev) => prev.filter((f) => f.id !== friendship.id))
-      setIncoming((prev) => prev.filter((f) => f.id !== friendship.id))
-      setOutgoing((prev) => prev.filter((f) => f.id !== friendship.id))
-    }
-    return result
-  }, [])
+  const remove = useCallback(
+    async (friendship: UserFriendshipApiDto): Promise<SimpleResult> => {
+      // Solo rechazar una RECIBIDA resuelve un pendiente (Fase B); cancelar una
+      // enviada o eliminar una amistad aceptada no cambia el contador.
+      const wasIncoming = incoming.some((f) => f.id === friendship.id)
+      const result = await api.removeFriendship(friendship.id)
+      if (result.kind === "ok") {
+        setFriends((prev) => prev.filter((f) => f.id !== friendship.id))
+        setIncoming((prev) => prev.filter((f) => f.id !== friendship.id))
+        setOutgoing((prev) => prev.filter((f) => f.id !== friendship.id))
+        if (wasIncoming) {
+          pending.bump("friendRequests", -1)
+          void pending.refresh({ force: true })
+        }
+      }
+      return result
+    },
+    [incoming, pending],
+  )
 
   return { friends, incoming, outgoing, loading, error, reload, accept, remove }
 }

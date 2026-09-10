@@ -7,10 +7,12 @@ import Animated, {
 } from "react-native-reanimated"
 import { XStack, YStack } from "tamagui"
 
+import { usePending } from "@/context/PendingContext"
 import { useInteractiveMotion } from "@/hooks/useInteractiveMotion"
 import { translate } from "@/i18n/translate"
 
 import { FEED_NAV_SCROLL_DISTANCE } from "../feedNavConstants"
+import { PendingDot } from "./PendingDot"
 
 export interface FeedMenuButtonProps {
   onPress: () => void
@@ -36,6 +38,8 @@ function MenuLine({ width = LINE_WIDTH }: { width?: number }) {
 
 export function FeedMenuButton({ onPress, compactScrollY }: FeedMenuButtonProps) {
   const motion = useInteractiveMotion("button")
+  // Del contexto, no por props: FeedNavbar y FeedScreen no se enteran (Fase B).
+  const { total: pendingTotal } = usePending()
 
   const sizeStyle = useAnimatedStyle(() => {
     if (!compactScrollY) {
@@ -82,6 +86,7 @@ export function FeedMenuButton({ onPress, compactScrollY }: FeedMenuButtonProps)
               <MenuLine />
             </YStack>
           </XStack>
+          <PendingDot visible={pendingTotal > 0} />
         </Animated.View>
       </Animated.View>
     </Pressable>
