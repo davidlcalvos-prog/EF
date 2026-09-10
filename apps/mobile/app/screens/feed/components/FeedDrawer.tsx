@@ -1,4 +1,4 @@
-import { Pressable } from "react-native"
+import { Pressable, ScrollView } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import Animated from "react-native-reanimated"
 import { Text, XStack, YStack } from "tamagui"
@@ -6,6 +6,7 @@ import { Text, XStack, YStack } from "tamagui"
 import { EliteForgeLogo } from "@/components/ui"
 import { useAuth } from "@/context/AuthContext"
 import { useInteractiveMotion } from "@/hooks/useInteractiveMotion"
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"
 import { translate } from "@/i18n/translate"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 import { getUserColor } from "@/utils/avatarColor"
@@ -112,16 +113,29 @@ function DrawerMenuItem({
 
 export function FeedDrawer({ onClose, onItemPress, onLogout }: FeedDrawerProps) {
   const { authEmail, authAvatarBase64 } = useAuth()
+  const { insets } = useResponsiveLayout()
   const logoutMotion = useInteractiveMotion("button")
 
+  // Layout: cabecera fija + lista SCROLLEABLE + "Cerrar sesión" fijo al pie
+  // con safe area inferior. Antes la lista era un YStack flex={1} sin scroll:
+  // en pantallas cortas Yoga la encogía para que entrara el botón, pero sus
+  // ítems no se recortan, así que los últimos se dibujaban encima de
+  // "Cerrar sesión" (testers build 3, "el UI no se adapta"). El paddingTop
+  // fijo de 48 pasa a depender del inset real de la barra de estado.
   return (
-    <YStack flex={1} backgroundColor="#424242" paddingTop={48}>
+    <YStack flex={1} backgroundColor="#424242" paddingTop={insets.top + 20}>
       <XStack height={3}>
         <YStack flex={1} backgroundColor="#00CEC8" />
         <YStack flex={1} backgroundColor="#FF8C00" />
       </XStack>
 
-      <YStack padding={20} gap={20} flex={1}>
+      <YStack
+        paddingHorizontal={20}
+        paddingTop={20}
+        paddingBottom={Math.max(insets.bottom, 12) + 8}
+        gap={20}
+        flex={1}
+      >
         <XStack alignItems="center" justifyContent="space-between">
           <EliteForgeLogo width={48} />
           <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button">
@@ -151,7 +165,11 @@ export function FeedDrawer({ onClose, onItemPress, onLogout }: FeedDrawerProps) 
           {translate("feedDrawer:sectionMenu").toUpperCase()}
         </Text>
 
-        <YStack flex={1}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 4 }}
+          showsVerticalScrollIndicator={false}
+        >
           {MENU_ITEMS.map((item) => (
             <DrawerMenuItem
               key={item.id}
@@ -173,7 +191,7 @@ export function FeedDrawer({ onClose, onItemPress, onLogout }: FeedDrawerProps) 
               onPress={() => onItemPress(item.id)}
             />
           ))}
-        </YStack>
+        </ScrollView>
 
         <Pressable
           onPress={onLogout}
