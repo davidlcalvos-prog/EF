@@ -52,18 +52,26 @@ export function useFeed() {
   const pageRef = useRef(1)
   const inFlightRef = useRef(false)
 
-  const refresh = useCallback(async () => {
+  /**
+   * Recarga la página 1. `silent` no enciende el spinner del `RefreshControl`
+   * (revalidación al recuperar foco: si falla, se conserva lo que ya había).
+   */
+  const refresh = useCallback(async (options?: { silent?: boolean }) => {
     if (inFlightRef.current) return
     inFlightRef.current = true
-    setRefreshing(true)
-    setError(null)
+    const silent = options?.silent === true
+    if (!silent) {
+      setRefreshing(true)
+      setError(null)
+    }
 
     const result = await api.listFeedPosts(1, PAGE_SIZE)
     if (result.kind === "ok") {
       setRealPosts(result.posts.map(mapPostToFeedPost))
       setHasMore(result.posts.length === PAGE_SIZE)
+      setError(null)
       pageRef.current = 1
-    } else {
+    } else if (!silent) {
       setError(result)
     }
 
@@ -79,7 +87,11 @@ export function useFeed() {
   }, [])
 
   const loadMore = useCallback(async () => {
-    if (inFlightRef.current || !hasMore) return
+    // Sin posts no hay "página 2" que pedir: `onEndReached` de VirtualizedList
+    // dispara también sobre una lista vacía (cellsAroundViewport.last === -1 ===
+    // itemCount - 1), y con el estado de error/vacío de la pantalla eso pedía
+    // páginas siguientes en bucle (testers build 3, "loop infinito al entrar").
+    if (inFlightRef.current || !hasMore || loading || realPosts.length === 0) return
     inFlightRef.current = true
     setLoadingMore(true)
 
@@ -89,12 +101,18 @@ export function useFeed() {
       setRealPosts((prev) => [...prev, ...result.posts.map(mapPostToFeedPost)])
       setHasMore(result.posts.length === PAGE_SIZE)
       pageRef.current = nextPage
+    } else {
+      // Error en loadMore no reemplaza el feed ya cargado, pero SÍ corta la
+      // paginación: cada aparición/desaparición del spinner del footer cambia el
+      // contentLength de la lista y VirtualizedList vuelve a disparar
+      // onEndReached, así que dejar `hasMore` en true reintentaba sin fin (y
+      // podía pegarle al throttler del gateway). Pull-to-refresh lo reactiva.
+      setHasMore(false)
     }
-    // Error en loadMore no reemplaza el feed ya cargado — el usuario puede reintentar con scroll.
 
     setLoadingMore(false)
     inFlightRef.current = false
-  }, [hasMore])
+  }, [hasMore, loading, realPosts.length])
 
   const createPost = useCallback(async (content: string): Promise<boolean> => {
     const trimmed = content.trim()
