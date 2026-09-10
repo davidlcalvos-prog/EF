@@ -442,7 +442,53 @@ Pendientes (no implementados aún):
 
 ---
 
+## Notificaciones push: contrato `PushData` (Fase A, deep linking — 2026-09-10)
+
+**Archivo:** `libs/contracts/src/push/index.ts`. Todo `NotificationsService.sendToUser(userId, title, body, data)` (users-service y venues-service, copias idénticas) exige `data: PushData`; ya no es opcional ni libre. **El backend declara a dónde va cada aviso; la app no adivina el destino a partir del `type`.**
+
+```ts
+type PushData = {
+  v: 1                                  // versión del contrato; la app ignora versiones que no conoce
+  type: PushType                        // identificador del evento (telemetría, compat, Fase B)
+  screen?: PushScreen                   // ruta del AppStack de mobile; sin screen = aviso informativo (el tap solo abre la app)
+  params?: Record<string, string>       // params de esa ruta, SOLO strings (viajan como JSON plano por FCM/APNs)
+  pending?: PendingKind                 // Fase B: qué contador de pendientes toca; la Fase A lo ignora
+}
+```
+
+`PushScreen` hoy: `Feed`, `Friends`, `MatchDetail`, `NearbyGuestRequests`, `ReservationDetail`, `GroupDetail`. La app valida `screen` contra **su propia lista blanca** (`apps/mobile/app/utils/pushNavigation.ts`) antes de navegar: un valor fuera de la lista no navega, aunque el backend lo mande. Cada pantalla de la lista define qué params necesita (`MatchDetail` exige `matchId`; sin él, la app no navega).
+
+**Los 12 disparos, migrados:**
+
+| Evento | `type` | `screen` | `params` | `pending` |
+|---|---|---|---|---|
+| Solicitud de amistad | `friendship_request` | `Friends` | `initialTab: 'requests'`, `friendshipId` | `friendRequests` |
+| Solicitud aceptada | `friendship_accepted` | `Friends` | `userId` | — |
+| Se busca comodín cerca | `match_guest_request` | `NearbyGuestRequests` | `matchGuestRequestId` | — |
+| Nuevo postulante (al líder) | `match_guest_application` | `MatchDetail` | `matchId`, **`openApplicants: '1'`**, `matchGuestRequestId` | `guestApplications` |
+| Aceptado como comodín | `match_guest_accepted` | `MatchDetail` | `matchId` | — |
+| Vacante ocupada por otro | `match_guest_slot_taken` (nuevo) | `NearbyGuestRequests` | `matchId` | — |
+| Postulación rechazada | `match_guest_rejected` (nuevo) | `NearbyGuestRequests` | `matchId` | — |
+| Búsqueda cancelada | `match_guest_request_cancelled` (nuevo) | `NearbyGuestRequests` | `matchId` | — |
+| Cupo incompleto / 30 min | `vs_match_roster_alert` (nuevo) | `MatchDetail` | `matchId`, `urgent: '1'\|'0'` | — |
+| Reserva confirmada/rechazada | `reservation_status` | `ReservationDetail` | `reservationId`, `status` | — |
+| Reserva reasignada | `reservation_status` | `ReservationDetail` | `reservationId`, `status: 'reassigned'` | — |
+| Nueva reserva pendiente (dueño) | `new_reservation` | **sin `screen`** | `reservationId` | — |
+
+Decisiones: (1) "vacante ocupada", "rechazada" y "cancelada" van a `NearbyGuestRequests` y no a `MatchDetail` — el destinatario es un postulante que **no** es miembro ni participante, y el detalle del partido le devuelve "no encontrado"; en el informe previo se había propuesto `MatchDetail`, se corrigió al implementar. (2) "Nuevo postulante" abre directamente la lista de postulantes (`openApplicants`), antes caía en el detalle. (3) `new_reservation` es para el dueño de cancha, que gestiona en el portal web: sin destino a propósito.
+
+**Compatibilidad con builds viejos (≤ 5):** `withLegacyMirror` en ambos `NotificationsService` copia `params.matchId` → `data.matchId` cuando `screen === 'MatchDetail'` y `params.reservationId` → `data.reservationId` cuando `screen === 'ReservationDetail'`, porque los listeners de esos builds leían esos ids al nivel raíz. El `type` sigue al nivel raíz, así que `match_guest_request` también les funciona. Borrar el espejo cuando no queden builds viejos en la pista de pruebas (y el `LEGACY_PUSH_MAP` de la app, que cubre el caso inverso).
+
+**Cómo agregar una notificación nueva sin tocar la app:** un `sendToUser(userId, título, cuerpo, { v: 1, type: '<nuevo>', screen: '<pantalla de PushScreen>', params: { ...strings } })`. Agregar el `type` a `PushType` (es un literal: TypeScript lo exige). Si `screen` ya existe en `PushScreen`, la app navega sin cambios. Solo hace falta tocar la app si el destino es una **pantalla nueva** (agregarla a `PushScreen` y a `PUSH_SCREENS` en mobile con su conversor de params) o si la pantalla necesita un param que hoy no acepta.
+
 ## Registro de cambios
+
+### 2026-09-10 — Fase A: contrato `PushData` y los 12 disparos declaran su destino
+
+- Nuevo `libs/contracts/src/push` (`PushData`, `PushType`, `PushScreen`, `PendingKind`, `PUSH_DATA_VERSION`). `sendToUser` exige `data: PushData` en users-service y venues-service.
+- Los 12 disparos migrados (tabla arriba). Los 3 que no mandaban `data` (vacante ocupada, postulación rechazada, búsqueda cancelada) y el recordatorio de 30 min (`matchId` sin `type`) ahora declaran tipo y destino. "Nuevo postulante" va a la lista de postulantes.
+- `withLegacyMirror`: espejo de `matchId`/`reservationId` al nivel raíz para builds ≤ 5. Temporal.
+- Ver [Notificaciones push: contrato `PushData`](#notificaciones-push-contrato-pushdata-fase-a-deep-linking--2026-09-10).
 
 ### 2026-09-09 — Push en Android (build 5): rastro del registro del token y qué NO cambia en el servidor
 

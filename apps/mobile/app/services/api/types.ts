@@ -548,3 +548,40 @@ export interface TournamentApiDto {
   createdAt: string
   updatedAt: string
 }
+
+// ── Push (Fase A, deep linking) ─────────────────────────────────────────────
+// Calcado de libs/contracts/src/push/index.ts del backend. El backend declara
+// el destino (`screen` + `params`); la app valida `screen` contra la lista
+// blanca de utils/pushNavigation.ts antes de navegar.
+
+export const PUSH_DATA_VERSION = 1 as const
+
+export type PushType =
+  | "friendship_request"
+  | "friendship_accepted"
+  | "match_guest_request"
+  | "match_guest_application"
+  | "match_guest_accepted"
+  | "match_guest_slot_taken"
+  | "match_guest_rejected"
+  | "match_guest_request_cancelled"
+  | "vs_match_roster_alert"
+  | "reservation_status"
+  | "new_reservation"
+
+export type PushScreen =
+  "Feed" | "Friends" | "MatchDetail" | "NearbyGuestRequests" | "ReservationDetail" | "GroupDetail"
+
+export type PendingKind =
+  "friendRequests" | "groupFriendRequests" | "matchChallenges" | "guestApplications"
+
+export type PushData = {
+  v: typeof PUSH_DATA_VERSION
+  type: PushType
+  /** Sin `screen`: el aviso es informativo y el tap solo abre la app. */
+  screen?: PushScreen
+  /** Solo strings: viaja por FCM/APNs como JSON plano. */
+  params?: Record<string, string>
+  /** Fase B (indicadores de pendientes). La Fase A lo ignora. */
+  pending?: PendingKind
+}

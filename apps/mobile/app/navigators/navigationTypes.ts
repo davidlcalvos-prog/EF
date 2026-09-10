@@ -27,9 +27,11 @@ export type AppStackParamList = {
   Groups: undefined
   GroupDetail: { groupId: string }
   GroupFriends: { groupId: string }
-  Friends: undefined
+  /** `initialTab` lo usa el deep link del push de solicitud de amistad (utils/pushNavigation.ts). */
+  Friends: { initialTab?: "requests" } | undefined
   Matches: { groupId?: string } | undefined
-  MatchDetail: { matchId: string }
+  /** `openApplicants` lo usa el deep link del push "nuevo postulante a comodín". */
+  MatchDetail: { matchId: string; openApplicants?: boolean }
   NearbyGuestRequests: undefined
   Reservations: { matchId?: string } | undefined
   ReservationDetail: { reservationId: string }

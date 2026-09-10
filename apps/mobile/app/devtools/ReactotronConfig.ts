@@ -9,6 +9,7 @@ import { ReactotronReactNative } from "reactotron-react-native"
 import mmkvPlugin from "reactotron-react-native-mmkv"
 
 import { goBack, resetRoot, navigate } from "@/navigators/navigationUtilities"
+import { handlePushResponse } from "@/utils/pushNavigation"
 import { storage } from "@/utils/storage"
 
 import { Reactotron } from "./ReactotronClient"
@@ -87,6 +88,30 @@ reactotron.onCustomCommand({
     Reactotron.log("Going back")
     goBack()
   },
+})
+
+/**
+ * Simula el tap en una notificación push sin mandar un push real: pasa por
+ * el mismo despachador que producción (utils/pushNavigation.ts → lista
+ * blanca + cola). Útil para probar destinos y el caso "sin sesión" en el
+ * simulador. Ejemplo de `data`:
+ *   {"v":1,"type":"friendship_request","screen":"Friends","params":{"initialTab":"requests"}}
+ */
+reactotron.onCustomCommand<[{ name: "data"; type: ArgType.String }]>({
+  command: "pushTap",
+  handler: (args) => {
+    const { data } = args ?? {}
+    try {
+      const parsed = data ? JSON.parse(data) : undefined
+      const outcome = handlePushResponse(parsed)
+      Reactotron.log(`[push] simulated tap → ${outcome}`, parsed)
+    } catch (error) {
+      Reactotron.log("[push] data no es JSON válido", error)
+    }
+  },
+  title: "Simulate push tap",
+  description: "Despacha un `data` de PushData como si se tocara la notificación.",
+  args: [{ name: "data", type: ArgType.String }],
 })
 
 /**

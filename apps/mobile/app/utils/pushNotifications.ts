@@ -165,38 +165,32 @@ export async function unregisterPushToken(bearerToken: string): Promise<void> {
 }
 
 /**
- * Escucha el tap en una notificación push y navega al match correspondiente
- * (deep link para el aviso de 30 minutos, y para comodín: nuevo postulante o
- * aceptado — ambos ya viajan con matchId, ver match-guest-requests.service.ts).
+ * Tap en una notificación con la app ABIERTA o en SEGUNDO PLANO (el proceso
+ * de JS está vivo). Un solo listener para todos los tipos: el destino viene
+ * en `data` (contrato PushData) y lo resuelve utils/pushNavigation.ts.
+ * Reemplaza a los tres listeners por tipo de la Fase 8/11/W.1.
  */
-export function addNotificationTapListener(onMatchTap: (matchId: string) => void) {
+export function addPushResponseListener(onData: (data: unknown) => void) {
   return Notifications.addNotificationResponseReceivedListener((response) => {
-    const matchId = response.notification.request.content.data?.matchId
-    if (typeof matchId === "string") onMatchTap(matchId)
+    onData(response.notification.request.content.data)
   })
 }
 
 /**
- * Deep link para el aviso "se busca comodín cerca tuyo" (Fase 11) — el
- * candidato no es miembro del grupo, así que no puede abrir MatchDetailScreen;
- * lo manda a la lista "Cerca de mí" en su lugar.
+ * Tap con la app CERRADA: el sistema lanza el proceso y el listener de arriba
+ * NO recibe esa respuesta (expo-notifications no la reproduce). Hay que
+ * leerla explícitamente al arrancar y limpiarla para no repetirla en el
+ * próximo arranque. Devuelve `data` o `undefined` si la app no arrancó por
+ * un tap.
  */
-export function addGuestRequestNearbyTapListener(onTap: () => void) {
-  return Notifications.addNotificationResponseReceivedListener((response) => {
-    const type = response.notification.request.content.data?.type
-    if (type === "match_guest_request") onTap()
-  })
-}
-
-/**
- * Deep link para "tu reserva fue confirmada/rechazada" (Fase W.1) — abre el
- * detalle de esa reserva puntual (venues.service.ts manda reservationId).
- */
-export function addReservationStatusTapListener(onTap: (reservationId: string) => void) {
-  return Notifications.addNotificationResponseReceivedListener((response) => {
-    const data = response.notification.request.content.data
-    if (data?.type !== "reservation_status") return
-    const reservationId = data?.reservationId
-    if (typeof reservationId === "string") onTap(reservationId)
-  })
+export async function consumeLaunchNotificationData(): Promise<unknown> {
+  try {
+    const response = Notifications.getLastNotificationResponse()
+    if (!response) return undefined
+    await Notifications.clearLastNotificationResponseAsync()
+    return response.notification.request.content.data
+  } catch (error) {
+    console.warn("[push] no se pudo leer la notificación de arranque:", error)
+    return undefined
+  }
 }

@@ -31,15 +31,12 @@ import { AuthProvider } from "./context/AuthContext"
 import { initI18n } from "./i18n"
 import tamaguiConfig from "../tamagui.config"
 import { AppNavigator } from "./navigators/AppNavigator"
-import { navigate, useNavigationPersistence } from "./navigators/navigationUtilities"
+import { useNavigationPersistence } from "./navigators/navigationUtilities"
 import { ThemeProvider } from "./theme/context"
 import { customFontsToLoad } from "./theme/typography"
 import { loadDateFnsLocale } from "./utils/formatDate"
-import {
-  addGuestRequestNearbyTapListener,
-  addNotificationTapListener,
-  addReservationStatusTapListener,
-} from "./utils/pushNotifications"
+import { handlePushResponse } from "./utils/pushNavigation"
+import { addPushResponseListener, consumeLaunchNotificationData } from "./utils/pushNotifications"
 import * as storage from "./utils/storage"
 
 export const NAVIGATION_PERSISTENCE_KEY = "NAVIGATION_STATE"
@@ -86,21 +83,20 @@ export function App() {
       .then(() => loadDateFnsLocale())
   }, [])
 
+  // Deep link desde una notificación (Fase A). Un solo despachador para todos
+  // los tipos; el destino lo declara el backend en `data` (PushData) y
+  // utils/pushNavigation.ts lo valida contra su lista blanca.
+  //  - App abierta / segundo plano: listener.
+  //  - App cerrada: la respuesta que lanzó el proceso se lee una vez al
+  //    arrancar; si el navegador todavía no está listo o no hay sesión, el
+  //    destino queda en cola y lo consumen AppNavigator (onReady) y AppStack
+  //    (al montar la rama autenticada).
   useEffect(() => {
-    const subscription = addNotificationTapListener((matchId) => {
-      navigate("MatchDetail", { matchId })
+    const subscription = addPushResponseListener(handlePushResponse)
+    consumeLaunchNotificationData().then((data) => {
+      if (data !== undefined) handlePushResponse(data)
     })
-    const nearbySubscription = addGuestRequestNearbyTapListener(() => {
-      navigate("NearbyGuestRequests", undefined)
-    })
-    const reservationSubscription = addReservationStatusTapListener((reservationId) => {
-      navigate("ReservationDetail", { reservationId })
-    })
-    return () => {
-      subscription.remove()
-      nearbySubscription.remove()
-      reservationSubscription.remove()
-    }
+    return () => subscription.remove()
   }, [])
 
   // Before we show the app, we have to wait for our state to be ready.

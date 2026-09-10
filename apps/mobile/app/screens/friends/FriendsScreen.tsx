@@ -137,11 +137,19 @@ function ActionButton({
 }
 
 /** Amistades del jugador (Fase 10): pestañas Amigos y Solicitudes. */
-export function FriendsScreen({ navigation }: AppStackScreenProps<"Friends">) {
+export function FriendsScreen({ navigation, route }: AppStackScreenProps<"Friends">) {
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
   const showAlert = useAppAlert()
   const { friends, incoming, outgoing, loading, error, reload, accept, remove } = useFriends()
-  const [tab, setTab] = useState<FriendsTab>("friends")
+  const initialTab = route.params?.initialTab
+  const [tab, setTab] = useState<FriendsTab>(initialTab ?? "friends")
+
+  // Deep link del push "solicitud de amistad" (utils/pushNavigation.ts): si la
+  // pantalla ya estaba montada, `navigate` solo actualiza los params — hay
+  // que reaccionar al cambio, no solo al estado inicial.
+  useEffect(() => {
+    if (initialTab) setTab(initialTab)
+  }, [initialTab])
   const [busyId, setBusyId] = useState<string | null>(null)
   const [profileTarget, setProfileTarget] = useState<{
     userId: string

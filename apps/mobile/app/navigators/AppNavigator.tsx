@@ -4,6 +4,7 @@
  * Generally speaking, it will contain an auth flow (registration, login, forgot password)
  * and a "main" flow which the user will use once logged in.
  */
+import { useEffect } from "react"
 import { NavigationContainer } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 
@@ -31,6 +32,7 @@ import { TournamentRankingsScreen } from "@/screens/tournaments/TournamentRankin
 import { TournamentsScreen } from "@/screens/tournaments/TournamentsScreen"
 import { useAppTheme } from "@/theme/context"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
+import { flushPendingPushNavigation } from "@/utils/pushNavigation"
 
 import { DemoNavigator } from "./DemoNavigator"
 import type { AppStackParamList, NavigationProps } from "./navigationTypes"
@@ -47,6 +49,14 @@ const Stack = createNativeStackNavigator<AppStackParamList>()
 
 const AppStack = () => {
   const { isAuthenticated } = useAuth()
+
+  // Deep link de un push tocado SIN sesión: el destino quedó en cola porque
+  // la ruta no existía. Cuando la rama autenticada se monta (login), se
+  // consume. El efecto corre después del commit, con las rutas ya
+  // registradas en el contenedor.
+  useEffect(() => {
+    if (isAuthenticated) flushPendingPushNavigation()
+  }, [isAuthenticated])
 
   return (
     <Stack.Navigator
@@ -100,7 +110,16 @@ export const AppNavigator = (props: NavigationProps) => {
   useBackButtonHandler((routeName) => exitRoutes.includes(routeName))
 
   return (
-    <NavigationContainer ref={navigationRef} theme={navigationTheme} {...props}>
+    <NavigationContainer
+      ref={navigationRef}
+      theme={navigationTheme}
+      // App CERRADA + tap en un push: la respuesta se lee en app.tsx antes de
+      // que el contenedor exista y el destino queda en cola; acá se consume.
+      onReady={() => {
+        flushPendingPushNavigation()
+      }}
+      {...props}
+    >
       <ErrorBoundary catchErrors={Config.catchErrors}>
         <AppStack />
       </ErrorBoundary>

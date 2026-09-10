@@ -87,7 +87,12 @@ export class VsMatchAlertsService {
     await Promise.all(
       leaderIds.map((userId) =>
         this.notificationsService
-          .sendToUser(userId, title, body, { matchId })
+          .sendToUser(userId, title, body, {
+            v: 1,
+            type: 'vs_match_roster_alert',
+            screen: 'MatchDetail',
+            params: { matchId, urgent: urgent ? '1' : '0' },
+          })
           .catch((error) =>
             this.logger.error(`Failed to notify user ${userId} for match ${matchId}: ${String(error)}`),
           ),
