@@ -110,7 +110,9 @@ model Profile {
 
   /// Fase 11: opt-in para recibir push de vacantes de comodín cerca de su
   /// zona. Solo controla el push — listNearby() no depende de esto.
-  notifyNearbyGuestRequests Boolean @default(false)
+  /// Default true desde el 2026-09-10 (decisión de producto, ver migración
+  /// notify_nearby_guest_requests_default_true); el toggle en Editar perfil lo apaga.
+  notifyNearbyGuestRequests Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
