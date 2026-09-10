@@ -481,6 +481,50 @@ Decisiones: (1) "vacante ocupada", "rechazada" y "cancelada" van a `NearbyGuestR
 
 **Cómo agregar una notificación nueva sin tocar la app:** un `sendToUser(userId, título, cuerpo, { v: 1, type: '<nuevo>', screen: '<pantalla de PushScreen>', params: { ...strings } })`. Agregar el `type` a `PushType` (es un literal: TypeScript lo exige). Si `screen` ya existe en `PushScreen`, la app navega sin cambios. Solo hace falta tocar la app si el destino es una **pantalla nueva** (agregarla a `PushScreen` y a `PUSH_SCREENS` en mobile con su conversor de params) o si la pantalla necesita un param que hoy no acepta.
 
+## Notificaciones por evento y recordatorios de partido (2026-09-10)
+
+Cuatro bloques sobre el contrato `PushData` (Fase A) y el `PendingProvider` (Fase B). **Todo requiere redeploy del backend en el VPS (las cuatro imágenes se reconstruyen) y `prisma migrate deploy` — dos migraciones nuevas —, no un build de la app.** La app no cambia (los destinos ya están en su lista blanca); solo se espejaron tres literales de `PushType` en `services/api/types.ts`.
+
+### 1. Partido creado (`match_created`) y desafío VS (`match_challenge`)
+
+Reporte de testers: "al crear un partido no llega nada". Correcto: `MatchesService.create` no llamaba a `sendToUser` en ninguna rama. Y un segundo hueco que nadie reportó: al crear un VS, los líderes del grupo rival deben aceptar (`pending_opponent`) pero solo subía el contador de pendientes, sin push.
+
+| Aviso | Destinatarios | `type` | `screen` / `params` | `pending` |
+|---|---|---|---|---|
+| "Nuevo partido — Se ha creado un partido con tu grupo: {nombre}" | todos los miembros del grupo origen **menos el creador** (`GroupRepository.findMemberUserIds(groupId, excludeUserId)`, nuevo) | `match_created` | `MatchDetail` / `matchId` | — |
+| "Desafío de partido VS — {grupo} desafió a tu grupo a un partido VS" | líderes del grupo rival (`findLeaderUserIds(opponentGroupId)`) | `match_challenge` | `MatchDetail` / `matchId` | `matchChallenges` |
+
+Ambos salen **después** de `matchRepository.create`, fuera de la transacción y dentro de un `try/catch` con log: un fallo de push nunca hace fallar la creación. **Anti-ráfaga:** `MatchRepository.hasOtherRecentMatchInGroup(originGroupId, matchId, 10 min)` — si el mismo grupo creó otro partido hace menos de 10 minutos (`MATCH_CREATED_PUSH_COOLDOWN_MS`), el aviso "partido creado" se omite y se loguea; el desafío VS no se limita (es a 1–2 personas y exige acción). En el VS, los miembros del grupo origen reciben "partido creado" igual que en el interno.
+
+### 2. `user_preferences.notifications` se respeta al enviar (silenciar todo)
+
+La columna existía y se exponía por `GET/PATCH /users/:id/preferences`, pero **nadie la leía al enviar**: quien desactivaba las notificaciones en Ajustes las seguía recibiendo, y la política de privacidad publicada promete que se pueden desactivar.
+
+`NotificationsService` (users-service y venues-service, copias idénticas) tiene ahora **un solo camino de salida**: `sendToUsers(userIds, title, body, data)`. `sendToUser` delega en él. Ahí, y solo ahí, se hace `user_preferences.findMany({ userId in …, notifications: false })` y los silenciados se descartan antes de buscar tokens (log `Push omitido por preferencia (notifications=false) para N usuario(s)`). **Cualquier notificación futura pasa por ese filtro automáticamente**: no hay otra forma de mandar un push que no sea `sendToUser`/`sendToUsers`, así que un disparo nuevo no tiene que acordarse de nada. Sin fila de preferencias = no silenciado (el default de la columna es `true`).
+
+`sendToUsers` además es el envío **en lote**: una consulta de preferencias, una de tokens (`PushTokenRepository.findByUserIds`, nuevo en ambas copias), deduplicación de `userIds`, y `chunkPushNotifications` arma lotes de hasta 100 hacia Expo. Es lo que usan "partido creado" (20 miembros) y los recordatorios; también servirá para el anuncio de campeonatos (A3, lote siguiente). Los logs del build 4 (`Push omitido … sin tokens`, `Push rechazado por Expo … <código>`) se mantienen por usuario. Tests: `notifications.service.spec.ts`.
+
+### 3. `profiles.notifyNearbyGuestRequests`: default ACTIVADO — decisión de producto, 2026-09-10
+
+El aviso "se busca comodín cerca tuyo" (`match_guest_request`) ya funcionaba: radio en km desde el partido hasta las coordenadas del municipio del perfil, con filtro de posición. Pero dependía de una preferencia **opt-in con default `false`**, así que en la prueba cerrada nadie lo recibía aunque estuviera en el radio.
+
+Migración `20260910120000_notify_nearby_guest_requests_default_true`: (1) `ALTER COLUMN … SET DEFAULT true` para cuentas nuevas; (2) `UPDATE profiles SET notifyNearbyGuestRequests = true` para **todas las cuentas existentes** — cambio deliberado de comportamiento sobre usuarios ya creados, decidido por David el 2026-09-10 y documentado en la propia migración. El toggle "avisarme si falta un jugador cerca" de Editar perfil sigue existiendo para apagarlo, y el filtro global del punto 2 sigue por encima: quien desactivó las notificaciones en general no recibe este aviso.
+
+### 4. Recordatorios de partido 12 h y 3 h antes (`match_reminder`)
+
+**Mecanismo:** el mismo de la alerta de cupo VS (`VsMatchAlertsService`), que ya corre en producción: `MatchRemindersService` (`users-service/src/matches/match-reminders.service.ts`) con `@Cron('*/5 * * * *')` (el `ScheduleModule` ya está en `AppModule`), consulta acotada, umbrales **ascendentes** y **marca atómica antes de enviar**.
+
+- **Tabla `match_reminders`** (migración `20260910121000_match_reminders`): `matchId`, `kind` (`'12h' | '3h'`, `String` para que un umbral nuevo no necesite migración), `scheduledAtSnapshot`, `claimedAt`, `sentAt`, `recipients`, **`@@unique([matchId, kind])`**. Se eligió tabla y no flags en `matches` (como `alertSent6h/3h/1h/30m`) por dos razones: auditar ("¿se mandó? ¿cuándo? ¿a cuántos?" = un `SELECT`) y sobrevivir a una futura reprogramación (el snapshot dice con qué hora se mandó).
+- **Idempotencia y varias instancias:** `MatchReminderRepository.claim(matchId, kind, scheduledAt)` es un `INSERT`; si otra corrida del cron **u otra instancia del servicio** ya insertó, Postgres devuelve `P2002` (unique) y esa corrida **no envía**. La base arbitra; no hay locks ni coordinación. Si el envío falla después del claim, la fila queda con `sentAt = null` (visible en auditoría) y no se reintenta — misma política best-effort que el resto.
+- **Candidatos:** `MatchRepository.findMatchesNeedingReminder(12 h)` = `status = 'scheduled'` **y** `scheduledAt` entre ahora y ahora + 12 h. Cancelados y jugados quedan fuera por el `status`: la cancelación no necesita lógica extra. Sin hora ("Sin definir") no hay recordatorio. Un VS en `pending_opponent` no recuerda nada; al aceptarse pasa a `scheduled` y entra.
+- **Umbrales ascendentes `[3h, 12h]`:** se evalúa primero el más cercano al kickoff. Si el cron estuvo caído y se cruzaron los dos, se manda **solo el más cercano pendiente** (un aviso, no dos seguidos); si el más cercano ya salió, los más lejanos que faltaron se omiten. Ejemplo: cron vuelve a las 5 h → sale el de "12 h" con el texto real ("en 5 horas"); a las 2 h sale el de "3 h".
+- **Destinatarios:** los participantes (`MatchRepository.findParticipantUserIds`): creador (entra al crear), quienes se unieron y comodines aceptados (`isGuest`); en VS, ambos lados. Ni todo el grupo ni solo líderes. Quien se une después de un recordatorio no lo recibe; sí el siguiente.
+- **Zona horaria:** `scheduledAt` es un instante UTC (la app manda `toISOString()`); restar 12 h/3 h es aritmética de instantes y no depende de la zona. El **texto** se formatea con `Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota' })` explícito, nunca con la zona del contenedor (UTC): "Tu partido con Los Pibes es jueves a las 19:00 — en 3 horas." El relativo se calcula con el tiempo real que falta, no con el umbral.
+- **Payload:** `{ v: 1, type: 'match_reminder', screen: 'MatchDetail', params: { matchId, reminder: '3h' | '12h' } }`, sin `pending` (informativo).
+- Tests: `match-reminders.service.spec.ts` — umbrales (2 h → 3h; 11 h → 12h; 13 h → nada; 5 h con cron caído → 12h con "en 5 horas"), idempotencia (claim `null` → no envía; dos corridas concurrentes → **un** push; envío fallido → fila sin `sentAt`), `run()` sigue con el siguiente partido si uno falla, y formato Bogotá.
+
+**Verificación en producción tras el deploy:** `docker compose logs users-service | grep -i "reminder\|partido creado\|preferencia"`, y `SELECT "matchId", kind, "sentAt", recipients FROM match_reminders ORDER BY "claimedAt" DESC LIMIT 20;`.
+
 ## Pendientes: `GET /api/me/pending` (Fase B, indicadores en el drawer — 2026-09-10)
 
 **Ruta:** `GET /api/me/pending` (gateway `api-gateway/src/pending/`, `@Controller('me')`, JWT obligatorio) → `MESSAGE_PATTERNS.PENDING.COUNTS` → users-service `src/pending/` (`PendingController` → `PendingService` → `PendingRepository`). Contrato: `libs/contracts/src/pending` (`PendingCountsDto`, `PENDING_KINDS`, `GetPendingCountsPayload`).
@@ -507,6 +551,15 @@ Los grupos que lidero se resuelven una vez (`group_memberships` con `role in (cr
 **Cómo agregar un contador nuevo:** (1) la clave en `PendingKind` (`libs/contracts/src/push`) y en `PENDING_KINDS`; (2) un `count` más en `PendingRepository.countForUser` con el **mismo predicado** que autoriza la acción en su servicio; (3) en el push que lo genera, `pending: '<clave>'`. En la app: la clave en `PENDING_KINDS` de `services/api/types.ts` y su ítem en `PENDING_DRAWER_ITEM` (`FeedDrawer.tsx`); ningún componente cambia. Ver [FRONTEND.md](./FRONTEND.md#indicadores-de-pendientes-fase-b-2026-09-10).
 
 ## Registro de cambios
+
+### 2026-09-10 — Notificaciones por evento y recordatorios (requiere redeploy + `migrate deploy`)
+
+- **Partido creado / desafío VS:** `MatchesService.create` avisa a los miembros del grupo (`match_created`, menos el creador, anti-ráfaga 10 min por grupo) y a los líderes del grupo rival en un VS (`match_challenge`, `pending: matchChallenges`). `GroupRepository.findMemberUserIds`, `MatchRepository.hasOtherRecentMatchInGroup`.
+- **Silenciar todo:** `NotificationsService.sendToUsers` (ambas copias) es el único camino de salida y descarta a quien tiene `user_preferences.notifications = false`. `sendToUser` delega. `PushTokenRepository.findByUserIds`. Spec nuevo.
+- **A2 default:** `profiles.notifyNearbyGuestRequests` pasa a `true` por default y se activa en todas las cuentas existentes (migración `20260910120000_…`, decisión de producto).
+- **Recordatorios 12 h / 3 h:** tabla `match_reminders` (migración `20260910121000_…`, unique `(matchId, kind)`), `MatchReminderRepository.claim/markSent`, `MatchRepository.findMatchesNeedingReminder/findParticipantUserIds`, `MatchRemindersService` con cron cada 5 min. Spec con idempotencia y concurrencia.
+- `PushType` += `match_created`, `match_challenge`, `match_reminder` (contrato y espejo en mobile).
+- Ver [Notificaciones por evento y recordatorios de partido](#notificaciones-por-evento-y-recordatorios-de-partido-2026-09-10).
 
 ### 2026-09-10 — Fase B: `GET /api/me/pending`, conteo de pendientes para el drawer
 
