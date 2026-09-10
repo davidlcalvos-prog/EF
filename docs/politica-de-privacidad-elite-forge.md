@@ -26,13 +26,13 @@ El municipio que elegís vos mismo de una lista fija de municipios de Colombia �
 Resultados de tests físicos y psicológicos que completás voluntariamente dentro de la app, y estadísticas de los partidos en los que participás (goles, atajadas, asistencias, etc.). **Este tipo de dato puede considerarse un dato sensible de salud y estado físico.** Lo usamos únicamente para construir tu ficha de jugador, tus estadísticas visibles a tu red de contactos dentro de la app, y los rankings de los campeonatos en los que participás. Nunca lo compartimos con nadie fuera de la plataforma.
 
 ### 2.4. Contenido que generás
-Publicaciones, fotos, videos y comentarios que subís al feed, y las fotos de los grupos que creás.
+Las publicaciones de texto y los comentarios que escribís en el feed, la foto que elegís para tu perfil y las fotos de los grupos que creás. Hoy el feed no permite subir fotos ni videos a una publicación; si habilitamos esa función, actualizaremos esta sección antes.
 
 ### 2.5. Relaciones dentro de la app
 Tus amistades con otros jugadores, tus grupos, tu participación en partidos y postulaciones a comodín.
 
 ### 2.6. Datos técnicos
-El token de tu dispositivo para poder enviarte notificaciones (por ejemplo, avisarte que se abrió una vacante de comodín cerca tuyo).
+Un identificador de notificaciones push asociado a tu dispositivo. No es tu nombre ni tu correo: es un código que generan los servicios de notificaciones del sistema y que solo sirve para hacer llegar un aviso a ese teléfono en particular. Lo guardamos vinculado a tu cuenta mientras tengas la sesión abierta, y cambia si reinstalás la app o cambiás de dispositivo.
 
 ### 2.7. Si administrás una cancha (Empresario)
 Tu nombre y correo para tu cuenta del portal de administración, y — si cargás una reserva hecha por teléfono — el nombre y teléfono de ese cliente, que administrás vos mismo desde tu propio portal.
@@ -43,7 +43,7 @@ Tu nombre y correo para tu cuenta del portal de administración, y — si cargá
 - Mostrarte tu ficha de jugador y las de tu red (amigos, compañeros de grupo).
 - Organizar partidos, grupos, torneos, reservas de cancha y la función de comodín.
 - Calcular rankings de campeonatos.
-- Enviarte notificaciones relevantes a tu actividad en la app.
+- Enviarte notificaciones sobre tu actividad en la app: solicitudes de amistad, invitaciones y avisos de tus partidos, postulaciones y vacantes de comodín, y el estado de tus reservas de cancha. Nunca usamos las notificaciones para publicidad.
 - Brindarte soporte cuando nos escribís.
 - Cumplir obligaciones legales cuando corresponda.
 
@@ -51,9 +51,11 @@ Tu nombre y correo para tu cuenta del portal de administración, y — si cargá
 
 ## 4. ¿Compartimos tus datos con terceros?
 
-**No, hoy no compartimos ningún dato personal con terceros.** Elite Forge funciona sobre infraestructura propia, sin servicios externos de analítica ni de publicidad.
+**No compartimos tus datos personales con terceros para fines propios de esos terceros.** Elite Forge funciona sobre infraestructura propia, sin servicios externos de analítica ni de publicidad, y no vendemos ni cedemos tu información.
 
-La única excepción técnica es el envío de notificaciones push, que requiere pasar el identificador de tu dispositivo (no tu identidad ni tu contenido) a través de los servicios de Google y Apple para que la notificación llegue a tu teléfono — es un requisito técnico de cómo funcionan las notificaciones en cualquier app, no una decisión nuestra de compartir tu información.
+Para entregar notificaciones push usamos dos proveedores técnicos: el servicio de notificaciones de Expo (Expo Application Services) y Firebase Cloud Messaging, un servicio de Google. Cuando activás las notificaciones, tu dispositivo obtiene un identificador de notificaciones push, y ese identificador lo procesan Expo y Google para hacer llegar cada aviso a tu teléfono. Ellos reciben ese identificador, el título y el texto del aviso (por ejemplo, "Juan te envió una solicitud de amistad") y datos técnicos de entrega; no reciben tu nombre de usuario, tu correo, tu perfil, tus estadísticas ni tu contenido. Actúan como encargados del tratamiento por cuenta de Elite Forge, únicamente para entregar la notificación, y sujetos a sus propias políticas de privacidad (las de Google y de Expo, respectivamente). En iPhone, la entrega final la hace el servicio equivalente de Apple.
+
+Podés desactivar las notificaciones cuando quieras desde los ajustes de notificaciones de tu teléfono (en Android: Ajustes → Aplicaciones → Elite Forge → Notificaciones). Si lo hacés, la app sigue funcionando igual: vas a ver las solicitudes, invitaciones y avisos al abrirla, pero no vamos a poder avisarte fuera de la app, y dejamos de enviar tu identificador a estos proveedores. Si más adelante las volvés a activar, se genera un identificador nuevo.
 
 Si en el futuro incorporamos algún servicio de terceros (por ejemplo, al lanzar una versión de Elite Forge para escuelas deportivas), actualizaremos esta política antes de que eso ocurra y te lo notificaremos.
 
@@ -61,11 +63,14 @@ Si en el futuro incorporamos algún servicio de terceros (por ejemplo, al lanzar
 
 Sí. Nuestros servidores están alojados en un proveedor de infraestructura con centros de datos en Estados Unidos. Esto implica una transferencia internacional de tus datos personales. Tomamos las medidas técnicas razonables para proteger tu información (cifrado en tránsito mediante HTTPS, contraseñas nunca almacenadas en texto plano) durante ese procesamiento, conforme lo permite la normativa colombiana para este tipo de transferencias.
 
+Los servicios de notificaciones push de Expo y de Google también procesan tu identificador de notificaciones en servidores fuera de Colombia, principalmente en Estados Unidos. Esa transferencia se limita a ese identificador y al contenido de cada aviso, y se hace bajo las condiciones descritas en la sección 4.
+
 ## 6. ¿Cuánto tiempo guardamos tus datos?
 
 - Mientras tu cuenta esté activa, conservamos los datos necesarios para que la app funcione.
 - Si solicitás la eliminación de tu cuenta, tus datos identificatorios (nombre, correo, foto) se eliminan o anonimizan de nuestra base de datos activa. El contenido que quedó enlazado con otras personas (por ejemplo, tu participación en el historial de un partido pasado, o en un grupo) se conserva de forma anonimizada (mostrado como "Usuario eliminado"), para no afectar los datos de otros usuarios.
 - Tus datos pueden persistir hasta 14 días adicionales en nuestras copias de seguridad de respaldo, después de lo cual se eliminan también de ahí.
+- Tu identificador de notificaciones push se elimina de nuestra base de datos cuando cerrás sesión en ese dispositivo, cuando el proveedor nos informa que el dispositivo ya no está registrado, y en todos los casos junto con tu cuenta cuando solicitás su eliminación.
 
 ## 7. ¿Cómo pedís que se elimine tu cuenta o tus datos?
 
