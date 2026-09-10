@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PushData } from '@ef/contracts';
+import { PrismaService } from '@ef/database';
 import { Expo, ExpoPushMessage, ExpoPushTicket } from 'expo-server-sdk';
 import { PushTokenRepository } from '../push-tokens/repositories/push-token.repository';
 
@@ -20,7 +21,16 @@ function withLegacyMirror(data: PushData): Record<string, unknown> {
   return { ...mirror, ...data };
 }
 
-/** Copia de users-service/src/notifications/notifications.service.ts — cada microservicio manda sus propios push. Mantener las dos iguales. */
+/**
+ * Copia IDÉNTICA de users-service/src/notifications/notifications.service.ts —
+ * cada microservicio manda sus propios push. Mantener las dos iguales.
+ *
+ * ÚNICO camino de salida de un push. Todo aviso — actual o futuro — pasa por
+ * `sendToUsers`, y ahí se aplica el filtro de `user_preferences.notifications`
+ * (2026-09-10): un usuario que desactivó las notificaciones en Ajustes NO
+ * recibe nada, de ningún tipo, sin que cada disparo tenga que acordarse. La
+ * política de privacidad publicada promete exactamente eso.
+ */
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -28,33 +38,65 @@ export class NotificationsService {
   // 2026-09-09 la variable se inyectaba pero `new Expo()` no la leía.
   private readonly expo = new Expo({ accessToken: process.env.EXPO_ACCESS_TOKEN || undefined });
 
-  constructor(private readonly pushTokenRepository: PushTokenRepository) {}
+  constructor(
+    private readonly pushTokenRepository: PushTokenRepository,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  /** Un destinatario. Delega en `sendToUsers`: mismo filtro, mismo log. */
+  sendToUser(userId: string, title: string, body: string, data: PushData): Promise<void> {
+    return this.sendToUsers([userId], title, body, data);
+  }
 
   /**
-   * Best-effort: si el usuario no tiene tokens validos, no hace nada. Los
-   * tokens que Expo marca como DeviceNotRegistered en el ticket se borran
-   * (limpieza automatica — evita reintentar para siempre a un token muerto).
-   *
-   * `data` es el contrato PushData (libs/contracts/src/push): el backend
-   * declara `screen` + `params` y la app navega sin adivinar por `type`.
+   * Varios destinatarios en UNA consulta de preferencias + UNA de tokens y
+   * lotes de hasta 100 mensajes hacia Expo (chunkPushNotifications). Es
+   * best-effort: sin tokens válidos no hace nada; los tokens que Expo marca
+   * DeviceNotRegistered se borran; el resto de tickets de error queda en el
+   * log (build 4).
    */
-  async sendToUser(userId: string, title: string, body: string, data: PushData): Promise<void> {
-    const tokens = await this.pushTokenRepository.findByUserId(userId);
-    const validTokens = tokens.filter((t) => Expo.isExpoPushToken(t.token));
-    if (validTokens.length === 0) {
-      // Best-effort a propósito, pero con rastro: sin esto, "no me llegó la
-      // solicitud" era indistinguible de un fallo real (QA 2026-09-07).
-      this.logger.warn(
-        `Push omitido: el usuario ${userId} no tiene tokens Expo registrados (${tokens.length} en DB, 0 válidos) — "${title}"`,
-      );
-      return;
-    }
+  async sendToUsers(
+    userIds: string[],
+    title: string,
+    body: string,
+    data: PushData,
+  ): Promise<void> {
+    const unique = [...new Set(userIds)];
+    if (unique.length === 0) return;
 
-    const messages: ExpoPushMessage[] = validTokens.map((t) => ({
-      to: t.token,
+    // ── Filtro de preferencias: acá y solo acá. ──────────────────────────
+    const muted = await this.findMutedUserIds(unique);
+    const recipients = unique.filter((id) => !muted.has(id));
+    if (muted.size > 0) {
+      this.logger.log(
+        `Push omitido por preferencia (notifications=false) para ${muted.size} usuario(s) — "${title}"`,
+      );
+    }
+    if (recipients.length === 0) return;
+
+    const rows = await this.pushTokenRepository.findByUserIds(recipients);
+    const userIdByToken = new Map<string, string>();
+    for (const row of rows) {
+      if (Expo.isExpoPushToken(row.token)) userIdByToken.set(row.token, row.userId);
+    }
+    const withToken = new Set(userIdByToken.values());
+    for (const userId of recipients) {
+      if (!withToken.has(userId)) {
+        // Best-effort a propósito, pero con rastro: sin esto, "no me llegó la
+        // solicitud" era indistinguible de un fallo real (QA 2026-09-07).
+        this.logger.warn(
+          `Push omitido: el usuario ${userId} no tiene tokens Expo registrados — "${title}"`,
+        );
+      }
+    }
+    if (userIdByToken.size === 0) return;
+
+    const wireData = withLegacyMirror(data);
+    const messages: ExpoPushMessage[] = [...userIdByToken.keys()].map((token) => ({
+      to: token,
       title,
       body,
-      data: withLegacyMirror(data),
+      data: wireData,
       sound: 'default',
     }));
 
@@ -62,11 +104,20 @@ export class NotificationsService {
     for (const chunk of chunks) {
       try {
         const tickets = await this.expo.sendPushNotificationsAsync(chunk);
-        await this.handleTickets(userId, title, chunk, tickets);
+        await this.handleTickets(title, chunk, tickets, userIdByToken);
       } catch (error) {
         this.logger.error(`Failed to send push notification chunk: ${String(error)}`);
       }
     }
+  }
+
+  /** userIds con `user_preferences.notifications = false`. Sin fila de preferencias = no silenciado. */
+  private async findMutedUserIds(userIds: string[]): Promise<Set<string>> {
+    const rows = await this.prisma.userPreferences.findMany({
+      where: { userId: { in: userIds }, notifications: false },
+      select: { userId: true },
+    });
+    return new Set(rows.map((row) => row.userId));
   }
 
   /**
@@ -77,10 +128,10 @@ export class NotificationsService {
    * build 3). DeviceNotRegistered además borra el token.
    */
   private async handleTickets(
-    userId: string,
     title: string,
     chunk: ExpoPushMessage[],
     tickets: ExpoPushTicket[],
+    userIdByToken: Map<string, string>,
   ): Promise<void> {
     await Promise.all(
       tickets.map(async (ticket, index) => {
@@ -88,6 +139,7 @@ export class NotificationsService {
 
         const token = chunk[index]?.to;
         const tokenLabel = typeof token === 'string' ? `…${token.slice(-8)}` : 'token desconocido';
+        const userId = typeof token === 'string' ? (userIdByToken.get(token) ?? '?') : '?';
         const code = ticket.details?.error ?? 'sin código';
         this.logger.warn(
           `Push rechazado por Expo para el usuario ${userId} (${tokenLabel}): ${code} — ${ticket.message} — "${title}"`,
