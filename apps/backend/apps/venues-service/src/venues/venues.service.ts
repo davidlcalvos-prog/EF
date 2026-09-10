@@ -144,8 +144,10 @@ export class VenuesService {
           ? `Tu reserva en ${updated.courtName ?? updated.venueName} quedó confirmada.`
           : `Tu reserva en ${updated.courtName ?? updated.venueName} fue rechazada por el dueño.`;
       await this.notificationsService.sendToUser(updated.userId, title, body, {
+        v: 1,
         type: 'reservation_status',
-        reservationId: updated.id,
+        screen: 'ReservationDetail',
+        params: { reservationId: updated.id, status: payload.status },
       });
     }
 
@@ -222,7 +224,9 @@ export class VenuesService {
         ownerId,
         'Nueva reserva pendiente',
         `Tenés una reserva pendiente en ${created.courtName ?? created.venueName}.`,
-        { type: 'new_reservation', reservationId: created.id },
+        // Destinatario = dueño de cancha, que gestiona reservas en el portal web:
+        // sin `screen` a propósito (el tap solo abre la app).
+        { v: 1, type: 'new_reservation', params: { reservationId: created.id } },
       );
     }
 
@@ -247,7 +251,12 @@ export class VenuesService {
         updated.userId,
         'Tu reserva fue reasignada',
         `Tu reserva ahora es en ${updated.courtName ?? updated.venueName}.`,
-        { type: 'reservation_status', reservationId: updated.id },
+        {
+          v: 1,
+          type: 'reservation_status',
+          screen: 'ReservationDetail',
+          params: { reservationId: updated.id, status: 'reassigned' },
+        },
       );
     }
 

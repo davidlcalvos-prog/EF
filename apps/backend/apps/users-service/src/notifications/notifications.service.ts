@@ -1,6 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { PushData } from '@ef/contracts';
 import { Expo, ExpoPushMessage, ExpoPushTicket } from 'expo-server-sdk';
 import { PushTokenRepository } from '../push-tokens/repositories/push-token.repository';
+
+/**
+ * Compatibilidad con la app ANTERIOR a la Fase A (builds ≤ 5): sus listeners
+ * leían `matchId` / `reservationId` al nivel raíz de `data`. Se espejan desde
+ * `params` para que esos builds sigan abriendo el partido / la reserva.
+ * Borrar cuando no queden builds viejos en la pista de pruebas.
+ */
+function withLegacyMirror(data: PushData): Record<string, unknown> {
+  const mirror: Record<string, unknown> = {};
+  // Solo cuando el destino declarado ES ese detalle: si no, el build viejo
+  // abriría un partido al que el usuario no tiene acceso (postulante rechazado).
+  if (data.screen === 'MatchDetail' && data.params?.matchId) mirror.matchId = data.params.matchId;
+  if (data.screen === 'ReservationDetail' && data.params?.reservationId) {
+    mirror.reservationId = data.params.reservationId;
+  }
+  return { ...mirror, ...data };
+}
 
 @Injectable()
 export class NotificationsService {
@@ -15,13 +33,11 @@ export class NotificationsService {
    * Best-effort: si el usuario no tiene tokens validos, no hace nada. Los
    * tokens que Expo marca como DeviceNotRegistered en el ticket se borran
    * (limpieza automatica — evita reintentar para siempre a un token muerto).
+   *
+   * `data` es el contrato PushData (libs/contracts/src/push): el backend
+   * declara `screen` + `params` y la app navega sin adivinar por `type`.
    */
-  async sendToUser(
-    userId: string,
-    title: string,
-    body: string,
-    data?: Record<string, unknown>,
-  ): Promise<void> {
+  async sendToUser(userId: string, title: string, body: string, data: PushData): Promise<void> {
     const tokens = await this.pushTokenRepository.findByUserId(userId);
     const validTokens = tokens.filter((t) => Expo.isExpoPushToken(t.token));
     if (validTokens.length === 0) {
@@ -37,7 +53,7 @@ export class NotificationsService {
       to: t.token,
       title,
       body,
-      data,
+      data: withLegacyMirror(data),
       sound: 'default',
     }));
 

@@ -126,6 +126,14 @@ export class MatchGuestRequestsService {
           userId,
           'Búsqueda de comodín cancelada',
           'La vacante para ese partido ya no está disponible.',
+          {
+            v: 1,
+            type: 'match_guest_request_cancelled',
+            // El postulante no es miembro del grupo: MatchDetail le devuelve
+            // "no encontrado"/sin acceso. Lo mandamos a la lista de vacantes.
+            screen: 'NearbyGuestRequests',
+            params: { matchId: payload.matchId },
+          },
         ),
       ),
     );
@@ -210,9 +218,12 @@ export class MatchGuestRequestsService {
       'Nuevo postulante a comodín',
       'Alguien se postuló para tu vacante de comodín.',
       {
+        v: 1,
         type: 'match_guest_application',
-        matchGuestRequestId: requestId,
-        matchId: request.matchId,
+        // Directo a la lista de postulantes (antes caía en el detalle del partido).
+        screen: 'MatchDetail',
+        params: { matchId: request.matchId, openApplicants: '1', matchGuestRequestId: requestId },
+        pending: 'guestApplications',
       },
     );
 
@@ -269,7 +280,12 @@ export class MatchGuestRequestsService {
       application.userId,
       '¡Fuiste aceptado como comodín!',
       'Ya sos parte del partido. Revisá los detalles en la app.',
-      { type: 'match_guest_accepted', matchId: request.matchId },
+      {
+        v: 1,
+        type: 'match_guest_accepted',
+        screen: 'MatchDetail',
+        params: { matchId: request.matchId },
+      },
     );
     await Promise.all(
       rejectedUserIds.map((userId) =>
@@ -277,6 +293,13 @@ export class MatchGuestRequestsService {
           userId,
           'Vacante de comodín ocupada',
           'Otro jugador fue aceptado para esa vacante.',
+          {
+            v: 1,
+            type: 'match_guest_slot_taken',
+            // No es participante ni miembro: MatchDetail no le abre. Lista de vacantes.
+            screen: 'NearbyGuestRequests',
+            params: { matchId: request.matchId },
+          },
         ),
       ),
     );
@@ -303,6 +326,12 @@ export class MatchGuestRequestsService {
       application.userId,
       'Postulación rechazada',
       'Tu postulación como comodín no fue aceptada esta vez.',
+      {
+        v: 1,
+        type: 'match_guest_rejected',
+        screen: 'NearbyGuestRequests',
+        params: { matchId: request.matchId },
+      },
     );
 
     return { success: true };
@@ -331,7 +360,12 @@ export class MatchGuestRequestsService {
           userId,
           'Se busca comodín cerca tuyo',
           'Un partido cerca de tu zona necesita un jugador más.',
-          { type: 'match_guest_request', matchGuestRequestId: params.requestId },
+          {
+            v: 1,
+            type: 'match_guest_request',
+            screen: 'NearbyGuestRequests',
+            params: { matchGuestRequestId: params.requestId },
+          },
         ),
       ),
     );

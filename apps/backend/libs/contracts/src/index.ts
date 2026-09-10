@@ -7,6 +7,7 @@ export * from './groups';
 export * from './matches';
 export * from './match-guest-requests';
 export * from './profile-stats';
+export * from './push';
 export * from './push-tokens';
 export * from './rankings';
 export * from './tournaments';

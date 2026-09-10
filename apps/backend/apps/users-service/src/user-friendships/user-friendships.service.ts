@@ -101,7 +101,13 @@ export class UserFriendshipsService {
       addresseeId,
       'Solicitud de amistad',
       `${this.displayName(requester)} te envió una solicitud de amistad`,
-      { type: 'friendship_request', friendshipId: created.id },
+      {
+        v: 1,
+        type: 'friendship_request',
+        screen: 'Friends',
+        params: { initialTab: 'requests', friendshipId: created.id },
+        pending: 'friendRequests',
+      },
     );
     return created;
   }
@@ -327,7 +333,12 @@ export class UserFriendshipsService {
       originalRequesterId,
       'Solicitud aceptada',
       `${this.displayName(accepter)} aceptó tu solicitud de amistad`,
-      { type: 'friendship_accepted', userId: accepterId },
+      {
+        v: 1,
+        type: 'friendship_accepted',
+        screen: 'Friends',
+        params: { userId: accepterId },
+      },
     );
   }
 
