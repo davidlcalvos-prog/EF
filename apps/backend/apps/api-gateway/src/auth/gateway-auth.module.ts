@@ -23,6 +23,10 @@ import { RolesGuard } from './roles.guard';
     }),
   ],
   providers: [JwtStrategy, JwtAuthGuard, RolesGuard],
-  exports: [JwtAuthGuard, RolesGuard, PassportModule, JwtModule],
+  // JwtStrategy se exporta porque AuthProxyController la inyecta para
+  // invalidar su caché de estado de sesión tras un cambio de contraseña
+  // (build 7). Sin este export el gateway no arrancaba: Nest no resolvía la
+  // dependencia en AuthProxyModule (incidente en producción, 2026-09-11).
+  exports: [JwtStrategy, JwtAuthGuard, RolesGuard, PassportModule, JwtModule],
 })
 export class GatewayAuthModule {}
