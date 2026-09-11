@@ -19,6 +19,7 @@ import {
   AuthResponse,
   AuthTokenPayload,
   ChangePasswordPayload,
+  ChangePasswordResponse,
   CreateVenueOwnerDto,
   ForgotPasswordDto,
   LoginDto,
@@ -238,8 +239,14 @@ export class AuthService {
     return { ok: true };
   }
 
-  /** Cambio estando logueado: la contraseña actual es obligatoria (una sesión robada no puede cambiarla sola). */
-  async changePassword(payload: ChangePasswordPayload): Promise<PasswordActionResponse> {
+  /**
+   * Cambio estando logueado: la contraseña actual es obligatoria (una sesión
+   * robada no puede cambiarla sola). Devuelve un JWT NUEVO firmado DESPUÉS de
+   * marcar `passwordChangedAt` (su `iat` es igual o posterior al cambio): la
+   * app lo guarda y sigue logueada; todas las otras sesiones (un teléfono
+   * viejo, un token robado) quedan revocadas en el gateway.
+   */
+  async changePassword(payload: ChangePasswordPayload): Promise<ChangePasswordResponse> {
     const user = await this.userRepository.findById(payload.userId);
     const hash = user?.passwordHash ?? DUMMY_PASSWORD_HASH;
     const currentOk = await bcrypt.compare(payload.currentPassword, hash);
@@ -249,7 +256,8 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(payload.newPassword, BCRYPT_ROUNDS);
     await this.userRepository.updatePassword(user.id, passwordHash);
     this.logger.log(`Contraseña cambiada por el usuario ${user.id}`);
-    return { ok: true };
+    const { accessToken } = await this.buildAuthResponse(user);
+    return { ok: true, accessToken };
   }
 
   /** Para el guard del gateway: activo + último cambio de clave (rechaza JWT con iat anterior). */

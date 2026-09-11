@@ -171,6 +171,17 @@ export interface PasswordActionResponse {
   ok: true;
 }
 
+/**
+ * Cambio logueado (2026-09-11, build 7): además del `ok` devuelve un JWT
+ * NUEVO. Al cambiar la clave se marca `passwordChangedAt` y el gateway
+ * rechaza todo token emitido antes — incluido el que el usuario acaba de
+ * usar para cambiarla. Sin este token, el request siguiente daría 401 y la
+ * app cerraría la sesión que el usuario acaba de asegurar.
+ */
+export interface ChangePasswordResponse extends PasswordActionResponse {
+  accessToken: string;
+}
+
 /** Estado de sesión que el gateway consulta por request (JWT stateless): activo y último cambio de clave. */
 export interface SessionStateResponse {
   estado: boolean;

@@ -8,6 +8,7 @@ import {
   AuthMeResponse,
   AuthResponse,
   ChangePasswordDto,
+  ChangePasswordResponse,
   CreateVenueOwnerDto,
   ForgotPasswordDto,
   LoginDto,
@@ -54,8 +55,8 @@ export class AuthProxyService {
     return this.send<PasswordActionResponse>(MESSAGE_PATTERNS.AUTH.PASSWORD_RESET, dto);
   }
 
-  changePassword(userId: string, dto: ChangePasswordDto): Promise<PasswordActionResponse> {
-    return this.send<PasswordActionResponse>(MESSAGE_PATTERNS.AUTH.PASSWORD_CHANGE, {
+  changePassword(userId: string, dto: ChangePasswordDto): Promise<ChangePasswordResponse> {
+    return this.send<ChangePasswordResponse>(MESSAGE_PATTERNS.AUTH.PASSWORD_CHANGE, {
       userId,
       ...dto,
     });

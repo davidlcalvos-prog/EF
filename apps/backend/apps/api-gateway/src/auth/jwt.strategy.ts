@@ -48,10 +48,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       if (!state.estado) {
         throw new UnauthorizedException('Account disabled');
       }
+      // `iat` tiene precisión de SEGUNDOS y `passwordChangedAt` de milisegundos.
+      // Se compara truncando el cambio al segundo: el token que auth-service
+      // firma justo después de cambiar la clave (mismo segundo, build 7) es
+      // válido; uno emitido cualquier segundo anterior sigue rechazado.
       if (
         state.passwordChangedAt !== null &&
         typeof payload.iat === 'number' &&
-        payload.iat * 1000 < state.passwordChangedAt
+        payload.iat < Math.floor(state.passwordChangedAt / 1000)
       ) {
         throw new UnauthorizedException('Session expired: password changed');
       }
