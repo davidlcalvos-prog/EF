@@ -160,13 +160,6 @@ const ar: Translations = {
     createPlaceholder: "اسم المجموعة",
     createError: "تعذر إنشاء المجموعة. حاول مرة أخرى.",
     createLengthError: "يجب أن يكون الاسم بين 2 و80 حرفًا.",
-    addMemberTitle: "إضافة عضو",
-    addingMember: "جارٍ الإضافة…",
-    addMemberSubmit: "إضافة",
-    addMemberPlaceholder: "member@email.com",
-    addMemberNotFound: "لا يوجد مستخدم بهذا البريد الإلكتروني.",
-    addMemberConflict: "هذا المستخدم عضو بالفعل.",
-    addMemberError: "تعذر إضافة هذا العضو. حاول مرة أخرى.",
     // Invitaciones a grupo (2026-09-11)
     inviteTitle: "دعوة لاعب",
     inviting: "جارٍ الدعوة…",

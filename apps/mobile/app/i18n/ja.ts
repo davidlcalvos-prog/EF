@@ -161,13 +161,6 @@ const ja: Translations = {
     createPlaceholder: "グループ名",
     createError: "グループを作成できませんでした。もう一度お試しください。",
     createLengthError: "名前は2〜80文字にしてください。",
-    addMemberTitle: "メンバーを追加",
-    addingMember: "追加中…",
-    addMemberSubmit: "追加",
-    addMemberPlaceholder: "member@email.com",
-    addMemberNotFound: "そのメールアドレスのユーザーが見つかりません。",
-    addMemberConflict: "このユーザーはすでにメンバーです。",
-    addMemberError: "メンバーを追加できませんでした。もう一度お試しください。",
     // Invitaciones a grupo (2026-09-11)
     inviteTitle: "プレイヤーを招待",
     inviting: "招待中…",

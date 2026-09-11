@@ -160,13 +160,6 @@ const hi: Translations = {
     createPlaceholder: "समूह का नाम",
     createError: "समूह नहीं बन सका। फिर से कोशिश करें।",
     createLengthError: "नाम 2-80 अक्षरों का होना चाहिए।",
-    addMemberTitle: "सदस्य जोड़ें",
-    addingMember: "जोड़ा जा रहा है…",
-    addMemberSubmit: "जोड़ें",
-    addMemberPlaceholder: "member@email.com",
-    addMemberNotFound: "इस ईमेल से कोई उपयोगकर्ता नहीं मिला।",
-    addMemberConflict: "यह उपयोगकर्ता पहले से ही सदस्य है।",
-    addMemberError: "सदस्य नहीं जोड़ा जा सका। फिर से कोशिश करें।",
     // Invitaciones a grupo (2026-09-11)
     inviteTitle: "खिलाड़ी को आमंत्रित करें",
     inviting: "आमंत्रित किया जा रहा है…",

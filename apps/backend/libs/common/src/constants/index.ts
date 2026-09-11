@@ -66,7 +66,6 @@ export const MESSAGE_PATTERNS = {
     LIST_MINE: 'groups.list_mine',
     GET_DETAIL: 'groups.get_detail',
     UPDATE: 'groups.update',
-    ADD_MEMBER: 'groups.add_member',
     UPDATE_MEMBER_ROLE: 'groups.update_member_role',
     REMOVE_MEMBER: 'groups.remove_member',
     DELETE: 'groups.delete',

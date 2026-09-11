@@ -2,7 +2,6 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { MESSAGE_PATTERNS } from '@ef/common';
 import {
-  AddMemberPayload,
   CreateGroupPayload,
   GroupActionPayload,
   RemoveMemberPayload,
@@ -35,11 +34,6 @@ export class GroupsController {
   @MessagePattern(MESSAGE_PATTERNS.GROUPS.UPDATE)
   update(@Payload() data: UpdateGroupPayload) {
     return this.groupsService.update(data);
-  }
-
-  @MessagePattern(MESSAGE_PATTERNS.GROUPS.ADD_MEMBER)
-  addMember(@Payload() data: AddMemberPayload) {
-    return this.groupsService.addMember(data);
   }
 
   @MessagePattern(MESSAGE_PATTERNS.GROUPS.UPDATE_MEMBER_ROLE)

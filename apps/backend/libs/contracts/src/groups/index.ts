@@ -1,6 +1,5 @@
 import {
   IsBoolean,
-  IsEmail,
   IsIn,
   IsOptional,
   IsString,
@@ -110,24 +109,8 @@ export interface UpdateGroupPayload {
   municipalityCode?: string | null;
 }
 
-/** Agregar miembro directo (sin invitación) — por userId o por email, uno de los dos. */
-export class AddMemberDto {
-  @ValidateIf((dto: AddMemberDto) => !dto.email)
-  @IsUUID()
-  userId?: string;
-
-  @ValidateIf((dto: AddMemberDto) => !dto.userId)
-  @IsEmail()
-  email?: string;
-}
-
-export class AddMemberPayload extends AddMemberDto {
-  @IsUUID()
-  groupId!: string;
-
-  @IsUUID()
-  requesterId!: string;
-}
+// `AddMemberDto` / `AddMemberPayload` (alta directa de miembros) se borraron
+// en el build 7 (2026-09-11): el cuerpo equivalente es `InviteToGroupDto`.
 
 export class UpdateMemberRoleDto {
   /** No se acepta 'creator' aquí — el rol de creador no se transfiere en esta fase. */

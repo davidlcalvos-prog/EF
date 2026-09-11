@@ -159,13 +159,6 @@ const en = {
     createPlaceholder: "Group name",
     createError: "Couldn't create the group. Try again.",
     createLengthError: "Name must be 2-80 characters.",
-    addMemberTitle: "Add member",
-    addingMember: "Adding…",
-    addMemberSubmit: "Add",
-    addMemberPlaceholder: "member@email.com",
-    addMemberNotFound: "No user found with that email.",
-    addMemberConflict: "This user is already a member.",
-    addMemberError: "Couldn't add this member. Try again.",
     // Invitaciones a grupo (2026-09-11)
     inviteTitle: "Invite player",
     inviting: "Inviting…",

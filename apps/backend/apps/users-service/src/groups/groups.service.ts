@@ -2,13 +2,10 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
-  HttpException,
-  HttpStatus,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import {
-  AddMemberPayload,
   CreateGroupPayload,
   GroupActionPayload,
   GroupDetailDto,
@@ -62,20 +59,9 @@ export class GroupsService {
     return this.groupRepository.findDetail(payload.groupId) as Promise<GroupDetailDto>;
   }
 
-  /**
-   * RETIRADO el 2026-09-11 — reemplazado por invitaciones con aceptar/rechazar
-   * (`GroupInvitationsService.invite`, `POST /api/groups/:id/invitations`).
-   * Responde 410 con un mensaje que explica qué hacer, en vez de desaparecer:
-   * los testers actualizan a distinto ritmo y un 404 genérico es peor.
-   * BORRAR EN EL BUILD SIGUIENTE (junto con la ruta del gateway, el método
-   * `addGroupMember` de la app y `AddMemberDto`). Ver BACKEND.md.
-   */
-  async addMember(_payload: AddMemberPayload): Promise<GroupDetailDto> {
-    throw new HttpException(
-      'Actualizá la app para invitar a jugadores: ahora el jugador recibe una invitación y decide si entra al grupo.',
-      HttpStatus.GONE,
-    );
-  }
+  // El alta directa de miembros (`addMember`, POST /groups/:id/members) se
+  // retiró el 2026-09-11 (410 durante un build) y se BORRÓ en el build 7:
+  // hoy solo existen las invitaciones (`GroupInvitationsService.invite`).
 
   async updateMemberRole(payload: UpdateMemberRolePayload): Promise<GroupDetailDto> {
     const { groupId, requesterId, targetUserId, role } = payload;

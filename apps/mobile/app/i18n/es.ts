@@ -162,13 +162,6 @@ const es: Translations = {
     createPlaceholder: "Nombre del grupo",
     createError: "No se pudo crear el grupo. Intenta de nuevo.",
     createLengthError: "El nombre debe tener entre 2 y 80 caracteres.",
-    addMemberTitle: "Agregar miembro",
-    addingMember: "Agregando…",
-    addMemberSubmit: "Agregar",
-    addMemberPlaceholder: "miembro@email.com",
-    addMemberNotFound: "No existe un usuario con ese email.",
-    addMemberConflict: "Ese usuario ya es miembro del grupo.",
-    addMemberError: "No se pudo agregar al miembro. Intenta de nuevo.",
     // Invitaciones a grupo (2026-09-11)
     inviteTitle: "Invitar jugador",
     inviting: "Invitando…",

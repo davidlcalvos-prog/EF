@@ -160,13 +160,6 @@ const ko: Translations = {
     createPlaceholder: "그룹 이름",
     createError: "그룹을 만들지 못했습니다. 다시 시도해 주세요.",
     createLengthError: "이름은 2~80자여야 합니다.",
-    addMemberTitle: "멤버 추가",
-    addingMember: "추가하는 중…",
-    addMemberSubmit: "추가",
-    addMemberPlaceholder: "member@email.com",
-    addMemberNotFound: "해당 이메일의 사용자를 찾을 수 없습니다.",
-    addMemberConflict: "이미 그룹의 멤버입니다.",
-    addMemberError: "멤버를 추가하지 못했습니다. 다시 시도해 주세요.",
     // Invitaciones a grupo (2026-09-11)
     inviteTitle: "선수 초대",
     inviting: "초대 중…",
