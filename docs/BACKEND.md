@@ -481,6 +481,46 @@ Decisiones: (1) "vacante ocupada", "rechazada" y "cancelada" van a `NearbyGuestR
 
 **Cómo agregar una notificación nueva sin tocar la app:** un `sendToUser(userId, título, cuerpo, { v: 1, type: '<nuevo>', screen: '<pantalla de PushScreen>', params: { ...strings } })`. Agregar el `type` a `PushType` (es un literal: TypeScript lo exige). Si `screen` ya existe en `PushScreen`, la app navega sin cambios. Solo hace falta tocar la app si el destino es una **pantalla nueva** (agregarla a `PushScreen` y a `PUSH_SCREENS` en mobile con su conversor de params) o si la pantalla necesita un param que hoy no acepta.
 
+## Correo por SMTP y recuperación de contraseña (2026-09-11)
+
+**Antes no había envío de correos en ningún servicio** (la pantalla "¡Cuenta confirmada!" es una página estática de éxito tras el registro; no existe confirmación por correo). Ya hubo que resetear contraseñas por SSH + SQL en producción. **Requiere redeploy del backend con `prisma migrate deploy` (migración `20260911150000_password_reset_tokens`) y deploy de la web; no toca la app móvil** (el enlace "¿Olvidaste tu contraseña?" en `LoginScreen` va en el build siguiente; mientras tanto el flujo funciona desde cualquier navegador en `eliteforge.tech/auth/forgot-password`).
+
+### Servicio de correo (`auth-service/src/mail/`)
+
+`MailModule`/`MailService` con `nodemailer` sobre el **SMTP de Hostinger** con la casilla **`soporte@eliteforge.tech`** (decisión: 1 de 1 buzones del plan; no se crea `no-reply@`). El dominio ya tiene MX/SPF/DKIM (`hostingermail-a`)/DMARC para Hostinger: **no hay DNS que tocar**.
+
+| Variable | Valor | Dónde |
+|---|---|---|
+| `SMTP_HOST` | `smtp.hostinger.com` | `.env.production` del VPS → bloque `environment` de **auth-service** en `docker-compose.prod.yml` |
+| `SMTP_PORT` | `465` | ídem |
+| `SMTP_SECURE` | `true` | ídem |
+| `SMTP_USER` | `soporte@eliteforge.tech` | ídem |
+| `SMTP_PASSWORD` | contraseña de la casilla — **[SECRETO], nunca en el repo** | ídem |
+| `SMTP_FROM` | `"Elite Forge <soporte@eliteforge.tech>"` | ídem |
+| `WEB_BASE_URL` | `https://eliteforge.tech` (base de los enlaces de los correos) | ídem |
+
+**Van en auth-service y solo ahí** porque es el único servicio que manda correos (la recuperación de contraseña vive en `AuthService`). Están declaradas en el compose con `${VARIABLE}`: sin esa línea la variable existe en `.env.production` pero el contenedor no la ve (fue el caso de `EXPO_ACCESS_TOKEN`). Templates actualizados: `apps/backend/.env.example` y `.env.production.example`.
+
+**Nunca falla en silencio:** cada envío loguea `Mail enviado: plantilla password-reset a j***@gmail.com, messageId …` o `Mail FALLÓ: … <error SMTP>` — `docker compose logs auth-service | grep -i mail`. `sendPasswordReset` devuelve boolean y no lanza: el endpoint responde 200 igual (revelar el fallo revelaría que el correo existe), por eso el log es la única pista. Sin `SMTP_*` (dev) arranca **deshabilitado** con un warn y loguea el contenido del correo en vez de mandarlo. Plantilla: tablas + estilos inline (Gmail ignora `<style>`), botón como `<a>`, URL repetida en texto, marca (carbón, franja cian/naranja, esmeralda), sin datos personales, con versión texto plano. Spec `mail.service.spec.ts`.
+
+### Recuperación de contraseña
+
+**Tabla `password_reset_tokens`** (aparte de `users`, mismo criterio que `group_invitations`): `userId @unique` (un solo token activo: pedir otro hace `upsert` y pisa el anterior por construcción), `tokenHash @unique` con **solo el SHA-256** (los 32 bytes aleatorios en `base64url` van en el enlace y nunca se guardan), `expiresAt` = 30 min, `requestedAt` (rate limit por email), `usedAt`. **`users.passwordChangedAt`** nullable, sin backfill.
+
+| Endpoint | Auth | Throttle (por IP) | Comportamiento |
+|---|---|---|---|
+| `POST /api/auth/password/forgot` `{ email }` | pública | 3 / 15 min | **Siempre `200 { ok: true }`** con el mismo cuerpo y el mismo trabajo, exista o no el correo, esté activa o no la cuenta: los tres caminos hacen un `bcrypt.compare` y el correo sale fire-and-forget. Rate limit por email en el servicio: si pidió hace < 60 s, el token vigente se conserva y no se manda otro correo (log). |
+| `POST /api/auth/password/reset` `{ token, password }` | pública | 5 / 15 min | `PasswordResetRepository.claim` = `UPDATE … SET usedAt = now() WHERE tokenHash = ? AND usedAt IS NULL AND expiresAt > now()`; `count === 1` es la única puerta. Reutilizado, vencido o inventado → **el mismo `400 invalid_or_expired`**. Éxito: bcrypt cost 12 + `passwordChangedAt = now()`. |
+| `POST /api/auth/password/change` `{ currentPassword, newPassword }` | JWT | 5 / min | La actual es obligatoria (`bcrypt.compare`, 401 si no coincide): una sesión robada no puede cambiarla sola. Marca `passwordChangedAt`. |
+
+Reglas de contraseña compartidas con el registro: 8–72, letra + número (`PASSWORD_COMPLEXITY_REGEX`).
+
+**Revocación de sesiones (`passwordChangedAt`):** el JWT dura 7 días y es stateless; sin esto una sesión robada sobrevivía al reset. `JwtStrategy` del gateway consulta a auth-service por request (`AUTH.SESSION_STATE`, caché en memoria de 10 s) el `estado` y el último cambio de clave, y rechaza con 401 los tokens con `iat` anterior a `passwordChangedAt` **y** las cuentas desactivadas (antes un usuario con `estado = false` seguía entrando hasta que venciera el token). Si auth-service no responde en 1,5 s, deja pasar la firma válida con `warn` (degradación controlada). Spec `password-reset.spec.ts` (13 casos: sin enumeración, rate limit, re-pedir invalida, canje, no reutilizable, vencido, cambio logueado).
+
+### Corrección de correos por Administrador
+
+`PATCH /api/admin/users/:id/email` `{ email }` — solo rol Administrador (`JwtAuthGuard` + `RolesGuard`, como `admin/venue-owners`). Valida formato (`@IsEmail`, normaliza a minúsculas) y unicidad (404 usuario inexistente, 409 correo ya registrado, incluida la carrera vía P2002). Reemplaza el SSH + SQL para los correos con typo (`@gamil.com`, `@eliteforge.com`). Spec `admin-users.spec.ts`. Recordar que **antes de publicar la recuperación** conviene corregir los casos conocidos: a un correo con typo el enlace no le llega y la respuesta es la misma (anti-enumeración).
+
 ## Invitaciones a grupo con aceptar / rechazar (2026-09-11)
 
 **Antes:** el creador o un admin agregaban por email y el usuario quedaba dentro al instante, sin aviso ni consentimiento. **Ahora:** invitan, el invitado recibe un push y decide. Mientras la invitación está `pending` **no es miembro a ningún efecto**. **Requiere redeploy del backend con `prisma migrate deploy` (migración `20260911100000_group_invitations`) y build nuevo de la app.**
@@ -587,6 +627,14 @@ Los grupos que lidero se resuelven una vez (`group_memberships` con `role in (cr
 **Cómo agregar un contador nuevo:** (1) la clave en `PendingKind` (`libs/contracts/src/push`) y en `PENDING_KINDS`; (2) un `count` más en `PendingRepository.countForUser` con el **mismo predicado** que autoriza la acción en su servicio; (3) en el push que lo genera, `pending: '<clave>'`. En la app: la clave en `PENDING_KINDS` de `services/api/types.ts` y su ítem en `PENDING_DRAWER_ITEM` (`FeedDrawer.tsx`); ningún componente cambia. Ver [FRONTEND.md](./FRONTEND.md#indicadores-de-pendientes-fase-b-2026-09-10).
 
 ## Registro de cambios
+
+### 2026-09-11 — Correo por SMTP, "olvidé mi contraseña", cambio logueado y corrección de correos (requiere redeploy + `migrate deploy`; no toca mobile)
+
+- `auth-service/src/mail`: `MailService` con nodemailer sobre el SMTP de Hostinger (`soporte@eliteforge.tech`), variables `SMTP_*` + `WEB_BASE_URL` **en el bloque `environment` de auth-service** del compose, logs de enviado/fallido, plantilla HTML de recuperación.
+- Tabla `password_reset_tokens` + `users.passwordChangedAt` (migración `20260911150000_…`). `POST /auth/password/forgot|reset|change`. Anti-enumeración (200 idéntico), un solo token activo, un solo uso, 30 min, rate limit por IP y por email.
+- `JwtStrategy` rechaza JWT emitidos antes de `passwordChangedAt` y cuentas desactivadas (consulta `AUTH.SESSION_STATE` con caché 10 s).
+- `PATCH /api/admin/users/:id/email` (Administrador) para corregir correos con typo.
+- Specs: `mail.service.spec.ts`, `password-reset.spec.ts`, `admin-users.spec.ts`. Ver [Correo por SMTP y recuperación de contraseña](#correo-por-smtp-y-recuperación-de-contraseña-2026-09-11).
 
 ### 2026-09-11 — Invitaciones a grupo con aceptar/rechazar (requiere redeploy + `migrate deploy` + build de app)
 

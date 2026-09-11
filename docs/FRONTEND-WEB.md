@@ -239,6 +239,20 @@ Campos: nombre, email, contraseña ×2 → `{ name, email, password }` → `/aut
 
 ---
 
+## Recuperación de contraseña (2026-09-11)
+
+Dos páginas nuevas bajo `app/auth/`, mismo patrón que `login` y `sign-up` (client components, `useState` para campos/error/loading, validación local, `lib/api/auth.ts` → `apiFetch`, mapeo de `ApiError.status`, `Label`/`Input`/`Button` de `components/ui`, layout `auth/layout.tsx`). `sign-up` y el enlace a `/legal/privacidad` no se tocaron.
+
+| Ruta | Qué hace |
+|---|---|
+| `/auth/forgot-password` | Un campo email → `forgotPassword`. Muestra **siempre** el mismo mensaje de éxito ("si existe una cuenta con ese correo te enviamos un enlace; revisá spam"), porque el backend responde 200 exista o no el correo (anti-enumeración). Solo distingue 429 ("demasiados intentos") y error de red. Botones: volver a iniciar sesión / usar otro correo. |
+| `/auth/reset-password?token=…` | Lee el token de la URL (`useSearchParams`, envuelto en `Suspense` para que `next build` prerenderice), dos campos con las reglas del registro (8–72, letra + número, coincidencia) → `resetPassword`. Éxito: pantalla "¡Contraseña actualizada!" con **Descargar app** y Volver al inicio, como "Cuenta confirmada". 400 (inválido, vencido o ya usado) o token ausente/corto: "Enlace inválido o vencido" con **Pedir un enlace nuevo**. |
+| `/auth/login` | Enlace "¿Olvidaste tu contraseña?" debajo del campo contraseña. |
+
+El enlace que llega por correo lo arma el backend con `WEB_BASE_URL` (`https://eliteforge.tech/auth/reset-password?token=<43 caracteres>`); vence a los 30 minutos y sirve una sola vez. `lib/api/auth.ts`: `forgotPassword`, `resetPassword`. Sin cambios en `next.config`, rewrites ni variables de la web. Detalle del backend (tabla, throttles, revocación de sesiones): [BACKEND.md](./BACKEND.md#correo-por-smtp-y-recuperación-de-contraseña-2026-09-11).
+
+**Pendiente (fase siguiente):** "Cambiar contraseña" en el portal admin para dueños de cancha y Administrador (el endpoint `POST /api/auth/password/change` ya existe), y el enlace en `LoginScreen` de la app móvil (build nuevo).
+
 ## Persistencia local (browser)
 
 **El portal ya no usa `localStorage` para nada de canchas ni reservas** (Fase W.1). Hasta esa fase, `lib/dal/admin/mock-reservations.ts` y `venue-extras.ts` guardaban inventario por tamaño, tarifas, amenities, reservas telefónicas y ediciones directo en el navegador del dueño — ambos archivos se eliminaron por completo. Motivo: esos datos se perdían al cambiar de navegador o de equipo, y el mobile nunca los veía (el jugador reservaba contra un inventario que no existía del lado del dueño). Todo — canchas, precios, reservas, su estado y su origen — vive en Postgres desde entonces (`Court`, `Reservation`, ver [BACKEND.md](./BACKEND.md#modelos-nuevos-desde-el-1808)).
@@ -533,6 +547,10 @@ Ciclo completo por defecto: **13,5 s**.
 ---
 
 ## Registro de cambios
+
+### 2026-09-11 — "Olvidé mi contraseña": `/auth/forgot-password`, `/auth/reset-password` y enlace en login
+
+- Dos páginas nuevas bajo `app/auth` con el patrón de login/sign-up; mensaje de éxito idéntico exista o no el correo; reset con token de la URL (`Suspense`), reglas del registro y pantalla final con "Descargar app". `lib/api/auth.ts`: `forgotPassword`, `resetPassword`. `next build` en verde; `sign-up` y `/legal/privacidad` intactos. Ver [Recuperación de contraseña](#recuperación-de-contraseña-2026-09-11).
 
 ### 2026-09-07 — Hero con silueta animada de futbolista (recibe → dribla → tira)
 

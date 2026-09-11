@@ -52,6 +52,17 @@ services:
       AUTH_SERVICE_PORT: 3001
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET es obligatorio}
+      # Correo por SMTP de Hostinger (2026-09-11): lo manda auth-service
+      # (recuperación de contraseña). Sin estas líneas la variable existe en
+      # .env.production pero el contenedor NO la ve (pasó con EXPO_ACCESS_TOKEN).
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      # URL pública de la web: base de los enlaces de los correos.
+      WEB_BASE_URL: ${WEB_BASE_URL:-https://eliteforge.tech}
     depends_on:
       postgres:
         condition: service_healthy

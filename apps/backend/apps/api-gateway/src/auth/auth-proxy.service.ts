@@ -3,11 +3,18 @@ import { ClientProxy } from '@nestjs/microservices';
 import { catchError, firstValueFrom, throwError } from 'rxjs';
 import { MESSAGE_PATTERNS, SERVICE_NAMES, toHttpException } from '@ef/common';
 import {
+  AdminUpdateUserEmailDto,
+  AdminUserEmailDto,
   AuthMeResponse,
   AuthResponse,
+  ChangePasswordDto,
   CreateVenueOwnerDto,
+  ForgotPasswordDto,
   LoginDto,
+  PasswordActionResponse,
   RegisterDto,
+  ResetPasswordDto,
+  SessionStateResponse,
   ValidateTokenResponse,
   VenueOwnerDto,
 } from '@ef/contracts';
@@ -37,6 +44,27 @@ export class AuthProxyService {
     return this.send<AuthMeResponse>(MESSAGE_PATTERNS.AUTH.GET_ME, { userId });
   }
 
+  // ── Recuperación y cambio de contraseña (2026-09-11) ──
+
+  forgotPassword(dto: ForgotPasswordDto): Promise<PasswordActionResponse> {
+    return this.send<PasswordActionResponse>(MESSAGE_PATTERNS.AUTH.PASSWORD_FORGOT, dto);
+  }
+
+  resetPassword(dto: ResetPasswordDto): Promise<PasswordActionResponse> {
+    return this.send<PasswordActionResponse>(MESSAGE_PATTERNS.AUTH.PASSWORD_RESET, dto);
+  }
+
+  changePassword(userId: string, dto: ChangePasswordDto): Promise<PasswordActionResponse> {
+    return this.send<PasswordActionResponse>(MESSAGE_PATTERNS.AUTH.PASSWORD_CHANGE, {
+      userId,
+      ...dto,
+    });
+  }
+
+  sessionState(userId: string): Promise<SessionStateResponse> {
+    return this.send<SessionStateResponse>(MESSAGE_PATTERNS.AUTH.SESSION_STATE, { userId });
+  }
+
   // ── Fase W.3: dueños de cancha (solo Administrador, ver controller) ──
 
   createVenueOwner(dto: CreateVenueOwnerDto): Promise<VenueOwnerDto> {
@@ -58,6 +86,14 @@ export class AuthProxyService {
       MESSAGE_PATTERNS.ADMIN_USERS.SET_VENUE_OWNER_STATUS,
       { userId, estado },
     );
+  }
+
+  /** Corrección del correo de un usuario (2026-09-11, solo Administrador). */
+  updateUserEmail(userId: string, dto: AdminUpdateUserEmailDto): Promise<AdminUserEmailDto> {
+    return this.send<AdminUserEmailDto>(MESSAGE_PATTERNS.ADMIN_USERS.UPDATE_USER_EMAIL, {
+      userId,
+      ...dto,
+    });
   }
 
   private send<T>(pattern: string, payload: unknown): Promise<T> {

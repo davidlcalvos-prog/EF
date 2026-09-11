@@ -12,6 +12,12 @@ export const MESSAGE_PATTERNS = {
     VALIDATE_TOKEN: 'auth.validate_token',
     REGISTER: 'auth.register',
     GET_ME: 'auth.get_me',
+    // Recuperación / cambio de contraseña (2026-09-11)
+    PASSWORD_FORGOT: 'auth.password_forgot',
+    PASSWORD_RESET: 'auth.password_reset',
+    PASSWORD_CHANGE: 'auth.password_change',
+    /** Estado de sesión por request (activo + passwordChangedAt) para el guard del gateway. */
+    SESSION_STATE: 'auth.session_state',
   },
   USERS: {
     FIND_BY_ID: 'users.find_by_id',
@@ -24,6 +30,8 @@ export const MESSAGE_PATTERNS = {
     CREATE_VENUE_OWNER: 'admin_users.create_venue_owner',
     LIST_VENUE_OWNERS: 'admin_users.list_venue_owners',
     SET_VENUE_OWNER_STATUS: 'admin_users.set_venue_owner_status',
+    /** Corrección del correo de un usuario (2026-09-11). */
+    UPDATE_USER_EMAIL: 'admin_users.update_user_email',
   },
   VENUES: {
     LIST_MINE: 'venues.list_mine',

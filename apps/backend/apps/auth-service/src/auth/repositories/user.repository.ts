@@ -138,6 +138,34 @@ export class UserRepository {
     };
   }
 
+  /** Nueva contraseña + passwordChangedAt = now(): los JWT emitidos antes dejan de valer (2026-09-11). */
+  async updatePassword(id: string, passwordHash: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id },
+      data: { passwordHash, passwordChangedAt: new Date() },
+    });
+  }
+
+  /** Lo que el gateway necesita por request: activo y último cambio de clave. */
+  async findSessionState(
+    id: string,
+  ): Promise<{ estado: boolean; passwordChangedAt: Date | null } | null> {
+    return this.prisma.user.findUnique({
+      where: { id },
+      select: { estado: true, passwordChangedAt: true },
+    });
+  }
+
+  /** Corrección del correo por un Administrador (2026-09-11). El unique de `users.email` corta duplicados con P2002. */
+  async updateEmail(id: string, email: string): Promise<AuthUserRecord> {
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: { email },
+      include: { role: true },
+    });
+    return this.toAuthUserRecord(user);
+  }
+
   private async buildUniqueAlias(email: string, name: string): Promise<string> {
     const raw =
       name

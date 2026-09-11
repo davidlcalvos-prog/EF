@@ -1,28 +1,47 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { createHash, randomBytes } from 'crypto';
 import { SYSTEM_ROLE_NAMES } from '@ef/common';
 import {
+  AdminUpdateUserEmailPayload,
+  AdminUserEmailDto,
   AuthMeResponse,
   AuthResponse,
   AuthTokenPayload,
+  ChangePasswordPayload,
   CreateVenueOwnerDto,
+  ForgotPasswordDto,
   LoginDto,
+  PasswordActionResponse,
   RegisterDto,
+  ResetPasswordDto,
+  SessionStateResponse,
   ValidateTokenResponse,
   VenueOwnerDto,
 } from '@ef/contracts';
+import { MailService, maskEmail } from '../mail/mail.service';
+import { PasswordResetRepository } from './repositories/password-reset.repository';
 import { AuthUserRecord, UserRepository } from './repositories/user.repository';
 
 /** Coste bcrypt (OWASP recomienda ≥10; 12 equilibra seguridad y latencia). */
 const BCRYPT_ROUNDS = 12;
+
+/** Recuperación de contraseña (2026-09-11). */
+export const RESET_TOKEN_TTL_MINUTES = 30;
+/** Rate limit por email: un correo por minuto, aunque el gateway deje pasar más. */
+export const RESET_REQUEST_COOLDOWN_MS = 60_000;
+
+const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 
 /**
  * Hash bcrypt válido solo para igualar el tiempo de respuesta cuando el email
@@ -38,6 +57,9 @@ export class AuthService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
+    private readonly passwordResetRepository: PasswordResetRepository,
+    private readonly mailService: MailService,
+    private readonly configService: ConfigService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponse> {
@@ -150,6 +172,133 @@ export class AuthService {
       );
       throw error;
     }
+  }
+
+  // ── Recuperación y cambio de contraseña (2026-09-11) ─────────────────
+
+  /**
+   * "Olvidé mi contraseña". SIN ENUMERACIÓN: responde siempre { ok: true }
+   * con el mismo cuerpo y el mismo trabajo, exista o no el correo, esté
+   * activa o no la cuenta. Los tres caminos hacen un bcrypt.compare (el costo
+   * dominante) y el envío del correo va fuera del await (fire-and-forget con
+   * log), así que ni el status, ni el cuerpo, ni la latencia distinguen los
+   * casos. Un fallo del SMTP tampoco llega al cliente: MailService lo loguea.
+   */
+  async forgotPassword(dto: ForgotPasswordDto): Promise<PasswordActionResponse> {
+    const email = dto.email.trim().toLowerCase();
+    const user = await this.userRepository.findByEmail(email);
+
+    // Mismo costo en todos los caminos (mitiga enumeración por timing).
+    await bcrypt.compare('constant-time-padding', DUMMY_PASSWORD_HASH);
+
+    if (!user || !user.estado) {
+      this.logger.log(`Recuperación pedida para un correo sin cuenta activa (${maskEmail(email)}): sin envío`);
+      return { ok: true };
+    }
+
+    // Rate limit por email: si pidió hace menos de un minuto, el token vigente
+    // sigue siendo válido y NO se manda otro correo.
+    const existing = await this.passwordResetRepository.findByUserId(user.id);
+    if (
+      existing &&
+      !existing.usedAt &&
+      Date.now() - existing.requestedAt.getTime() < RESET_REQUEST_COOLDOWN_MS
+    ) {
+      this.logger.warn(`Recuperación repetida en < 60 s para ${maskEmail(email)}: sin nuevo envío`);
+      return { ok: true };
+    }
+
+    const token = randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MINUTES * 60_000);
+    // Pisa el token anterior por construcción (userId @unique + upsert).
+    await this.passwordResetRepository.issue(user.id, sha256(token), expiresAt);
+
+    const resetUrl = `${this.webBaseUrl()}/auth/reset-password?token=${token}`;
+    void this.mailService
+      .sendPasswordReset(user.email, resetUrl, RESET_TOKEN_TTL_MINUTES)
+      .catch((error) => this.logger.error(`sendPasswordReset lanzó: ${String(error)}`));
+
+    return { ok: true };
+  }
+
+  /**
+   * Canje del enlace. `claim` es un UPDATE atómico sobre usedAt IS NULL y no
+   * vencido: reutilizado, vencido o inventado dan el MISMO 400. Al cambiar la
+   * clave se marca passwordChangedAt: los JWT anteriores dejan de valer.
+   */
+  async resetPassword(dto: ResetPasswordDto): Promise<PasswordActionResponse> {
+    const userId = await this.passwordResetRepository.claim(sha256(dto.token));
+    if (!userId) {
+      throw new BadRequestException('invalid_or_expired');
+    }
+    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+    await this.userRepository.updatePassword(userId, passwordHash);
+    this.logger.log(`Contraseña restablecida por enlace para el usuario ${userId}`);
+    return { ok: true };
+  }
+
+  /** Cambio estando logueado: la contraseña actual es obligatoria (una sesión robada no puede cambiarla sola). */
+  async changePassword(payload: ChangePasswordPayload): Promise<PasswordActionResponse> {
+    const user = await this.userRepository.findById(payload.userId);
+    const hash = user?.passwordHash ?? DUMMY_PASSWORD_HASH;
+    const currentOk = await bcrypt.compare(payload.currentPassword, hash);
+    if (!user || !user.estado || !currentOk) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    const passwordHash = await bcrypt.hash(payload.newPassword, BCRYPT_ROUNDS);
+    await this.userRepository.updatePassword(user.id, passwordHash);
+    this.logger.log(`Contraseña cambiada por el usuario ${user.id}`);
+    return { ok: true };
+  }
+
+  /** Para el guard del gateway: activo + último cambio de clave (rechaza JWT con iat anterior). */
+  async getSessionState(userId: string): Promise<SessionStateResponse> {
+    const state = await this.userRepository.findSessionState(userId);
+    if (!state) return { estado: false, passwordChangedAt: null };
+    return {
+      estado: state.estado,
+      passwordChangedAt: state.passwordChangedAt ? state.passwordChangedAt.getTime() : null,
+    };
+  }
+
+  // ── Administrador: corregir el correo de un usuario (2026-09-11) ─────
+
+  /**
+   * Antes se hacía por SSH + SQL. Valida existencia (404) y unicidad (409):
+   * el `findByEmail` previo da el mensaje claro y el unique de `users.email`
+   * cubre la carrera (P2002 → 409). El correo llega ya normalizado por el DTO.
+   */
+  async updateUserEmail(payload: AdminUpdateUserEmailPayload): Promise<AdminUserEmailDto> {
+    const email = payload.email.trim().toLowerCase();
+    const user = await this.userRepository.findById(payload.userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    if (user.email !== email) {
+      const taken = await this.userRepository.findByEmail(email);
+      if (taken) {
+        throw new ConflictException('Email already registered');
+      }
+    }
+    try {
+      const updated = await this.userRepository.updateEmail(user.id, email);
+      this.logger.log(
+        `Correo corregido por Administrador: usuario ${user.id} ${maskEmail(user.email)} → ${maskEmail(email)}`,
+      );
+      return { id: updated.id, email: updated.email, name: updated.name, role: updated.role };
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Email already registered');
+      }
+      throw error;
+    }
+  }
+
+  private webBaseUrl(): string {
+    return (this.configService.get<string>('WEB_BASE_URL') ?? 'https://eliteforge.tech').replace(
+      /\/$/,
+      '',
+    );
   }
 
   async getMe(userId: string): Promise<AuthMeResponse> {

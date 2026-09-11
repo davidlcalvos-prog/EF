@@ -32,3 +32,31 @@ export function login(payload: {
     body: JSON.stringify(payload),
   })
 }
+
+// ── Recuperación y cambio de contraseña (2026-09-11) ──────────────────────
+
+export interface PasswordActionResponse {
+  ok: true
+}
+
+/**
+ * Pedir enlace. El backend responde SIEMPRE 200 exista o no el correo
+ * (anti-enumeración): la UI muestra el mismo mensaje en todos los casos.
+ */
+export function forgotPassword(payload: { email: string }): Promise<PasswordActionResponse> {
+  return apiFetch<PasswordActionResponse>("auth/password/forgot", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}
+
+/** Canjear el token del enlace. 400 = inválido, vencido o ya usado (sin distinguir). */
+export function resetPassword(payload: {
+  token: string
+  password: string
+}): Promise<PasswordActionResponse> {
+  return apiFetch<PasswordActionResponse>("auth/password/reset", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}

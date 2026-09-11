@@ -8,7 +8,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { LoginDto, RegisterDto, ValidateTokenDto } from '@ef/contracts';
+import {
+  ChangePasswordDto,
+  ForgotPasswordDto,
+  LoginDto,
+  RegisterDto,
+  ResetPasswordDto,
+  ValidateTokenDto,
+} from '@ef/contracts';
 import { AuthProxyService } from './auth-proxy.service';
 import { CurrentUser } from './decorators';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -43,5 +50,36 @@ export class AuthProxyController {
   @UseGuards(JwtAuthGuard)
   me(@CurrentUser() user: { sub: string }) {
     return this.authProxy.getMe(user.sub);
+  }
+
+  // ── Recuperación y cambio de contraseña (2026-09-11) ──
+
+  /**
+   * Pedir enlace: SIEMPRE 200 { ok: true }, exista o no el correo (anti
+   * enumeración; el trabajo y el tiempo también son iguales en auth-service).
+   * Throttle por IP: 3 cada 15 min — la capa por email (1/min) vive en el servicio.
+   */
+  @Throttle({ default: { limit: 3, ttl: 15 * 60_000 } })
+  @Post('password/forgot')
+  @HttpCode(HttpStatus.OK)
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authProxy.forgotPassword(dto);
+  }
+
+  /** Canjear el token del enlace. 400 idéntico si es inválido, vencido o ya usado. */
+  @Throttle({ default: { limit: 5, ttl: 15 * 60_000 } })
+  @Post('password/reset')
+  @HttpCode(HttpStatus.OK)
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authProxy.resetPassword(dto);
+  }
+
+  /** Cambiar contraseña logueado: la actual es obligatoria. */
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('password/change')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  changePassword(@Body() dto: ChangePasswordDto, @CurrentUser() user: { sub: string }) {
+    return this.authProxy.changePassword(user.sub, dto);
   }
 }

@@ -26,9 +26,15 @@ model User {
   email        String  @unique
   passwordHash String
   estado       Boolean @default(true)
+  /// Último cambio/reset de contraseña (2026-09-11). Un JWT emitido antes
+  /// (iat < passwordChangedAt) se rechaza: sin esto una sesión robada
+  /// sobrevivía 7 días al reset. Null = nunca cambió desde el registro.
+  passwordChangedAt DateTime?
 
   roleId Int
   role   Role @relation(fields: [roleId], references: [id])
+
+  passwordResetToken PasswordResetToken?
 
   profile                 Profile?
   ownedVenues             Venue[]              @relation("VenueOwner")
@@ -807,6 +813,31 @@ model PushToken {
   @@unique([userId, token])
   @@index([userId])
   @@map("push_tokens")
+}
+
+/**
+ * Token de recuperación de contraseña (2026-09-11). TABLA APARTE de `users`
+ * (mismo criterio que group_invitations): el estado transitorio vive acá,
+ * `users` no acumula columnas que alguien pueda olvidar limpiar y ningún
+ * select de usuario arrastra un hash de reset.
+ * - `userId @unique`: un solo token activo por usuario; pedir uno nuevo hace
+ *   upsert y pisa el anterior por construcción.
+ * - `tokenHash`: SOLO el SHA-256 del token; los 32 bytes aleatorios van en el
+ *   enlace del correo y nunca se guardan.
+ * - `usedAt`: canjear es un UPDATE atómico WHERE usedAt IS NULL AND expiresAt
+ *   > now(); count === 1 es la única puerta para cambiar la contraseña.
+ * - `requestedAt`: rate limit por email (1 correo por minuto).
+ */
+model PasswordResetToken {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @unique @db.Uuid
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  requestedAt DateTime  @default(now())
+  usedAt      DateTime?
+
+  @@map("password_reset_tokens")
 }
 
 /**
