@@ -3,7 +3,6 @@ import { ClientProxy } from '@nestjs/microservices';
 import { catchError, firstValueFrom, throwError } from 'rxjs';
 import { MESSAGE_PATTERNS, SERVICE_NAMES, toHttpException } from '@ef/common';
 import {
-  AddMemberDto,
   CreateGroupDto,
   GroupDetailDto,
   GroupSearchResultDto,
@@ -44,18 +43,6 @@ export class GroupsProxyService {
     dto: UpdateGroupDto,
   ): Promise<GroupDetailDto> {
     return this.send<GroupDetailDto>(MESSAGE_PATTERNS.GROUPS.UPDATE, {
-      groupId,
-      requesterId,
-      ...dto,
-    });
-  }
-
-  addMember(
-    groupId: string,
-    requesterId: string,
-    dto: AddMemberDto,
-  ): Promise<GroupDetailDto> {
-    return this.send<GroupDetailDto>(MESSAGE_PATTERNS.GROUPS.ADD_MEMBER, {
       groupId,
       requesterId,
       ...dto,

@@ -150,16 +150,6 @@ export class GroupRepository {
     });
   }
 
-  async addMembership(
-    groupId: string,
-    userId: string,
-    role: GroupRole = 'member',
-  ): Promise<void> {
-    await this.prisma.groupMembership.create({
-      data: { groupId, userId, role },
-    });
-  }
-
   async updateMembershipRole(
     groupId: string,
     userId: string,

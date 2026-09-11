@@ -35,7 +35,7 @@ export interface GroupInvitationDto {
   };
 }
 
-/** Mismo cuerpo que AddMemberDto: por userId o por email. */
+/** Por userId o por email, uno de los dos (heredado del alta directa, borrada en el build 7). */
 export class InviteToGroupDto {
   @ValidateIf((dto: InviteToGroupDto) => !dto.email)
   @IsUUID()

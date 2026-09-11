@@ -35,7 +35,8 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.eliteforge.tech/api/",
-        "EXPO_PUBLIC_SIGN_UP_URL": "https://eliteforge.tech/auth/sign-up"
+        "EXPO_PUBLIC_SIGN_UP_URL": "https://eliteforge.tech/auth/sign-up",
+        "EXPO_PUBLIC_FORGOT_PASSWORD_URL": "https://eliteforge.tech/auth/forgot-password"
       },
       "ios": { "simulator": true },
       "android": { "buildType": "apk" }
@@ -49,7 +50,8 @@
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.eliteforge.tech/api/",
-        "EXPO_PUBLIC_SIGN_UP_URL": "https://eliteforge.tech/auth/sign-up"
+        "EXPO_PUBLIC_SIGN_UP_URL": "https://eliteforge.tech/auth/sign-up",
+        "EXPO_PUBLIC_FORGOT_PASSWORD_URL": "https://eliteforge.tech/auth/forgot-password"
       }
     }
   },

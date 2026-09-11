@@ -28,4 +28,6 @@ export default {
   API_URL: `http://${getDevApiHost()}:3000/api/`,
   /** Portal web de registro (apps/web) — mismo host que la API para emulador/dispositivo */
   SIGN_UP_URL: `http://${getDevApiHost()}:5173/auth/sign-up`,
+  /** "¿Olvidaste tu contraseña?" (build 7) — misma web, página de recuperación por correo */
+  FORGOT_PASSWORD_URL: `http://${getDevApiHost()}:5173/auth/forgot-password`,
 }

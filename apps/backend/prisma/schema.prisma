@@ -364,6 +364,10 @@ model Tournament {
   status            TournamentStatus    @default(registration)
   /// ScheduleConfig tal cual (weekdays/startHour/endHour/matchDurationHours/courtsPerSlot).
   schedule          Json
+  /// A3 (2026-09-11): cuándo se avisó por push a todos los jugadores que la Copa
+  /// abrió inscripciones. Solo kind=elite_forge. Null = todavía no se anunció;
+  /// se fija UNA vez (updateMany condicional) para no anunciar dos veces.
+  announcedAt       DateTime?
   teams             TournamentTeam[]
   matches           TournamentMatch[]
 

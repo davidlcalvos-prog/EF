@@ -1,4 +1,5 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { SYSTEM_ROLE_NAMES } from '@ef/common';
 import { PrismaService } from '@ef/database';
 import {
   AssignedTournamentMatchDto,
@@ -457,6 +458,41 @@ export class TournamentRepository {
       include: TOURNAMENT_INCLUDE,
     });
     return this.toTournamentDto(updated);
+  }
+
+  // ── A3 (2026-09-11): aviso "Copa abrió inscripciones" ─────────────────────
+
+  /**
+   * Fija `announcedAt` UNA sola vez y dice si esta llamada fue la que lo fijó.
+   * UPDATE condicional (elite_forge + registration + announcedAt IS NULL):
+   * atómico en Postgres, así dos PATCH simultáneos producen un único anuncio.
+   */
+  async claimAnnouncement(tournamentId: string): Promise<boolean> {
+    const result = await this.prisma.tournament.updateMany({
+      where: { id: tournamentId, kind: 'elite_forge', status: 'registration', announcedAt: null },
+      data: { announcedAt: new Date() },
+    });
+    return result.count === 1;
+  }
+
+  /**
+   * Página de ids de jugadores activos (rol Jugador) ordenada por id, a partir
+   * de `afterId` (exclusivo). Cursor por id y no offset: con miles de filas el
+   * costo por página no crece, y un alta en medio del recorrido no corre las
+   * páginas siguientes.
+   */
+  async listActivePlayerIds(afterId: string | null, take: number): Promise<string[]> {
+    const rows = await this.prisma.user.findMany({
+      where: {
+        estado: true,
+        role: { name: SYSTEM_ROLE_NAMES.JUGADOR },
+        ...(afterId ? { id: { gt: afterId } } : {}),
+      },
+      select: { id: true },
+      orderBy: { id: 'asc' },
+      take,
+    });
+    return rows.map((row) => row.id);
   }
 
   async delete(tournamentId: string, ownerId: string): Promise<{ success: true }> {

@@ -456,7 +456,7 @@ type PushData = {
 }
 ```
 
-`PushScreen` hoy: `Feed`, `Friends`, `MatchDetail`, `NearbyGuestRequests`, `ReservationDetail`, `GroupDetail`. La app valida `screen` contra **su propia lista blanca** (`apps/mobile/app/utils/pushNavigation.ts`) antes de navegar: un valor fuera de la lista no navega, aunque el backend lo mande. Cada pantalla de la lista define qué params necesita (`MatchDetail` exige `matchId`; sin él, la app no navega).
+`PushScreen` hoy: `Feed`, `Friends`, `Groups`, `MatchDetail`, `NearbyGuestRequests`, `ReservationDetail`, `GroupDetail`, `TournamentDetail` (build 7). La app valida `screen` contra **su propia lista blanca** (`apps/mobile/app/utils/pushNavigation.ts`) antes de navegar: un valor fuera de la lista no navega, aunque el backend lo mande. Cada pantalla de la lista define qué params necesita (`MatchDetail` exige `matchId`; sin él, la app no navega).
 
 **Los 12 disparos, migrados:**
 
@@ -523,15 +523,41 @@ Decisiones: (1) "vacante ocupada", "rechazada" y "cancelada" van a `NearbyGuestR
 |---|---|---|---|
 | `POST /api/auth/password/forgot` `{ email }` | pública | 3 / 15 min | **Siempre `200 { ok: true }`** con el mismo cuerpo y el mismo trabajo, exista o no el correo, esté activa o no la cuenta: los tres caminos hacen un `bcrypt.compare` y el correo sale fire-and-forget. Rate limit por email en el servicio: si pidió hace < 60 s, el token vigente se conserva y no se manda otro correo (log). |
 | `POST /api/auth/password/reset` `{ token, password }` | pública | 5 / 15 min | `PasswordResetRepository.claim` = `UPDATE … SET usedAt = now() WHERE tokenHash = ? AND usedAt IS NULL AND expiresAt > now()`; `count === 1` es la única puerta. Reutilizado, vencido o inventado → **el mismo `400 invalid_or_expired`**. Éxito: bcrypt cost 12 + `passwordChangedAt = now()`. |
-| `POST /api/auth/password/change` `{ currentPassword, newPassword }` | JWT | 5 / min | La actual es obligatoria (`bcrypt.compare`, 401 si no coincide): una sesión robada no puede cambiarla sola. Marca `passwordChangedAt`. |
+| `POST /api/auth/password/change` `{ currentPassword, newPassword }` | JWT | 5 / min | La actual es obligatoria (`bcrypt.compare`, 401 si no coincide): una sesión robada no puede cambiarla sola. Marca `passwordChangedAt` y **responde `{ ok: true, accessToken }` con un JWT nuevo** (build 7, ver "Build 7" más abajo): sin él, la propia sesión que hizo el cambio caía en el request siguiente. El gateway además olvida su caché de estado de sesión para ese usuario (`JwtStrategy.forget`). |
 
 Reglas de contraseña compartidas con el registro: 8–72, letra + número (`PASSWORD_COMPLEXITY_REGEX`).
 
-**Revocación de sesiones (`passwordChangedAt`):** el JWT dura 7 días y es stateless; sin esto una sesión robada sobrevivía al reset. `JwtStrategy` del gateway consulta a auth-service por request (`AUTH.SESSION_STATE`, caché en memoria de 10 s) el `estado` y el último cambio de clave, y rechaza con 401 los tokens con `iat` anterior a `passwordChangedAt` **y** las cuentas desactivadas (antes un usuario con `estado = false` seguía entrando hasta que venciera el token). Si auth-service no responde en 1,5 s, deja pasar la firma válida con `warn` (degradación controlada). Spec `password-reset.spec.ts` (13 casos: sin enumeración, rate limit, re-pedir invalida, canje, no reutilizable, vencido, cambio logueado).
+**Revocación de sesiones (`passwordChangedAt`):** el JWT dura 7 días y es stateless; sin esto una sesión robada sobrevivía al reset. `JwtStrategy` del gateway consulta a auth-service por request (`AUTH.SESSION_STATE`, caché en memoria de 10 s) el `estado` y el último cambio de clave, y rechaza con 401 los tokens con `iat` anterior a `passwordChangedAt` **y** las cuentas desactivadas (antes un usuario con `estado = false` seguía entrando hasta que venciera el token). Si auth-service no responde en 1,5 s, deja pasar la firma válida con `warn` (degradación controlada). La comparación es **al segundo** (`iat < floor(passwordChangedAt / 1000)`): el `iat` del JWT no tiene milisegundos, y el token que auth-service firma justo después del cambio cae en el mismo segundo — con la comparación en milisegundos ese token también quedaba revocado (build 7). Specs `password-reset.spec.ts` (13 casos: sin enumeración, rate limit, re-pedir invalida, canje, no reutilizable, vencido, cambio logueado) y `jwt.strategy.spec.ts` (mismo segundo pasa, segundo anterior no, cuenta desactivada, caché + `forget`).
 
 ### Corrección de correos por Administrador
 
 `PATCH /api/admin/users/:id/email` `{ email }` — solo rol Administrador (`JwtAuthGuard` + `RolesGuard`, como `admin/venue-owners`). Valida formato (`@IsEmail`, normaliza a minúsculas) y unicidad (404 usuario inexistente, 409 correo ya registrado, incluida la carrera vía P2002). Reemplaza el SSH + SQL para los correos con typo (`@gamil.com`, `@eliteforge.com`). Spec `admin-users.spec.ts`. Recordar que **antes de publicar la recuperación** conviene corregir los casos conocidos: a un correo con typo el enlace no le llega y la respuesta es la misma (anti-enumeración).
+
+## Build 7 (2026-09-11): aviso de Copa (A3), cambio de contraseña sin perder la sesión, limpieza
+
+**Requiere redeploy del backend (las cuatro imágenes) y `prisma migrate deploy` (migración `20260911190000_tournament_announced_at`), más build nuevo de la app** (la pantalla `TournamentDetail` entra a la lista blanca de push y se borró `api.addGroupMember`).
+
+### A3 — "Copa Elite Forge abrió inscripciones" (`tournament_announced`)
+
+| | |
+|---|---|
+| **Cuándo** | Cuando un torneo **`kind = elite_forge` entra en `registration`**: al crearlo con `POST /api/tournaments/elite-forge` (nace en `registration`, default del modelo) o con un `PATCH` que ponga `status: 'registration'` (borrador → inscripción). No al crear un borrador, no al pasar a `active`, nunca para torneos privados de dueños de cancha. |
+| **A quién** | **Todos los usuarios activos con rol Jugador** (`users.estado = true`, `role.name = 'Jugador'`), sin filtro por zona ni por grupo. `sendToUsers` descuenta a quien tiene `user_preferences.notifications = false`. |
+| **Texto** | Título "Nueva Copa Elite Forge", cuerpo `"<nombre>" abrió inscripciones. Inscribí a tu grupo desde Torneos.` |
+| **`data`** | `{ v: 1, type: 'tournament_announced', screen: 'TournamentDetail', params: { tournamentId } }` → la app abre el detalle público (`GET tournaments/:id/public`), donde el líder inscribe a su grupo. `PushScreen` += `TournamentDetail`. |
+| **Una sola vez** | `tournaments.announcedAt` (nueva, nullable). `TournamentRepository.claimAnnouncement` = `UPDATE … SET announcedAt = now() WHERE id = ? AND kind = 'elite_forge' AND status = 'registration' AND announcedAt IS NULL`; solo el que consigue `count === 1` manda. Dos `PATCH` simultáneos o editar el nombre después no duplican el aviso. Las filas existentes quedan `NULL` a propósito (decisión escrita en el SQL): no se anuncia retroactivamente. |
+| **Escala** | `TournamentsService.announceIfOpen` recorre los ids por **páginas de 500 con cursor por `id`** (`listActivePlayerIds(afterId, take)`, nunca un `findMany` de todos) y llama a `sendToUsers` **una vez por página**: cada página es una consulta de preferencias, una de tokens y lotes de 100 hacia Expo. Con 10 000 jugadores: 20 páginas, ninguna en memoria a la vez. Corre **fuera de la respuesta** al administrador (`void` en `createEliteForge`/`update`): el `PATCH` vuelve al instante y el envío tarda lo que tarde. Best-effort como todo push: un fallo a mitad queda en el log (`No se pudo anunciar la Copa …`), no se reintenta solo (`announcedAt` ya está fijado; para un aviso masivo, duplicar es peor que perder). Log de cierre: `Copa "X" (id) anunciada a N jugador(es) en M página(s)`. |
+| **Código** | venues-service: `tournaments.service.ts` (`announceIfOpen`, `ANNOUNCE_PAGE_SIZE`), `tournament.repository.ts` (`claimAnnouncement`, `listActivePlayerIds`), `TournamentsModule` importa `NotificationsModule`. Spec `tournaments-announce.spec.ts` (9 casos: 1037 jugadores → 3 páginas sin repetidos, contrato del push, página exacta, ya anunciada, privado/borrador/activo no, sin jugadores, Expo caído, disparo en create y en update). |
+
+### Cambiar contraseña estando logueado: qué pasaba con la sesión y cómo quedó
+
+**Diagnóstico:** `changePassword` marcaba `passwordChangedAt = now()` y el gateway rechaza todo JWT con `iat` anterior. El token con el que el usuario acababa de hacer el cambio **también** era anterior → el siguiente request daba 401 → el monitor de 401 de la app cerraba la sesión. O sea: cambiar la contraseña desde la app te sacaba de la app. Y aun devolviendo un token nuevo seguía fallando: `iat` va en segundos y `passwordChangedAt` en milisegundos, así que un token firmado 300 ms después del cambio tenía `iat * 1000 < passwordChangedAt`.
+
+**Arreglo (dos partes):** (1) `AuthService.changePassword` devuelve `{ ok: true, accessToken }` — firma el JWT nuevo **después** de `updatePassword` (el spec verifica el orden) — y la app lo guarda con `setAuthToken` antes de cualquier otro request; (2) `JwtStrategy` compara al segundo (`iat < floor(passwordChangedAt / 1000)`). Además el gateway llama a `jwtStrategy.forget(userId)` tras el cambio para que las demás sesiones de ese usuario caigan en el próximo request y no dentro de los 10 s de caché. Resultado: la sesión que cambió la clave sigue abierta; cualquier otra (otro teléfono, un token robado) queda revocada. Contrato: `ChangePasswordResponse` en `libs/contracts/src/auth`.
+
+### Limpieza: alta directa de miembros
+
+Borrado todo lo marcado "BORRAR EN EL BUILD SIGUIENTE" (ver la sección de invitaciones más abajo). `InviteToGroupDto` es el único cuerpo `{ userId } | { email }` que queda.
 
 ## Invitaciones a grupo con aceptar / rechazar (2026-09-11)
 
@@ -560,7 +586,7 @@ La razón, y la que manda: `group_memberships` sigue significando "es miembro". 
 
 `invitedBy` es informativo: **la invitación es del grupo**. Si el invitador pierde el rol o sale, la invitación sigue válida y cualquier líder puede cancelarla. No hay límite de miembros, así que aceptar nunca falla por cupo.
 
-**`POST /api/groups/:id/members` (alta directa) — RETIRADO, responde 410.** `GroupsService.addMember` lanza `HttpException(…, 410)` con el mensaje "Actualizá la app para invitar a jugadores: ahora el jugador recibe una invitación y decide si entra al grupo." Decisión: los testers actualizan a distinto ritmo y un 404 genérico es peor que un mensaje que explica qué hacer. **BORRAR EN EL BUILD SIGUIENTE**: el método y la ruta del gateway (`groups-proxy.controller.ts`), `AddMemberDto`/`AddMemberPayload`, `MESSAGE_PATTERNS.GROUPS.ADD_MEMBER`, `GroupRepository.addMembership` (queda sin uso) y `api.addGroupMember` en la app.
+**`POST /api/groups/:id/members` (alta directa) — BORRADO en el build 7.** Entre el build 6 y el 7 respondió 410 con el mensaje "Actualizá la app para invitar a jugadores…" (los testers actualizan a distinto ritmo y un 404 genérico es peor que un mensaje que explica qué hacer). En el build 7 se eliminaron el método `GroupsService.addMember`, el handler de users-service, la ruta del gateway y `GroupsProxyService.addMember`, `AddMemberDto`/`AddMemberPayload`, `MESSAGE_PATTERNS.GROUPS.ADD_MEMBER`, `GroupRepository.addMembership` (sin uso) y `api.addGroupMember` + las claves `addMember*` en la app. Un build ≤ 6 que todavía llame a esa ruta recibe ahora el 404 estándar.
 
 ### Integración
 

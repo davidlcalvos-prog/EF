@@ -11,7 +11,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
-  AddMemberDto,
   AuthTokenPayload,
   CreateGroupDto,
   UpdateGroupDto,
@@ -66,19 +65,8 @@ export class GroupsProxyController {
     return this.groupsProxy.update(id, user.sub, dto);
   }
 
-  /**
-   * RETIRADO el 2026-09-11: users-service responde 410 "Actualizá la app para
-   * invitar a jugadores". Reemplazado por POST /groups/:id/invitations.
-   * BORRAR EN EL BUILD SIGUIENTE (ver BACKEND.md).
-   */
-  @Post(':id/members')
-  addMember(
-    @Param('id') id: string,
-    @Body() dto: AddMemberDto,
-    @CurrentUser() user: AuthTokenPayload,
-  ) {
-    return this.groupsProxy.addMember(id, user.sub, dto);
-  }
+  // POST /groups/:id/members (alta directa) se retiró el 2026-09-11 y se borró
+  // en el build 7; ahora es POST /groups/:id/invitations (el invitado acepta).
 
   @Patch(':id/members/:userId/role')
   updateMemberRole(

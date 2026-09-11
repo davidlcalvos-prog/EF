@@ -122,6 +122,12 @@ export const LoginScreen: FC<LoginScreenProps> = () => {
     openLinkInBrowser(Config.SIGN_UP_URL)
   }, [])
 
+  // Mismo patrón que "Crear cuenta": la recuperación vive en la web (manda el
+  // enlace por correo); la app solo abre el navegador. Build 7.
+  const handleForgotPassword = useCallback(() => {
+    openLinkInBrowser(Config.FORGOT_PASSWORD_URL)
+  }, [])
+
   const handleUiPreview = useCallback(() => {
     setErrorMessage("")
     setAuthEmail(UI_PREVIEW_EMAIL)
@@ -244,6 +250,26 @@ export const LoginScreen: FC<LoginScreenProps> = () => {
                         ? translate("loginScreen:signingInShort")
                         : translate("loginScreen:signInButton")}
                     </Button>
+                  </XStack>
+
+                  {/* ¿Olvidaste tu contraseña? — abre la web (build 7) */}
+                  <XStack width="100%" justifyContent="flex-end">
+                    <Pressable
+                      onPress={handleForgotPassword}
+                      hitSlop={8}
+                      accessibilityRole="link"
+                      testID="login-forgot-password"
+                    >
+                      <Text
+                        color="$efOrange"
+                        fontSize={13}
+                        fontWeight="700"
+                        textDecorationLine="underline"
+                        numberOfLines={1}
+                      >
+                        {translate("loginScreen:forgotPasswordLink")}
+                      </Text>
+                    </Pressable>
                   </XStack>
                 </YStack>
 

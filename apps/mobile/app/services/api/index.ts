@@ -224,6 +224,32 @@ export class Api {
   }
 
   /**
+   * Cambio de contraseña estando logueado (build 7). La actual es obligatoria
+   * (401 si no coincide — el monitor de 401 excluye `auth/*`, así que NO
+   * cierra la sesión). El backend marca `passwordChangedAt` y revoca todos los
+   * JWT anteriores, incluido el que viaja en este request: por eso devuelve un
+   * `accessToken` NUEVO que quien llama debe guardar con `setAuthToken` antes
+   * del siguiente request.
+   */
+  async changePassword(
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ kind: "ok"; accessToken: string } | GeneralApiProblem> {
+    const response = await this.apisauce.post<{ ok: true; accessToken: string }>(
+      "auth/password/change",
+      { currentPassword, newPassword },
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data?.accessToken) return { kind: "bad-data" }
+    return { kind: "ok", accessToken: response.data.accessToken }
+  }
+
+  /**
    * Perfil "rico" del jugador (stats, tests físicos, evaluación psicológica,
    * posición favorita) — usado para reconstruir el perfil en un dispositivo nuevo.
    */
@@ -603,32 +629,8 @@ export class Api {
     return { kind: "ok", group: response.data }
   }
 
-  /**
-   * Agrega un miembro por userId o email (uno de los dos). Solo creator/admin
-   * pueden hacerlo (403 si no) — validado server-side.
-   */
-  /**
-   * @deprecated 2026-09-11 — el backend responde 410 ("Actualizá la app para
-   * invitar a jugadores"). Ya no lo llama ninguna pantalla; usar `inviteToGroup`.
-   * BORRAR EN EL BUILD SIGUIENTE junto con la ruta del backend.
-   */
-  async addGroupMember(
-    groupId: string,
-    identifier: { userId?: string; email?: string },
-  ): Promise<{ kind: "ok"; group: GroupDetailApiDto } | GeneralApiProblem> {
-    const response = await this.apisauce.post<GroupDetailApiDto>(
-      `groups/${groupId}/members`,
-      identifier,
-    )
-
-    if (!response.ok) {
-      const problem = getGeneralApiProblem(response)
-      if (problem) return problem
-      return { kind: "unknown", temporary: true }
-    }
-    if (!response.data) return { kind: "bad-data" }
-    return { kind: "ok", group: response.data }
-  }
+  // `addGroupMember` (POST groups/:id/members, alta directa) se borró en el
+  // build 7: la ruta ya no existe en el backend. Usar `inviteToGroup`.
 
   /** Solo el creador puede cambiar roles. Máximo 2 admins por grupo (409 si ya hay 2). */
   async updateGroupMemberRole(
@@ -773,8 +775,8 @@ export class Api {
   }
 
   // ── Invitaciones a grupo (2026-09-11) ───────────────────────────────────
-  // Reemplazan a `addGroupMember` (el backend responde 410 a esa ruta; se
-  // borra en el build siguiente). El invitado acepta o rechaza.
+  // Reemplazaron al alta directa (`addGroupMember`, borrado en el build 7).
+  // El invitado acepta o rechaza.
 
   /** Líder: invita por email o userId (404 sin usuario, 409 ya miembro / ya pendiente). */
   async inviteToGroup(

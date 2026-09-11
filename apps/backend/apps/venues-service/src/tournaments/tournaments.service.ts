@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import {
   addExtraRoundMatches,
   AssignedTournamentMatchDto,
@@ -15,7 +15,16 @@ import {
   TournamentScheduleDto,
   TournamentTeamInputDto,
 } from '@ef/contracts';
+import { NotificationsService } from '../notifications/notifications.service';
 import { TournamentRepository } from './repositories/tournament.repository';
+
+/**
+ * A3: tamaño de cada página de destinatarios. Con miles de jugadores, cada
+ * página es UNA consulta de ids + una llamada a `sendToUsers` (que a su vez
+ * hace una consulta de preferencias, una de tokens y lotes de 100 hacia Expo).
+ * Nunca se cargan todos los usuarios en memoria a la vez.
+ */
+export const ANNOUNCE_PAGE_SIZE = 500;
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -28,7 +37,12 @@ function shuffle<T>(arr: T[]): T[] {
 
 @Injectable()
 export class TournamentsService {
-  constructor(private readonly tournamentRepository: TournamentRepository) {}
+  private readonly logger = new Logger(TournamentsService.name);
+
+  constructor(
+    private readonly tournamentRepository: TournamentRepository,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   listMine(ownerId: string): Promise<TournamentDto[]> {
     return this.tournamentRepository.listMine(ownerId);
@@ -53,8 +67,11 @@ export class TournamentsService {
     return this.tournamentRepository.create(ownerId, { ...dto, kind: 'private' });
   }
 
-  /** Copa Elite Forge (Fase 7.2) — solo Administrador (gateway), sin cancha fija. */
-  createEliteForge(
+  /**
+   * Copa Elite Forge (Fase 7.2) — solo Administrador (gateway), sin cancha fija.
+   * Nace en `registration` (default del modelo), así que se anuncia acá mismo.
+   */
+  async createEliteForge(
     ownerId: string,
     dto: {
       name: string;
@@ -65,10 +82,15 @@ export class TournamentsService {
       schedule: TournamentScheduleDto;
     },
   ): Promise<TournamentDto> {
-    return this.tournamentRepository.create(ownerId, { ...dto, kind: 'elite_forge' });
+    const created = await this.tournamentRepository.create(ownerId, {
+      ...dto,
+      kind: 'elite_forge',
+    });
+    void this.announceIfOpen(created);
+    return created;
   }
 
-  update(
+  async update(
     tournamentId: string,
     ownerId: string,
     patch: {
@@ -82,7 +104,70 @@ export class TournamentsService {
       schedule?: TournamentScheduleDto;
     },
   ): Promise<TournamentDto> {
-    return this.tournamentRepository.update(tournamentId, ownerId, patch);
+    const updated = await this.tournamentRepository.update(tournamentId, ownerId, patch);
+    // Solo cuando el patch lo pone en inscripción (draft → registration). Un
+    // patch de nombre u horario sobre un torneo ya anunciado no llega ni al
+    // claim, y si llegara, `announcedAt` ya no es null y no manda nada.
+    if (patch.status === 'registration') void this.announceIfOpen(updated);
+    return updated;
+  }
+
+  /**
+   * A3 (2026-09-11): "Copa Elite Forge abrió inscripciones" a TODOS los
+   * jugadores activos (rol Jugador). Se dispara cuando el torneo ENTRA en
+   * `registration` — no al crear un borrador — y solo para kind=elite_forge.
+   *
+   * No bloquea la respuesta al administrador (`void` en los llamadores): con
+   * miles de jugadores el envío tarda segundos. Es best-effort, como todo
+   * push: si algo falla a mitad de camino queda en el log; `announcedAt` ya
+   * está fijado, así que no se reintenta solo (evita duplicados, que para un
+   * aviso masivo es el peor de los dos males).
+   *
+   * Escala: `claimAnnouncement` es un UPDATE condicional atómico (un solo
+   * ganador aunque lleguen dos PATCH a la vez); los destinatarios se recorren
+   * por páginas de `ANNOUNCE_PAGE_SIZE` ids por cursor, y cada página va a
+   * `sendToUsers` (que respeta `user_preferences.notifications` y trocea de a
+   * 100 hacia Expo). Nunca hay más de una página en memoria.
+   */
+  async announceIfOpen(tournament: TournamentDto): Promise<void> {
+    if (tournament.kind !== 'elite_forge' || tournament.status !== 'registration') return;
+    try {
+      const claimed = await this.tournamentRepository.claimAnnouncement(tournament.id);
+      if (!claimed) return;
+
+      const data = {
+        v: 1 as const,
+        type: 'tournament_announced' as const,
+        screen: 'TournamentDetail' as const,
+        params: { tournamentId: tournament.id },
+      };
+      const title = 'Nueva Copa Elite Forge';
+      const body = `"${tournament.name}" abrió inscripciones. Inscribí a tu grupo desde Torneos.`;
+
+      let cursor: string | null = null;
+      let pages = 0;
+      let recipients = 0;
+      for (;;) {
+        const ids: string[] = await this.tournamentRepository.listActivePlayerIds(
+          cursor,
+          ANNOUNCE_PAGE_SIZE,
+        );
+        if (ids.length === 0) break;
+        await this.notificationsService.sendToUsers(ids, title, body, data);
+        pages++;
+        recipients += ids.length;
+        cursor = ids[ids.length - 1];
+        if (ids.length < ANNOUNCE_PAGE_SIZE) break;
+      }
+      this.logger.log(
+        `Copa "${tournament.name}" (${tournament.id}) anunciada a ${recipients} jugador(es) en ${pages} página(s)`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `No se pudo anunciar la Copa ${tournament.id}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   delete(tournamentId: string, ownerId: string): Promise<{ success: true }> {

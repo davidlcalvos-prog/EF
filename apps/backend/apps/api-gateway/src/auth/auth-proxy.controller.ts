@@ -19,10 +19,14 @@ import {
 import { AuthProxyService } from './auth-proxy.service';
 import { CurrentUser } from './decorators';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { JwtStrategy } from './jwt.strategy';
 
 @Controller('auth')
 export class AuthProxyController {
-  constructor(private readonly authProxy: AuthProxyService) {}
+  constructor(
+    private readonly authProxy: AuthProxyService,
+    private readonly jwtStrategy: JwtStrategy,
+  ) {}
 
   /** Login: límite estricto anti brute-force. */
   @Throttle({ default: { limit: 8, ttl: 60_000 } })
@@ -74,12 +78,19 @@ export class AuthProxyController {
     return this.authProxy.resetPassword(dto);
   }
 
-  /** Cambiar contraseña logueado: la actual es obligatoria. */
+  /**
+   * Cambiar contraseña logueado: la actual es obligatoria. Responde con un
+   * JWT nuevo (ver `ChangePasswordResponse`) y olvida la caché de estado de
+   * sesión de ese usuario: así las OTRAS sesiones caen en el próximo request
+   * en vez de dentro de 10 s.
+   */
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('password/change')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
-  changePassword(@Body() dto: ChangePasswordDto, @CurrentUser() user: { sub: string }) {
-    return this.authProxy.changePassword(user.sub, dto);
+  async changePassword(@Body() dto: ChangePasswordDto, @CurrentUser() user: { sub: string }) {
+    const result = await this.authProxy.changePassword(user.sub, dto);
+    this.jwtStrategy.forget(user.sub);
+    return result;
   }
 }

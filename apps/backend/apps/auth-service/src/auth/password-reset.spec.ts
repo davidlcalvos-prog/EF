@@ -65,15 +65,16 @@ function build(options: { user?: typeof USER | null } = {}) {
     sendPasswordReset: jest.fn(async (_to: string, _resetUrl: string, _minutes: number) => true),
   };
   const configService = { get: () => 'https://eliteforge.tech' };
+  const jwtService = { signAsync: jest.fn(async () => 'jwt.nuevo') };
   const service = new AuthService(
     userRepository as never,
-    {} as never,
+    jwtService as never,
     resetRepository as never,
     mailService as never,
     configService as never,
   );
   const nowSpy = jest.spyOn(Date, 'now').mockImplementation(now);
-  return { service, userRepository, resetRepository, mailService, advance, nowSpy };
+  return { service, userRepository, resetRepository, mailService, jwtService, advance, nowSpy };
 }
 
 /** Extrae el token crudo del enlace que se mandó por correo. */
@@ -198,20 +199,26 @@ describe('resetPassword — canje', () => {
 });
 
 describe('changePassword — logueado', () => {
-  test('con la contraseña actual correcta cambia y marca passwordChangedAt', async () => {
-    const { service, userRepository } = build();
+  test('con la actual correcta cambia, marca passwordChangedAt y devuelve un JWT nuevo firmado DESPUÉS', async () => {
+    const { service, userRepository, jwtService } = build();
     await expect(
       service.changePassword({ userId: 'u1', currentPassword: 'Actual123', newPassword: 'Nueva1234' }),
-    ).resolves.toEqual({ ok: true });
+    ).resolves.toEqual({ ok: true, accessToken: 'jwt.nuevo' });
     expect(userRepository.updatePassword).toHaveBeenCalledWith('u1', expect.any(String));
+    // Orden: primero se guarda la clave, después se firma — el iat del token nuevo nunca es anterior al cambio.
+    expect(userRepository.updatePassword.mock.invocationCallOrder[0]).toBeLessThan(
+      jwtService.signAsync.mock.invocationCallOrder[0],
+    );
+    expect(jwtService.signAsync).toHaveBeenCalledWith({ sub: 'u1', email: USER.email, role: 'Jugador' });
   });
 
-  test('actual incorrecta → 401, sin tocar la contraseña', async () => {
-    const { service, userRepository } = build();
+  test('actual incorrecta → 401, sin tocar la contraseña ni firmar nada', async () => {
+    const { service, userRepository, jwtService } = build();
     await expect(
       service.changePassword({ userId: 'u1', currentPassword: 'Mala1234', newPassword: 'Nueva1234' }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(userRepository.updatePassword).not.toHaveBeenCalled();
+    expect(jwtService.signAsync).not.toHaveBeenCalled();
   });
 });
 

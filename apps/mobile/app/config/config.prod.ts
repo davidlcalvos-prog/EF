@@ -16,4 +16,11 @@ export default {
    * el fallback apunta al registro de la web de producción.
    */
   SIGN_UP_URL: process.env.EXPO_PUBLIC_SIGN_UP_URL ?? "https://eliteforge.tech/auth/sign-up",
+  /**
+   * "¿Olvidaste tu contraseña?" (build 7): abre en el navegador la página de la
+   * web que manda el enlace por correo. Fuente: EXPO_PUBLIC_FORGOT_PASSWORD_URL
+   * (eas.json); el fallback apunta a producción.
+   */
+  FORGOT_PASSWORD_URL:
+    process.env.EXPO_PUBLIC_FORGOT_PASSWORD_URL ?? "https://eliteforge.tech/auth/forgot-password",
 }
