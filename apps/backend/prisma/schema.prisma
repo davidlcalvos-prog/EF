@@ -30,6 +30,13 @@ model User {
   /// (iat < passwordChangedAt) se rechaza: sin esto una sesión robada
   /// sobrevivía 7 días al reset. Null = nunca cambió desde el registro.
   passwordChangedAt DateTime?
+  /// Aceptación de los Términos y Condiciones en el registro web (2026-09-11):
+  /// cuándo (hora del servidor) y QUÉ versión (la fecha de publicación del
+  /// documento, p. ej. "2026-09-11"). Null = cuenta anterior a esta fecha o
+  /// creada por el administrador (dueños de cancha): no se les pide
+  /// retroactivamente, decisión de producto.
+  termsAcceptedAt   DateTime?
+  termsVersion      String?
 
   roleId Int
   role   Role @relation(fields: [roleId], references: [id])

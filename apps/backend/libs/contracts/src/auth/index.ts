@@ -1,11 +1,15 @@
 import { Transform } from 'class-transformer';
 import {
+  Equals,
   IsEmail,
   IsString,
   Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
+
+/** Formato de `termsVersion`: la fecha de publicación del documento (YYYY-MM-DD). */
+export const TERMS_VERSION_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 function trimString({ value }: { value: unknown }): unknown {
   return typeof value === 'string' ? value.trim() : value;
@@ -57,6 +61,20 @@ export class RegisterDto {
     message: 'name contains invalid characters',
   })
   name!: string;
+
+  /**
+   * Aceptación de los Términos y Condiciones (2026-09-11). Obligatoria y
+   * validada acá, no solo en el checkbox del navegador: un registro sin
+   * `acceptTerms: true` es 400. `termsVersion` es la fecha de publicación del
+   * documento que se mostró (apps/web/lib/legal/terms.ts); se guarda para
+   * poder demostrar qué texto aceptó cada cuenta.
+   */
+  @Equals(true, { message: 'terms must be accepted' })
+  acceptTerms!: true;
+
+  @IsString()
+  @Matches(TERMS_VERSION_REGEX, { message: 'termsVersion must be a YYYY-MM-DD date' })
+  termsVersion!: string;
 }
 
 export interface AuthTokenPayload {

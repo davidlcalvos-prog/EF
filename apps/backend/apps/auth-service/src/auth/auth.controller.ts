@@ -82,4 +82,9 @@ export class AuthController {
   updateUserEmail(@Payload() payload: AdminUpdateUserEmailPayload) {
     return this.authService.updateUserEmail(payload);
   }
+
+  @MessagePattern(MESSAGE_PATTERNS.ADMIN_USERS.FIND_USER_BY_EMAIL)
+  findUserByEmail(@Payload() data: { email: string }) {
+    return this.authService.findUserByEmailForAdmin(data.email);
+  }
 }

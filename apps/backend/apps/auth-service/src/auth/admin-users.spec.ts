@@ -29,6 +29,26 @@ function build(options: { user?: typeof USER | null; taken?: boolean } = {}) {
   return { service, userRepository };
 }
 
+describe('findUserByEmailForAdmin (Administrador)', () => {
+  test('devuelve id/email/nombre/rol del correo actual, normalizando la búsqueda', async () => {
+    const { service, userRepository } = build({ taken: true });
+    await expect(service.findUserByEmailForAdmin('  Tearuiz36@GAMIL.com ')).resolves.toEqual({
+      id: 'otro',
+      email: 'ana@gamil.com',
+      name: 'Ana',
+      role: 'Jugador',
+    });
+    expect(userRepository.findByEmail).toHaveBeenCalledWith('tearuiz36@gamil.com');
+  });
+
+  test('correo inexistente → 404', async () => {
+    const { service } = build();
+    await expect(service.findUserByEmailForAdmin('nadie@x.com')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+});
+
 describe('updateUserEmail (Administrador)', () => {
   test('corrige el typo, normaliza y devuelve el usuario', async () => {
     const { service, userRepository } = build();

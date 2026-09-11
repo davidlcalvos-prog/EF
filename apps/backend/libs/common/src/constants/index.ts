@@ -32,6 +32,8 @@ export const MESSAGE_PATTERNS = {
     SET_VENUE_OWNER_STATUS: 'admin_users.set_venue_owner_status',
     /** Corrección del correo de un usuario (2026-09-11). */
     UPDATE_USER_EMAIL: 'admin_users.update_user_email',
+    /** Buscar el id de un usuario por su correo actual, para corregirlo sin SQL. */
+    FIND_USER_BY_EMAIL: 'admin_users.find_user_by_email',
   },
   VENUES: {
     LIST_MINE: 'venues.list_mine',
