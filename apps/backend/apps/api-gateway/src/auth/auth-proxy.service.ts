@@ -88,6 +88,11 @@ export class AuthProxyService {
     );
   }
 
+  /** Id de un usuario por su correo actual (solo Administrador): paso previo a corregirlo sin SQL. */
+  findUserByEmail(email: string): Promise<AdminUserEmailDto> {
+    return this.send<AdminUserEmailDto>(MESSAGE_PATTERNS.ADMIN_USERS.FIND_USER_BY_EMAIL, { email });
+  }
+
   /** Corrección del correo de un usuario (2026-09-11, solo Administrador). */
   updateUserEmail(userId: string, dto: AdminUpdateUserEmailDto): Promise<AdminUserEmailDto> {
     return this.send<AdminUserEmailDto>(MESSAGE_PATTERNS.ADMIN_USERS.UPDATE_USER_EMAIL, {

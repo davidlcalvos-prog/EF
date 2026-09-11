@@ -105,7 +105,7 @@ export class AuthService {
    * repositorio resuelve Jugador y rechaza roles administrativos).
    */
   private async createUserWithRole(
-    dto: { email: string; name: string; password: string },
+    dto: { email: string; name: string; password: string; termsVersion?: string },
     roleName: string | undefined,
   ): Promise<AuthUserRecord> {
     const email = dto.email.trim().toLowerCase();
@@ -123,6 +123,7 @@ export class AuthService {
         passwordHash,
         name,
         roleNameOverride: roleName,
+        termsVersion: dto.termsVersion,
       });
     } catch (error) {
       if (
@@ -292,6 +293,15 @@ export class AuthService {
       }
       throw error;
     }
+  }
+
+  /** Administrador: id de un usuario por su correo actual (para corregirlo sin SQL). 404 si no existe. */
+  async findUserByEmailForAdmin(email: string): Promise<AdminUserEmailDto> {
+    const user = await this.userRepository.findByEmail(email.trim().toLowerCase());
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return { id: user.id, email: user.email, name: user.name, role: user.role };
   }
 
   private webBaseUrl(): string {

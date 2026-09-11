@@ -15,6 +15,12 @@ export interface CreateUserData {
    * Empresario/Administrador.
    */
   roleNameOverride?: string;
+  /**
+   * Versión de los Términos aceptada en el registro público (2026-09-11).
+   * Ausente en flujos internos (alta de Empresario): esas cuentas quedan con
+   * termsAcceptedAt/termsVersion en null.
+   */
+  termsVersion?: string;
 }
 
 export interface AuthUserRecord {
@@ -75,6 +81,10 @@ export class UserRepository {
         firstname: data.name,
         lastname: '',
         roleId: role.id,
+        // Hora del servidor, nunca del cliente; solo cuando hubo aceptación (registro público).
+        ...(data.termsVersion
+          ? { termsAcceptedAt: new Date(), termsVersion: data.termsVersion }
+          : {}),
         profile: {
           create: { alias },
         },

@@ -16,6 +16,10 @@ export function register(payload: {
   name: string
   email: string
   password: string
+  /** Obligatorio y validado también en el backend (2026-09-11): sin `true` el registro es 400. */
+  acceptTerms: true
+  /** Versión aceptada = TERMS_VERSION de lib/legal/terms.ts; el backend la guarda en users.termsVersion. */
+  termsVersion: string
 }): Promise<AuthResponse> {
   return apiFetch<AuthResponse>("auth/register", {
     method: "POST",

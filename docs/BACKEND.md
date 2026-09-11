@@ -481,6 +481,18 @@ Decisiones: (1) "vacante ocupada", "rechazada" y "cancelada" van a `NearbyGuestR
 
 **Cómo agregar una notificación nueva sin tocar la app:** un `sendToUser(userId, título, cuerpo, { v: 1, type: '<nuevo>', screen: '<pantalla de PushScreen>', params: { ...strings } })`. Agregar el `type` a `PushType` (es un literal: TypeScript lo exige). Si `screen` ya existe en `PushScreen`, la app navega sin cambios. Solo hace falta tocar la app si el destino es una **pantalla nueva** (agregarla a `PushScreen` y a `PUSH_SCREENS` en mobile con su conversor de params) o si la pantalla necesita un param que hoy no acepta.
 
+## Aceptación de Términos y Condiciones en el registro (2026-09-11)
+
+**Motivo: trazabilidad.** Hasta hoy el registro no pedía aceptar los términos ni dejaba rastro de que alguien lo hizo. Ahora el registro público exige la aceptación **en el backend** (no solo el checkbox del navegador) y guarda cuándo y **qué versión** se aceptó. **Requiere redeploy con `prisma migrate deploy`** (migración `20260911170000_terms_acceptance`); no toca mobile (el registro es web).
+
+- **`RegisterDto`** (`libs/contracts/src/auth`) gana `acceptTerms` (`@Equals(true)`: sin `true` literal el registro es 400, un `"true"` string también) y `termsVersion` (`@Matches(TERMS_VERSION_REGEX)`, formato `YYYY-MM-DD`). `createVenueOwner` (alta de dueños por el administrador) no los lleva: esas cuentas quedan en null.
+- **Columnas en `users`, no tabla aparte:** `termsAcceptedAt` (hora del **servidor**, `UserRepository.create`) y `termsVersion`. Se eligieron columnas porque es un hecho único ligado a la cuenta, sin estados ni limpieza: se escribe en el mismo `create` que la cuenta (imposible olvidar la fila) y se lee sin join desde cualquier `select` de usuario. Una tabla aparte solo se justificaría para conservar el historial de re-aceptaciones cuando cambie el texto; si eso llega, se agrega entonces (la columna guarda la última). Es el caso inverso a `group_invitations`/`password_reset_tokens`, que sí tenían estado transitorio que limpiar.
+- **Migración:** deja ambas columnas en `NULL` para las 25 cuentas existentes **a propósito** (decisión de producto, David, 2026-09-11, escrita en el SQL): no se les pide aceptar retroactivamente. `NULL` = cuenta anterior a la aceptación obligatoria o creada por el administrador.
+- **Versión: una sola fuente.** La versión ES la fecha de publicación del documento y vive en **`apps/web/lib/legal/terms.ts` → `TERMS_VERSION`** ("2026-09-11"). De ahí salen la etiqueta "Última actualización" de `/legal/terminos` (derivada con `Intl`, no duplicada) y el `termsVersion` que manda el registro. El backend no la hardcodea: valida el formato y guarda lo que la web oficial envió; la versión apunta al commit del documento fuente vigente ese día. Al republicar los términos, cambiar esa constante y el `.md`, nada más. (Trade-off asumido: un cliente malicioso podría enviar otra fecha, pero solo sobre su propia cuenta; la aceptación en sí sigue siendo obligatoria.)
+- Specs: `register-terms.spec.ts` (DTO: sin `acceptTerms`, `false`, `"true"`, `termsVersion` ausente o mal formada → 400; `register` pasa `termsVersion` al repositorio).
+
+**`GET /api/admin/users?email=…`** (Administrador): devuelve `{ id, email, name, role }` o 404. Es el paso previo al `PATCH /api/admin/users/:id/email` para corregir correos con typo **sin SQL**. Spec en `admin-users.spec.ts`.
+
 ## Correo por SMTP y recuperación de contraseña (2026-09-11)
 
 **Antes no había envío de correos en ningún servicio** (la pantalla "¡Cuenta confirmada!" es una página estática de éxito tras el registro; no existe confirmación por correo). Ya hubo que resetear contraseñas por SSH + SQL en producción. **Requiere redeploy del backend con `prisma migrate deploy` (migración `20260911150000_password_reset_tokens`) y deploy de la web; no toca la app móvil** (el enlace "¿Olvidaste tu contraseña?" en `LoginScreen` va en el build siguiente; mientras tanto el flujo funciona desde cualquier navegador en `eliteforge.tech/auth/forgot-password`).
@@ -627,6 +639,12 @@ Los grupos que lidero se resuelven una vez (`group_memberships` con `role in (cr
 **Cómo agregar un contador nuevo:** (1) la clave en `PendingKind` (`libs/contracts/src/push`) y en `PENDING_KINDS`; (2) un `count` más en `PendingRepository.countForUser` con el **mismo predicado** que autoriza la acción en su servicio; (3) en el push que lo genera, `pending: '<clave>'`. En la app: la clave en `PENDING_KINDS` de `services/api/types.ts` y su ítem en `PENDING_DRAWER_ITEM` (`FeedDrawer.tsx`); ningún componente cambia. Ver [FRONTEND.md](./FRONTEND.md#indicadores-de-pendientes-fase-b-2026-09-10).
 
 ## Registro de cambios
+
+### 2026-09-11 — Aceptación de términos en el registro + búsqueda de usuario por correo para el admin (requiere redeploy + `migrate deploy`)
+
+- `RegisterDto` exige `acceptTerms: true` y `termsVersion` (YYYY-MM-DD); `users.termsAcceptedAt` (hora del servidor) y `users.termsVersion` (migración `20260911170000_terms_acceptance`, existentes en NULL por decisión de producto). Versión con una sola fuente en la web (`lib/legal/terms.ts`).
+- `GET /api/admin/users?email=` para obtener el id antes de `PATCH /api/admin/users/:id/email`.
+- Ver [Aceptación de Términos y Condiciones en el registro](#aceptación-de-términos-y-condiciones-en-el-registro-2026-09-11).
 
 ### 2026-09-11 — Correo por SMTP, "olvidé mi contraseña", cambio logueado y corrección de correos (requiere redeploy + `migrate deploy`; no toca mobile)
 
