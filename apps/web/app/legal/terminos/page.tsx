@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { LegalContentPage } from '@/components/legal/legal-page'
+import { TERMS_UPDATED_AT_LABEL } from '@/lib/legal/terms'
 
 export const metadata: Metadata = {
   title: 'Términos y Condiciones — Elite Forge',
@@ -9,9 +10,11 @@ export const metadata: Metadata = {
 /**
  * Texto legal aprobado (docs: terminos-y-condiciones-elite-forge.md) transcrito
  * tal cual, sin parafrasear — si hay que cambiar una palabra, se cambia en el
- * documento fuente primero. Fecha = día de publicación (merge), no de redacción.
+ * documento fuente primero. La fecha NO vive acá: sale de TERMS_VERSION en
+ * lib/legal/terms.ts (fecha de publicación), la misma que el registro guarda
+ * como versión aceptada. Al republicar los términos, cambiar esa constante.
  */
-const UPDATED_AT = '11 de septiembre de 2026'
+const UPDATED_AT = TERMS_UPDATED_AT_LABEL
 const SUPPORT_EMAIL = 'soporte@eliteforge.tech'
 
 export default function TerminosPage() {

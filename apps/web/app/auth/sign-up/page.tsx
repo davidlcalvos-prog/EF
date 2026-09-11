@@ -2,6 +2,7 @@
 
 import { register } from '@/lib/api/auth'
 import { ApiError } from '@/lib/api/client'
+import { TERMS_VERSION } from '@/lib/legal/terms'
 import { SocialAuthButtons } from '@/components/auth/social-auth-buttons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,6 +22,7 @@ export default function SignUpPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [repeatPassword, setRepeatPassword] = useState('')
+  const [acceptTerms, setAcceptTerms] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
@@ -76,11 +78,19 @@ export default function SignUpPage() {
       return
     }
 
+    if (!acceptTerms) {
+      setError('Para crear tu cuenta tenés que aceptar los Términos y Condiciones y la Política de Privacidad.')
+      setIsLoading(false)
+      return
+    }
+
     try {
       await register({
         name: trimmedName,
         email: normalizedEmail,
         password,
+        acceptTerms: true,
+        termsVersion: TERMS_VERSION,
       })
       router.push('/auth/confirmed')
     } catch (err) {
@@ -94,6 +104,9 @@ export default function SignUpPage() {
           setError(
             'Demasiados intentos. Espera un momento e inténtalo de nuevo.',
           )
+        } else if (err.status === 400) {
+          // Validación del backend (incluida la aceptación de términos, que también se exige del lado servidor).
+          setError('Revisa los datos del formulario: ' + err.message)
         } else {
           setError(err.message)
         }
@@ -187,16 +200,43 @@ export default function SignUpPage() {
           </Button>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground">
-          Al crear tu cuenta, aceptás nuestra{' '}
-          <Link
-            href="/legal/privacidad"
-            className="font-medium text-primary hover:underline"
-          >
-            Política de Privacidad
-          </Link>
-          .
-        </p>
+        {/* Aceptación obligatoria (2026-09-11). El backend la exige también (acceptTerms + termsVersion en RegisterDto):
+            este checkbox no es decorativo. El enlace a /legal/privacidad está declarado en Play Console — no cambiar. */}
+        <label
+          htmlFor="acceptTerms"
+          className="flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-muted-foreground"
+        >
+          <input
+            id="acceptTerms"
+            name="acceptTerms"
+            type="checkbox"
+            required
+            checked={acceptTerms}
+            onChange={(e) => setAcceptTerms(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-primary"
+          />
+          <span>
+            Leí y acepto los{' '}
+            <Link
+              href="/legal/terminos"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-primary hover:underline"
+            >
+              Términos y Condiciones
+            </Link>{' '}
+            y la{' '}
+            <Link
+              href="/legal/privacidad"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-primary hover:underline"
+            >
+              Política de Privacidad
+            </Link>
+            .
+          </span>
+        </label>
       </form>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
