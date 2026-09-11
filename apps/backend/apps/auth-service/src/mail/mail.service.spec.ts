@@ -26,20 +26,15 @@ describe('MailService', () => {
 
   test('con SMTP_* manda por el transporte con from/to/subject y el enlace en texto y html', async () => {
     const service = build({});
-    const sendMail = jest.fn(async () => ({ messageId: '<id-1>' }));
+    type Message = { from: string; to: string; subject: string; text: string; html: string };
+    const sendMail = jest.fn(async (_message: Message) => ({ messageId: '<id-1>' }));
     service.useTransport({ sendMail }, CONFIG);
     expect(service.isEnabled()).toBe(true);
 
     const ok = await service.sendPasswordReset('ana@gmail.com', 'https://eliteforge.tech/auth/reset-password?token=abc', 30);
     expect(ok).toBe(true);
     expect(sendMail).toHaveBeenCalledTimes(1);
-    const message = sendMail.mock.calls[0][0] as unknown as {
-      from: string;
-      to: string;
-      subject: string;
-      text: string;
-      html: string;
-    };
+    const message = sendMail.mock.calls[0][0];
     expect(message.from).toBe(CONFIG.from);
     expect(message.to).toBe('ana@gmail.com');
     expect(message.subject).toContain('Recuperá tu contraseña');
