@@ -53,6 +53,8 @@ const PUSH_SCREENS: {
   NearbyGuestRequests: () => undefined,
   ReservationDetail: (p) => (p.reservationId ? { reservationId: p.reservationId } : null),
   GroupDetail: (p) => (p.groupId ? { groupId: p.groupId } : null),
+  // A3 (build 7): Copa Elite Forge abrió inscripciones → detalle público.
+  TournamentDetail: (p) => (p.tournamentId ? { tournamentId: p.tournamentId } : null),
 }
 
 export function isPushScreen(value: unknown): value is PushScreen {

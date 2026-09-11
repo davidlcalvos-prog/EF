@@ -70,6 +70,20 @@ describe("resolvePushTarget — contrato v1", () => {
     ).toEqual({ screen: "MatchDetail", params: { matchId: "m1", openApplicants: true } })
   })
 
+  test("Copa anunciada (A3) → TournamentDetail con tournamentId; sin id no navega", () => {
+    expect(
+      resolvePushTarget({
+        v: 1,
+        type: "tournament_announced",
+        screen: "TournamentDetail",
+        params: { tournamentId: "t1" },
+      }),
+    ).toEqual({ screen: "TournamentDetail", params: { tournamentId: "t1" } })
+    expect(
+      resolvePushTarget({ v: 1, type: "tournament_announced", screen: "TournamentDetail" }),
+    ).toBeNull()
+  })
+
   test("invitación a grupo → Groups con el bloque de invitaciones (params extra se descartan)", () => {
     expect(
       resolvePushTarget({

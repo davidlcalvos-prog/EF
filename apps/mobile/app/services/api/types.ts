@@ -572,6 +572,8 @@ export type PushType =
   | "vs_match_roster_alert"
   | "reservation_status"
   | "new_reservation"
+  /** A3 (build 7): Copa Elite Forge abrió inscripciones. */
+  | "tournament_announced"
 
 export type PushScreen =
   | "Feed"
@@ -581,6 +583,8 @@ export type PushScreen =
   | "NearbyGuestRequests"
   | "ReservationDetail"
   | "GroupDetail"
+  /** A3 (build 7): detalle público de la Copa (`params.tournamentId`). */
+  | "TournamentDetail"
 
 export type PendingKind =
   | "friendRequests"

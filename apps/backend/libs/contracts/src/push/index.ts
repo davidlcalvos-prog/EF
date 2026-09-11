@@ -35,7 +35,9 @@ export type PushType =
   | 'match_guest_request_cancelled'
   | 'vs_match_roster_alert'
   | 'reservation_status'
-  | 'new_reservation';
+  | 'new_reservation'
+  /** A3 (2026-09-11): Copa Elite Forge abrió inscripciones — a todos los jugadores activos. */
+  | 'tournament_announced';
 
 /**
  * Pantallas a las que un push puede llevar. Es el nombre de ruta del AppStack
@@ -50,7 +52,9 @@ export type PushScreen =
   | 'MatchDetail'
   | 'NearbyGuestRequests'
   | 'ReservationDetail'
-  | 'GroupDetail';
+  | 'GroupDetail'
+  /** A3 (2026-09-11): detalle público de la Copa (`params.tournamentId`). */
+  | 'TournamentDetail';
 
 /**
  * Contadores de pendientes que un evento puede afectar (Fase B — indicadores
