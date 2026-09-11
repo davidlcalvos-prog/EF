@@ -239,6 +239,12 @@ Campos: nombre, email, contraseña ×2 → `{ name, email, password }` → `/aut
 
 ---
 
+## Aceptación de Términos y Condiciones en el registro (2026-09-11)
+
+`app/auth/sign-up` tiene un **checkbox obligatorio** ("Leí y acepto los Términos y Condiciones y la Política de Privacidad") con enlaces a `/legal/terminos` y a `/legal/privacidad` (esta última está declarada en Play Console: la URL no cambió, solo pasó de un párrafo a formar parte del texto del checkbox). Validación en el cliente (mensaje propio si no está marcado) **y en el backend** (`RegisterDto` exige `acceptTerms: true` y `termsVersion`; un 400 del servidor se muestra con su mensaje): el checkbox no es decorativo. `lib/api/auth.ts → register` manda `acceptTerms: true` y `termsVersion: TERMS_VERSION`.
+
+**Versión, una sola fuente: `lib/legal/terms.ts`.** `TERMS_VERSION` es la fecha de publicación del documento (`"2026-09-11"`). De ahí derivan `TERMS_UPDATED_AT_LABEL` ("11 de septiembre de 2026", con `Intl` en `America/Bogota`), que es lo que muestra `/legal/terminos` como "Última actualización" (`terminos/page.tsx` ya no tiene la fecha hardcodeada), y el `termsVersion` que el backend guarda en `users.termsVersion` junto con `users.termsAcceptedAt`. **Al republicar los términos:** cambiar `TERMS_VERSION` y el documento fuente `docs/terminos-y-condiciones-elite-forge.md`; la página y el registro siguen solos. La política de privacidad conserva su propia `UPDATED_AT` (no se tocó). Los usuarios registrados antes de esta fecha quedan sin aceptación registrada por decisión de producto (ver [BACKEND.md](./BACKEND.md#aceptación-de-términos-y-condiciones-en-el-registro-2026-09-11)).
+
 ## Recuperación de contraseña (2026-09-11)
 
 Dos páginas nuevas bajo `app/auth/`, mismo patrón que `login` y `sign-up` (client components, `useState` para campos/error/loading, validación local, `lib/api/auth.ts` → `apiFetch`, mapeo de `ApiError.status`, `Label`/`Input`/`Button` de `components/ui`, layout `auth/layout.tsx`). `sign-up` y el enlace a `/legal/privacidad` no se tocaron.
@@ -547,6 +553,10 @@ Ciclo completo por defecto: **13,5 s**.
 ---
 
 ## Registro de cambios
+
+### 2026-09-11 — Checkbox de aceptación de términos en el registro + versión de los términos con una sola fuente
+
+- `sign-up`: checkbox obligatorio con enlaces a `/legal/terminos` y `/legal/privacidad`, validado en cliente y backend; `register` manda `acceptTerms` y `termsVersion`. `lib/legal/terms.ts` (`TERMS_VERSION`) alimenta la fecha de `/legal/terminos` y la versión aceptada. `next build` en verde. Ver [Aceptación de Términos y Condiciones en el registro](#aceptación-de-términos-y-condiciones-en-el-registro-2026-09-11).
 
 ### 2026-09-11 — "Olvidé mi contraseña": `/auth/forgot-password`, `/auth/reset-password` y enlace en login
 
