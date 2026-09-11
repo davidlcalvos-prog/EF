@@ -42,7 +42,11 @@ Valores a rellenar (los `[SECRETO]` se generan, nunca se inventan a mano):
 | `JWT_SECRET` | `openssl rand -base64 48` |
 | `CORS_ORIGINS` | Dominios de la web separados por coma (`https://eliteforge.tech,https://www.eliteforge.tech`) |
 | `POSTGRES_USER` / `POSTGRES_DB` | Podés dejar `ef_user` / `ef_db` |
-| `EXPO_ACCESS_TOKEN` | Vacío (hoy no se usa; ver `apps/backend/.env.example`) |
+| `EXPO_ACCESS_TOKEN` | Opcional (desde el build 4 el backend lo lee; Expo lo exige solo con seguridad reforzada o volumen alto) |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` | `smtp.hostinger.com` / `465` / `true` — SMTP de Hostinger (2026-09-11, recuperación de contraseña). Las inyecta el compose **solo en auth-service** |
+| `SMTP_USER` / `SMTP_FROM` | `soporte@eliteforge.tech` / `"Elite Forge <soporte@eliteforge.tech>"` |
+| `SMTP_PASSWORD` | Contraseña de la casilla en hPanel — **nunca en el repo**. Si se rota en hPanel, hay que actualizarla acá y `up -d` auth-service; si no, el log dice `Mail FALLÓ … 535` |
+| `WEB_BASE_URL` | `https://eliteforge.tech` — base de los enlaces de los correos |
 
 ## 3. Levantar
 
