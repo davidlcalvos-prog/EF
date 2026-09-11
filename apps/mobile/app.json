@@ -26,15 +26,28 @@
   },
   "ios": {
     "icon": "./assets/images/app-icon-ios.png",
-    "supportsTablet": true,
-    "bundleIdentifier": "com.eliteforge.app"
+    "supportsTablet": false,
+    "bundleIdentifier": "com.eliteforge.app",
+    "config": {
+      "usesNonExemptEncryption": false
+    },
+    "infoPlist": {
+      "CFBundleDevelopmentRegion": "es"
+    }
   },
   "web": {
     "favicon": "./assets/images/app-icon-web-favicon.png",
     "bundler": "metro"
   },
   "plugins": [
-    "expo-localization",
+    [
+      "expo-localization",
+      {
+        "supportedLocales": {
+          "ios": ["es", "en", "fr", "ar", "hi", "ja", "ko"]
+        }
+      }
+    ],
     "expo-font",
     [
       "expo-splash-screen",
@@ -65,7 +78,9 @@
     [
       "expo-image-picker",
       {
-        "photosPermission": "Allow Elite Forge to access your photos for your profile picture."
+        "photosPermission": "Elite Forge necesita acceso a tus fotos para que elijas tu foto de perfil y la foto de tus grupos.",
+        "cameraPermission": false,
+        "microphonePermission": false
       }
     ],
     [
