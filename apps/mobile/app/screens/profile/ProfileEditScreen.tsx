@@ -15,6 +15,7 @@ import { api } from "@/services/api"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 import type { PlayerProfileData } from "@/utils/playerProfileStorage"
 
+import { ChangePasswordModal, type ChangePasswordOutcome } from "./components/ChangePasswordModal"
 import { PositionPicker } from "./components/PositionPicker"
 import { ProfileAvatar } from "./components/ProfileAvatar"
 import { usePlayerProfile } from "./usePlayerProfile"
@@ -27,8 +28,28 @@ function getUserColor(seed: string) {
 }
 
 export function ProfileEditScreen({ navigation }: AppStackScreenProps<"ProfileEdit">) {
-  const { authEmail, authUserId, authAvatarBase64 } = useAuth()
+  const { authEmail, authUserId, authAvatarBase64, setAuthToken } = useAuth()
   const showAlert = useAppAlert()
+
+  // Seguridad (build 7): cambiar contraseña estando logueado. El backend
+  // revoca TODOS los JWT anteriores (incluido el de este teléfono) y devuelve
+  // uno nuevo: se guarda en MMKV antes de que la app haga otro request — si
+  // no, el siguiente 401 cerraría la sesión que el usuario acaba de asegurar.
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false)
+  const handleChangePassword = useCallback(
+    async (currentPassword: string, newPassword: string): Promise<ChangePasswordOutcome> => {
+      const result = await api.changePassword(currentPassword, newPassword)
+      if (result.kind === "unauthorized") return "wrong-current"
+      if (result.kind !== "ok") return "error"
+      setAuthToken(result.accessToken)
+      showAlert(
+        translate("profileScreen:changePasswordSuccessTitle"),
+        translate("profileScreen:changePasswordSuccessMessage"),
+      )
+      return "ok"
+    },
+    [setAuthToken, showAlert],
+  )
   const userKey = authEmail ?? "guest"
   const { profile, saveFullProfile } = usePlayerProfile(userKey, authEmail)
   const { horizontalPadding, insets, contentMaxWidth } = useResponsiveLayout()
@@ -225,12 +246,34 @@ export function ProfileEditScreen({ navigation }: AppStackScreenProps<"ProfileEd
                   onSelect={(id) => patchForm({ favoritePositionId: id })}
                 />
               </YStack>
+
+              <YStack gap={8}>
+                <Text color="rgba(255,255,255,0.75)" fontSize={12} fontWeight="700">
+                  {translate("profileScreen:securityTitle")}
+                </Text>
+                <Text color="rgba(255,255,255,0.45)" fontSize={11} lineHeight={16}>
+                  {translate("profileScreen:securityHint")}
+                </Text>
+                <Button
+                  variant="outline"
+                  onPress={() => setChangePasswordOpen(true)}
+                  testID="profile-change-password"
+                >
+                  {translate("profileScreen:changePasswordButton")}
+                </Button>
+              </YStack>
             </YStack>
 
             <Button onPress={handleSave}>{translate("profileScreen:editSave")}</Button>
           </YStack>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ChangePasswordModal
+        visible={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
+        onSubmit={handleChangePassword}
+      />
     </YStack>
   )
 }

@@ -224,6 +224,32 @@ export class Api {
   }
 
   /**
+   * Cambio de contraseña estando logueado (build 7). La actual es obligatoria
+   * (401 si no coincide — el monitor de 401 excluye `auth/*`, así que NO
+   * cierra la sesión). El backend marca `passwordChangedAt` y revoca todos los
+   * JWT anteriores, incluido el que viaja en este request: por eso devuelve un
+   * `accessToken` NUEVO que quien llama debe guardar con `setAuthToken` antes
+   * del siguiente request.
+   */
+  async changePassword(
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ kind: "ok"; accessToken: string } | GeneralApiProblem> {
+    const response = await this.apisauce.post<{ ok: true; accessToken: string }>(
+      "auth/password/change",
+      { currentPassword, newPassword },
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data?.accessToken) return { kind: "bad-data" }
+    return { kind: "ok", accessToken: response.data.accessToken }
+  }
+
+  /**
    * Perfil "rico" del jugador (stats, tests físicos, evaluación psicológica,
    * posición favorita) — usado para reconstruir el perfil en un dispositivo nuevo.
    */
