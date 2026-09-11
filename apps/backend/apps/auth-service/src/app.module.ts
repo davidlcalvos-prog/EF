@@ -4,6 +4,7 @@ import { join } from 'path';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from '@ef/database';
 import { AuthModule } from './auth/auth.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -26,6 +27,8 @@ import { AuthModule } from './auth/auth.module';
         signOptions: { expiresIn: '7d' as const },
       }),
     }),
+    // Correo por SMTP (2026-09-11): lo usa la recuperación de contraseña.
+    MailModule,
     AuthModule,
   ],
 })
