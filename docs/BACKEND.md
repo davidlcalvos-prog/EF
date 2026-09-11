@@ -559,6 +559,23 @@ Reglas de contraseña compartidas con el registro: 8–72, letra + número (`PAS
 
 Borrado todo lo marcado "BORRAR EN EL BUILD SIGUIENTE" (ver la sección de invitaciones más abajo). `InviteToGroupDto` es el único cuerpo `{ userId } | { email }` que queda.
 
+### Incidente: el gateway del build 7 no arrancó en producción (rollback a `05761e4`)
+
+**Qué pasó.** `AuthProxyController` pasó a inyectar `JwtStrategy` (para `forget(userId)` tras el cambio de contraseña), pero `GatewayAuthModule` proveía la estrategia **sin exportarla**. Nest la resolvía dentro de `GatewayAuthModule` y no en `AuthProxyModule`, y el gateway murió al arrancar:
+
+```
+UnknownDependenciesException: Nest can't resolve dependencies of the AuthProxyController (AuthProxyService, ?).
+Please make sure that the argument JwtStrategy at index [1] is available in the AuthProxyModule module.
+```
+
+**Fix:** `JwtStrategy` en `exports` de `GatewayAuthModule` (`AuthProxyModule` ya lo importaba). La otra inyección nueva del build 7, `NotificationsService` en `TournamentsService` (venues-service), sí tenía su `NotificationsModule` importado en `TournamentsModule`.
+
+**Por qué no lo vieron los tests.** Los 84 specs unitarios instancian los servicios a mano (`new AuthService(mockRepo, …)`): nunca construyen el contenedor de Nest, así que un módulo mal cableado es invisible para ellos. `tsc` tampoco lo ve — el cableado de `@Module` es runtime.
+
+**Qué lo atrapa ahora: un smoke test del árbol de dependencias por servicio**, `apps/<servicio>/src/app.module.spec.ts` en los cuatro (gateway, auth, users, venues). Hace `Test.createTestingModule({ imports: [AppModule] }).compile()` — exactamente lo que hace `NestFactory.create(AppModule)` al arrancar — y después `init()`/`close()` (en el gateway `createNestApplication().init()`, que además instancia guards, filtros e interceptores de cada ruta). No abre puertos ni se conecta a nada: `PrismaService` se reemplaza con `overrideProvider(PrismaService).useValue({})`, los `ClientProxy` TCP no conectan hasta el primer `send`, `expo-server-sdk` y `nodemailer` van mockeados. Corre en ~10 s por servicio dentro de `npm test`, o sea en el pre-push/CI de siempre. Verificado que reproduce el incidente: con el código del build 7 sin el fix, el spec del gateway falla con el mismo mensaje de arriba.
+
+**Regla desde ahora:** si un cambio agrega una dependencia a un controller o servicio (constructor nuevo, `imports` de un módulo), correr `npx jest app.module.spec` antes de pedir el deploy. Un spec unitario verde no dice nada sobre el cableado de módulos.
+
 ## Invitaciones a grupo con aceptar / rechazar (2026-09-11)
 
 **Antes:** el creador o un admin agregaban por email y el usuario quedaba dentro al instante, sin aviso ni consentimiento. **Ahora:** invitan, el invitado recibe un push y decide. Mientras la invitación está `pending` **no es miembro a ningún efecto**. **Requiere redeploy del backend con `prisma migrate deploy` (migración `20260911100000_group_invitations`) y build nuevo de la app.**
