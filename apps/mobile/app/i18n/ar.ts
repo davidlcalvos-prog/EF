@@ -58,7 +58,6 @@ const ar: Translations = {
     facebookButton: "المتابعة مع Facebook",
     signingInShort: "…",
     uiPreviewButton: "المتابعة بدون خادم (UI)",
-    settingsSoon: "Settings will be available soon.",
   },
   registerScreen: {
     title: "إنشاء حساب",
@@ -134,12 +133,6 @@ const ar: Translations = {
     nearbyGuestRequests: "بالقرب مني",
     tournaments: "البطولات",
     reservations: "الحجوزات",
-    comingSoon: "قريباً",
-    comingSoonTitle: "قريباً",
-    profileSoon: "الملف الشخصي سيكون متاحاً قريباً.",
-    groupsSoon: "المجموعات ستكون متاحة قريباً.",
-    matchesSoon: "المباريات ستكون متاحة قريباً.",
-    reservationsSoon: "الحجوزات ستكون متاحة قريباً.",
   },
   groupsScreen: {
     title: "المجموعات",

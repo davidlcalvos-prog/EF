@@ -1,9 +1,7 @@
 import { FC, useCallback, useState } from "react"
 import { KeyboardAvoidingView, Platform, Pressable } from "react-native"
-import { Ionicons } from "@expo/vector-icons"
 import { ScrollView, Text, XStack, YStack } from "tamagui"
 
-import { useAppAlert } from "@/components/AppAlert"
 import {
   AuthFormCard,
   Button,
@@ -42,7 +40,6 @@ export const LoginScreen: FC<LoginScreenProps> = () => {
   const [isLoading, setIsLoading] = useState(false)
 
   const { setAuthToken, setAuthEmail, setAuthUserId } = useAuth()
-  const showAlert = useAppAlert()
 
   const {
     insets,
@@ -134,35 +131,8 @@ export const LoginScreen: FC<LoginScreenProps> = () => {
     setAuthToken(UI_PREVIEW_TOKEN)
   }, [setAuthEmail, setAuthToken])
 
-  const handleSettings = useCallback(() => {
-    showAlert(translate("feedDrawer:comingSoonTitle"), translate("loginScreen:settingsSoon"))
-  }, [showAlert])
-
   return (
     <YStack flex={1} backgroundColor={eliteForgeColors.carbon}>
-      <Pressable
-        onPress={handleSettings}
-        hitSlop={12}
-        accessibilityRole="button"
-        accessibilityLabel={translate("loginScreen:settingsSoon")}
-        style={{
-          position: "absolute",
-          top: insets.top + 8,
-          right: Math.max(horizontalPadding, 16),
-          zIndex: 20,
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "#2e2e2e",
-          borderWidth: 1,
-          borderColor: "#555555",
-        }}
-      >
-        <Ionicons name="settings-outline" size={20} color="rgba(255,255,255,0.8)" />
-      </Pressable>
-
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}

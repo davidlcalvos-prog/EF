@@ -57,7 +57,6 @@ const en = {
     facebookButton: "Continue with Facebook",
     signingInShort: "…",
     uiPreviewButton: "Enter without backend (UI)",
-    settingsSoon: "Settings will be available soon.",
   },
   registerScreen: {
     title: "Create account",
@@ -133,12 +132,6 @@ const en = {
     nearbyGuestRequests: "Near me",
     tournaments: "Championships",
     reservations: "Reservations",
-    comingSoon: "Coming soon",
-    comingSoonTitle: "Coming soon",
-    profileSoon: "Your player profile will be available here soon.",
-    groupsSoon: "Groups and squads will be available here soon.",
-    matchesSoon: "Matches and fixtures will be available here soon.",
-    reservationsSoon: "Field reservations will be available here soon.",
   },
   groupsScreen: {
     title: "Groups",

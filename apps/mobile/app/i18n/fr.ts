@@ -59,7 +59,6 @@ const fr: Translations = {
     facebookButton: "Continuer avec Facebook",
     signingInShort: "…",
     uiPreviewButton: "Continuer sans backend (UI)",
-    settingsSoon: "Settings will be available soon.",
   },
   registerScreen: {
     title: "Créer un compte",
@@ -135,12 +134,6 @@ const fr: Translations = {
     nearbyGuestRequests: "Près de moi",
     tournaments: "Championnats",
     reservations: "Réservations",
-    comingSoon: "Bientôt",
-    comingSoonTitle: "Bientôt disponible",
-    profileSoon: "Votre profil sera bientôt disponible ici.",
-    groupsSoon: "Les groupes seront bientôt disponibles ici.",
-    matchesSoon: "Les matchs seront bientôt disponibles ici.",
-    reservationsSoon: "Les réservations seront bientôt disponibles ici.",
   },
   groupsScreen: {
     title: "Groupes",

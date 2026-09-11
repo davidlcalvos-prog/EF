@@ -85,7 +85,7 @@ function DrawerMenuItem({
   icon: keyof typeof Ionicons.glyphMap
   label: string
   onPress: () => void
-  subtitle?: string
+  subtitle: string
   /** > 0 pinta el punto de pendiente junto al chevron (Fase B). */
   pendingCount?: number
 }) {
@@ -127,7 +127,7 @@ function DrawerMenuItem({
               {label}
             </Text>
             <Text color="rgba(255,255,255,0.45)" fontSize={12}>
-              {subtitle ?? translate("feedDrawer:comingSoon")}
+              {subtitle}
             </Text>
           </YStack>
           <XStack alignItems="center" gap={8}>

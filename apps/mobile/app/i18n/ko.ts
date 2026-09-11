@@ -58,7 +58,6 @@ const ko: Translations = {
     facebookButton: "Facebook으로 계속",
     signingInShort: "…",
     uiPreviewButton: "백엔드 없이 계속 (UI)",
-    settingsSoon: "Settings will be available soon.",
   },
   registerScreen: {
     title: "계정 만들기",
@@ -134,12 +133,6 @@ const ko: Translations = {
     nearbyGuestRequests: "내 주변",
     tournaments: "챔피언십",
     reservations: "예약",
-    comingSoon: "곧 제공",
-    comingSoonTitle: "곧 제공",
-    profileSoon: "프로필은 곧 제공됩니다.",
-    groupsSoon: "그룹은 곧 제공됩니다.",
-    matchesSoon: "경기는 곧 제공됩니다.",
-    reservationsSoon: "예약은 곧 제공됩니다.",
   },
   groupsScreen: {
     title: "그룹",

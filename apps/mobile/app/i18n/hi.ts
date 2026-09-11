@@ -58,7 +58,6 @@ const hi: Translations = {
     facebookButton: "Facebook के साथ जारी रखें",
     signingInShort: "…",
     uiPreviewButton: "बिना बैकएंड जारी रखें (UI)",
-    settingsSoon: "Settings will be available soon.",
   },
   registerScreen: {
     title: "खाता बनाएं",
@@ -134,12 +133,6 @@ const hi: Translations = {
     nearbyGuestRequests: "मेरे पास",
     tournaments: "चैंपियनशिप",
     reservations: "आरक्षण",
-    comingSoon: "जल्द आ रहा है",
-    comingSoonTitle: "जल्द आ रहा है",
-    profileSoon: "प्रोफ़ाइल जल्द उपलब्ध होगी।",
-    groupsSoon: "समूह जल्द उपलब्ध होंगे।",
-    matchesSoon: "मैच जल्द उपलब्ध होंगे।",
-    reservationsSoon: "आरक्षण जल्द उपलब्ध होंगे।",
   },
   groupsScreen: {
     title: "समूह",

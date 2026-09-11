@@ -59,7 +59,6 @@ const ja: Translations = {
     facebookButton: "Facebookで続行",
     signingInShort: "…",
     uiPreviewButton: "バックエンドなしで続行（UI）",
-    settingsSoon: "Settings will be available soon.",
   },
   registerScreen: {
     title: "アカウント作成",
@@ -135,12 +134,6 @@ const ja: Translations = {
     nearbyGuestRequests: "近くの募集",
     tournaments: "大会",
     reservations: "予約",
-    comingSoon: "近日公開",
-    comingSoonTitle: "近日公開",
-    profileSoon: "プロフィールは近日公開予定です。",
-    groupsSoon: "グループは近日公開予定です。",
-    matchesSoon: "試合は近日公開予定です。",
-    reservationsSoon: "予約は近日公開予定です。",
   },
   groupsScreen: {
     title: "グループ",
