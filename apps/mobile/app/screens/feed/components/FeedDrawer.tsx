@@ -35,6 +35,7 @@ export const PENDING_DRAWER_ITEM: Record<PendingKind, FeedDrawerItemId> = {
   groupFriendRequests: "groups",
   matchChallenges: "matches",
   guestApplications: "matches",
+  groupInvites: "groups",
 }
 
 function pendingForItem(counts: Record<PendingKind, number>, itemId: FeedDrawerItemId): number {

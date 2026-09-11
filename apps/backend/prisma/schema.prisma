@@ -38,6 +38,8 @@ model User {
   psychAssessments        PsychAssessment[]
   createdGroups           Group[]              @relation("GroupCreator")
   groupMemberships        GroupMembership[]
+  groupInvitations        GroupInvitation[]    @relation("GroupInvitationInvitee")
+  sentGroupInvitations    GroupInvitation[]    @relation("GroupInvitationInviter")
   createdMatches          Match[]              @relation("MatchCreator")
   matchParticipations     MatchParticipant[]
   openedGuestRequests     MatchGuestRequest[]     @relation("MatchGuestRequestRequester")
@@ -477,6 +479,8 @@ model Group {
   creatorId   String            @db.Uuid
   creator     User              @relation("GroupCreator", fields: [creatorId], references: [id], onDelete: Cascade)
   members     GroupMembership[]
+  /// Invitaciones pendientes/respondidas (2026-09-11). Un invitado NO es miembro hasta aceptar.
+  invitations GroupInvitation[]
 
   /// Ubicación (Fase L.0): centroide del municipio, resuelto server-side.
   municipalityCode  String?
@@ -544,6 +548,38 @@ model GroupMembership {
   @@unique([groupId, userId])
   @@index([userId])
   @@map("group_memberships")
+}
+
+enum GroupInvitationStatus {
+  pending
+  accepted
+  declined
+}
+
+/**
+ * Invitación a un grupo (2026-09-11). TABLA APARTE a propósito: `group_memberships`
+ * sigue significando "es miembro", así que ninguna consulta de membresías tiene
+ * que filtrar pendientes — un invitado no está en esa tabla hasta que acepta. La
+ * membresía se crea RECIÉN al aceptar, en la misma transacción que marca la
+ * invitación `accepted`. `@@unique([groupId, userId])`: una fila por par; tras un
+ * rechazo se reabre a `pending` (reinvitar), nunca se duplica. `invitedBy` es
+ * informativo: la invitación es del grupo, sigue válida si el invitador pierde el rol.
+ */
+model GroupInvitation {
+  id          String                @id @default(uuid()) @db.Uuid
+  groupId     String                @db.Uuid
+  group       Group                 @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId      String                @db.Uuid
+  user        User                  @relation("GroupInvitationInvitee", fields: [userId], references: [id], onDelete: Cascade)
+  invitedBy   String                @db.Uuid
+  inviter     User                  @relation("GroupInvitationInviter", fields: [invitedBy], references: [id], onDelete: Cascade)
+  status      GroupInvitationStatus @default(pending)
+  createdAt   DateTime              @default(now())
+  respondedAt DateTime?
+
+  @@unique([groupId, userId])
+  @@index([userId, status])
+  @@map("group_invitations")
 }
 
 enum GroupFriendshipStatus {

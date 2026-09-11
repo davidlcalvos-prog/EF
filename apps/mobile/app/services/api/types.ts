@@ -562,6 +562,7 @@ export type PushType =
   | "match_created"
   | "match_challenge"
   | "match_reminder"
+  | "group_invitation"
   | "match_guest_request"
   | "match_guest_application"
   | "match_guest_accepted"
@@ -573,10 +574,20 @@ export type PushType =
   | "new_reservation"
 
 export type PushScreen =
-  "Feed" | "Friends" | "MatchDetail" | "NearbyGuestRequests" | "ReservationDetail" | "GroupDetail"
+  | "Feed"
+  | "Friends"
+  | "Groups"
+  | "MatchDetail"
+  | "NearbyGuestRequests"
+  | "ReservationDetail"
+  | "GroupDetail"
 
 export type PendingKind =
-  "friendRequests" | "groupFriendRequests" | "matchChallenges" | "guestApplications"
+  | "friendRequests"
+  | "groupFriendRequests"
+  | "matchChallenges"
+  | "guestApplications"
+  | "groupInvites"
 
 export type PushData = {
   v: typeof PUSH_DATA_VERSION
@@ -597,6 +608,41 @@ export const PENDING_KINDS: readonly PendingKind[] = [
   "groupFriendRequests",
   "matchChallenges",
   "guestApplications",
+  "groupInvites",
 ] as const
 
 export type PendingCountsApiDto = Record<PendingKind, number>
+
+// ── Invitaciones a grupo (2026-09-11) ───────────────────────────────────────
+// Calcado de libs/contracts/src/group-invitations. Mientras está `pending` el
+// invitado NO es miembro a ningún efecto (no existe en group_memberships).
+
+export type GroupInvitationStatusApi = "pending" | "accepted" | "declined"
+
+export interface GroupInvitationApiDto {
+  id: string
+  status: GroupInvitationStatusApi
+  createdAt: string
+  respondedAt: string | null
+  group: {
+    id: string
+    name: string
+    photoBase64: string | null
+    city: string | null
+    memberCount: number
+  }
+  /** El invitado (para la lista del líder). */
+  user: {
+    id: string
+    email: string
+    firstname: string
+    lastname: string
+    avatarBase64: string | null
+  }
+  /** Quién invitó (informativo: la invitación es del grupo). */
+  invitedBy: {
+    id: string
+    firstname: string
+    lastname: string
+  }
+}

@@ -70,6 +70,22 @@ describe("resolvePushTarget — contrato v1", () => {
     ).toEqual({ screen: "MatchDetail", params: { matchId: "m1", openApplicants: true } })
   })
 
+  test("invitación a grupo → Groups con el bloque de invitaciones (params extra se descartan)", () => {
+    expect(
+      resolvePushTarget({
+        v: 1,
+        type: "group_invitation",
+        screen: "Groups",
+        params: { initialSection: "invitations", invitationId: "i1", groupId: "g1" },
+        pending: "groupInvites",
+      }),
+    ).toEqual({ screen: "Groups", params: { initialSection: "invitations" } })
+    expect(resolvePushTarget({ v: 1, type: "x", screen: "Groups" })).toEqual({
+      screen: "Groups",
+      params: undefined,
+    })
+  })
+
   test("pantalla fuera de la lista blanca no navega, aunque exista como ruta", () => {
     expect(resolvePushTarget({ v: 1, type: "x", screen: "Login" })).toBeNull()
     expect(resolvePushTarget({ v: 1, type: "x", screen: "ProfileEdit" })).toBeNull()

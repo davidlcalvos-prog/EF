@@ -2,6 +2,7 @@ export * from './admin-users';
 export * from './auth';
 export * from './feed';
 export * from './group-friendships';
+export * from './group-invitations';
 export * from './user-friendships';
 export * from './groups';
 export * from './matches';

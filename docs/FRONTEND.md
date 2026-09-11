@@ -654,6 +654,19 @@ Generados (mismos nombres que los placeholders de Ignite, así `app.json` no cam
 
 **Lo que NO era la causa** (verificado durante la investigación): los 13 `TextField` y los 7 `Input` (Tamagui, color `$efWhite` fijo en `ui/Input.tsx`) tienen `color` y `placeholderTextColor` explícitos, y el cambio de `parentTheme` `"Light"` → `"Default"` no afecta el color del texto (el default del tema solo aplica cuando `color` no está seteado).
 
+## Invitaciones a grupo con aceptar / rechazar (2026-09-11)
+
+**Antes:** el líder agregaba por email y el jugador quedaba dentro al instante. **Ahora:** el líder invita, el invitado recibe un push y acepta o rechaza en Grupos. Mientras está pendiente **no es miembro a ningún efecto** (backend: tabla aparte `group_invitations`, ver [BACKEND.md](./BACKEND.md#invitaciones-a-grupo-con-aceptar--rechazar-2026-09-11)). **Requiere build nuevo de la app** (pantalla + lista blanca + i18n) y redeploy del backend con migración.
+
+- **`GroupsScreen`** — bloque "Invitaciones" **arriba** de la lista (`ListHeaderComponent`), visible solo si hay pendientes: `GroupAvatar` + nombre + "{Nombre} te invitó" + botones **Aceptar** (esmeralda) / **Rechazar** (borde rojo), **calcados de la fila de solicitudes entrantes de `GroupFriendsScreen`** (mismo `busyId`, mismos estilos). Hook nuevo `useGroupInvitations` (`invitations`, `reload`, `accept`, `decline`): al responder, saca la fila de la lista local, hace `pending.bump("groupInvites", -1)` + `refresh({ force })`, y al aceptar recarga "Mis grupos" (`useGroups.refresh`). 404 (grupo borrado) y 409 (ya respondida / ya miembro) también la sacan de la lista, con el aviso `invitationGone`. Si el endpoint de invitaciones falla, el bloque simplemente no aparece (la lista de grupos tiene su propio error).
+- **Deep link:** `Groups` entra a la lista blanca (`PUSH_SCREENS.Groups`, `utils/pushNavigation.ts`) con `params.initialSection = "invitations"` (`navigationTypes.ts`, mismo patrón que `Friends.initialTab`). `GroupsScreen` recarga las invitaciones y consume el param con `setParams`. Test en `pushNavigation.test.ts`.
+- **`GroupDetailScreen` (líder):** el botón "Agregar miembro" pasa a **"Invitar jugador"** — `GroupAddMemberModal` conserva su archivo y su prop `onAdd` (renombrar era churn sin valor), pero usa las claves `groupsScreen:invite*` y llama `useGroupDetail.invite` → `api.inviteToGroup`. `"conflict"` cubre "ya es miembro" y "ya tiene una invitación pendiente" (el backend responde 409 en ambos). Debajo de la lista de miembros, sección **"Invitaciones pendientes"** (solo creador/admin, `useGroupDetail.invitations` / `loadInvitations` / `cancelInvitation`): nombre del invitado, estado *Pendiente* / *Rechazó*, y **Cancelar** en las pendientes. Un pendiente **no** aparece en la lista de miembros ni cuenta en `memberCount`: viene de otra tabla.
+- **Punto naranja:** `PendingKind` += `groupInvites` (`PENDING_KINDS`, `EMPTY_PENDING_COUNTS`) y `PENDING_DRAWER_ITEM.groupInvites = "groups"` en `FeedDrawer.tsx` — una entrada más en el mapeo estático, ningún componente cambia. El invitado con notificaciones apagadas no recibe push pero ve la invitación y el punto (el contador sale de `/api/me/pending`).
+- **API** (`services/api/index.ts`): `inviteToGroup`, `listGroupInvitations`, `cancelGroupInvitation`, `listMyGroupInvitations`, `acceptGroupInvitation`, `declineGroupInvitation`; tipo `GroupInvitationApiDto`. `addGroupMember` queda **`@deprecated`** (el backend responde 410 con "Actualizá la app para invitar a jugadores"; los builds ≤ 6 ven ese mensaje al tocar "Agregar miembro") — **borrar en el build siguiente** junto con la ruta del backend.
+- **i18n:** 16 claves nuevas bajo `groupsScreen` en los 7 idiomas (`inviteTitle`, `inviting`, `inviteSubmit`, `invitePlaceholder`, `inviteNotFound`, `inviteConflict`, `inviteError`, `invitationsTitle`, `invitedBy` con `{{name}}`, `acceptInvitation`, `declineInvitation`, `invitationActionError`, `invitationGone`, `pendingInvitationsTitle`, `invitationPendingLabel`, `invitationDeclinedLabel`, `cancelInvitation`). Las `addMember*` quedan hasta borrar `addGroupMember`. Paridad verificada por `test/i18n.test.ts`.
+
+**QA en dispositivo (build 7):** invitar → push → aceptar con la app abierta y cerrada (deep link a Grupos); rechazar y reinvitar; grupo borrado con invitación pendiente (aviso "ya no está disponible"); el pendiente **no** aparece en miembros, feed ni partidos del grupo; el punto naranja aparece al invitar y desaparece al responder; "Cerca de mí" sigue mostrando vacantes de ese grupo al invitado pendiente.
+
 ## Indicadores de pendientes (Fase B, 2026-09-10)
 
 Punto naranja en el botón hamburguesa del feed cuando hay algo que resolver, y sobre el ítem del drawer correspondiente al abrirlo (Amigos, Grupos, Partidos).
@@ -811,6 +824,15 @@ Es idempotente dentro de la sesión de JS (`lastRegisteredToken`: mismo token �
 `utils/pushNotifications.ts` → `registerPushToken()` (se llama una vez al hacer login) es best-effort: si el usuario niega el permiso, Expo no devuelve token (falta `projectId` de EAS) o el backend rechaza el `POST /api/push-tokens`, **no reintenta ni bloquea** — pero ahora deja un `console.warn("[push] ...")` **fuera de `__DEV__`** con el motivo (antes salía en silencio y solo logueaba la excepción en dev). El comportamiento funcional no cambió; el punto es que "no me llegó la solicitud de amistad" sea diagnosticable desde el log del dispositivo (`adb logcat`) en vez de parecer un bug del backend. Contraparte en el backend: [BACKEND.md](./BACKEND.md#registro-de-cambios) (`NotificationsService.sendToUser` loguea warning cuando el destinatario no tiene tokens).
 
 ## Registro de cambios (sesión de implementación)
+
+### 2026-09-11 — Invitaciones a grupo con aceptar/rechazar (requiere build nuevo + redeploy del backend con migración)
+
+- `GroupsScreen`: bloque "Invitaciones" arriba de la lista con Aceptar/Rechazar (patrón de `GroupFriendsScreen`), hook `useGroupInvitations`, deep link `Groups { initialSection: "invitations" }`.
+- `GroupDetailScreen`: "Agregar miembro" → "Invitar jugador" (`useGroupDetail.invite`), sección "Invitaciones pendientes" para creador/admin con Cancelar.
+- `utils/pushNavigation.ts`: `Groups` en la lista blanca (+ test). `PendingKind` += `groupInvites`; `PENDING_DRAWER_ITEM.groupInvites = "groups"`.
+- `services/api`: 6 métodos de invitaciones; `addGroupMember` `@deprecated` (el backend responde 410), borrar en el build siguiente.
+- i18n: 16 claves nuevas en los 7 idiomas.
+- Ver [Invitaciones a grupo](#invitaciones-a-grupo-con-aceptar--rechazar-2026-09-11). Contraparte: [BACKEND.md](./BACKEND.md#invitaciones-a-grupo-con-aceptar--rechazar-2026-09-11).
 
 ### 2026-09-10 — Fase B: punto de pendientes en la hamburguesa y el drawer
 

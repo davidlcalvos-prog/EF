@@ -2,6 +2,8 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -60,23 +62,19 @@ export class GroupsService {
     return this.groupRepository.findDetail(payload.groupId) as Promise<GroupDetailDto>;
   }
 
-  async addMember(payload: AddMemberPayload): Promise<GroupDetailDto> {
-    const { groupId, requesterId, userId, email } = payload;
-    const requesterRole = await this.requireMembership(groupId, requesterId);
-
-    if (requesterRole !== 'creator' && requesterRole !== 'admin') {
-      throw new ForbiddenException('Only the creator or an admin can add members');
-    }
-
-    const targetUserId = userId ?? (await this.resolveUserIdByEmail(email!));
-
-    const existing = await this.groupRepository.findMembership(groupId, targetUserId);
-    if (existing) {
-      throw new ConflictException('User is already a member of this group');
-    }
-
-    await this.groupRepository.addMembership(groupId, targetUserId, 'member');
-    return this.groupRepository.findDetail(groupId) as Promise<GroupDetailDto>;
+  /**
+   * RETIRADO el 2026-09-11 — reemplazado por invitaciones con aceptar/rechazar
+   * (`GroupInvitationsService.invite`, `POST /api/groups/:id/invitations`).
+   * Responde 410 con un mensaje que explica qué hacer, en vez de desaparecer:
+   * los testers actualizan a distinto ritmo y un 404 genérico es peor.
+   * BORRAR EN EL BUILD SIGUIENTE (junto con la ruta del gateway, el método
+   * `addGroupMember` de la app y `AddMemberDto`). Ver BACKEND.md.
+   */
+  async addMember(_payload: AddMemberPayload): Promise<GroupDetailDto> {
+    throw new HttpException(
+      'Actualizá la app para invitar a jugadores: ahora el jugador recibe una invitación y decide si entra al grupo.',
+      HttpStatus.GONE,
+    );
   }
 
   async updateMemberRole(payload: UpdateMemberRolePayload): Promise<GroupDetailDto> {

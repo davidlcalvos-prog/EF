@@ -25,6 +25,8 @@ export type PushType =
   | 'match_created'
   | 'match_challenge'
   | 'match_reminder'
+  /** 2026-09-11: invitación a grupo (el invitado acepta o rechaza en Grupos). */
+  | 'group_invitation'
   | 'match_guest_request'
   | 'match_guest_application'
   | 'match_guest_accepted'
@@ -43,6 +45,8 @@ export type PushType =
 export type PushScreen =
   | 'Feed'
   | 'Friends'
+  /** 2026-09-11: "Mis grupos" con `params.initialSection = 'invitations'` (misma idea que Friends.initialTab). */
+  | 'Groups'
   | 'MatchDetail'
   | 'NearbyGuestRequests'
   | 'ReservationDetail'
@@ -57,7 +61,9 @@ export type PendingKind =
   | 'friendRequests'
   | 'groupFriendRequests'
   | 'matchChallenges'
-  | 'guestApplications';
+  | 'guestApplications'
+  /** 2026-09-11: invitaciones a grupo pendientes para mí. */
+  | 'groupInvites';
 
 /** `type` y no `interface` a propósito: así es asignable al `data: Record<string, unknown>` de expo-server-sdk. */
 export type PushData = {

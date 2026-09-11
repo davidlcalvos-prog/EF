@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { ActivityIndicator, Pressable, ScrollView } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { Text, XStack, YStack } from "tamagui"
@@ -42,7 +42,10 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
     loading,
     error,
     refresh,
-    addMember,
+    invite,
+    invitations,
+    loadInvitations,
+    cancelInvitation,
     updateMemberRole,
     removeMember,
     deleteGroup,
@@ -56,15 +59,36 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
   const ownRole = group?.members.find((m) => m.userId === authUserId)?.role
   const isCreator = !!group && group.creatorId === authUserId
 
+  const canManageInvitations = ownRole === "creator" || ownRole === "admin"
+
+  // Invitaciones pendientes/rechazadas del grupo: solo las ve el líder (2026-09-11).
+  useEffect(() => {
+    if (canManageInvitations) void loadInvitations()
+  }, [canManageInvitations, loadInvitations])
+
+  /** Invitar (antes: agregar directo). "conflict" = ya miembro o ya tiene una pendiente. */
   const handleAddMember = useCallback(
     async (email: string): Promise<AddMemberOutcome> => {
-      const result = await addMember({ email })
+      const result = await invite({ email })
       if (result.kind === "ok") return "ok"
       if (result.kind === "not-found") return "not-found"
       if (result.kind === "conflict") return "conflict"
       return "error"
     },
-    [addMember],
+    [invite],
+  )
+
+  const handleCancelInvitation = useCallback(
+    (invitationId: string) => {
+      setBusy(true)
+      cancelInvitation(invitationId).then((result) => {
+        setBusy(false)
+        if (result.kind !== "ok") {
+          showAlert(translate("groupsScreen:invitationActionError"), describeProblem(result))
+        }
+      })
+    },
+    [cancelInvitation, showAlert],
   )
 
   const handleToggleRole = useCallback(
@@ -226,7 +250,7 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
                 onPress={() => setAddMemberOpen(true)}
                 hitSlop={12}
                 accessibilityRole="button"
-                accessibilityLabel={translate("groupsScreen:addMemberTitle")}
+                accessibilityLabel={translate("groupsScreen:inviteTitle")}
               >
                 <XStack
                   width={40}
@@ -368,6 +392,70 @@ export function GroupDetailScreen({ route, navigation }: AppStackScreenProps<"Gr
                   />
                 )
               })}
+
+              {/* Invitaciones pendientes/rechazadas (2026-09-11): solo creador/admin. Un pendiente NO es miembro: no está en la lista de arriba. */}
+              {canManageInvitations && invitations.length > 0 ? (
+                <YStack gap={8} marginTop={20}>
+                  <Text
+                    color="rgba(255,255,255,0.45)"
+                    fontSize={12}
+                    fontWeight="700"
+                    letterSpacing={1}
+                  >
+                    {translate("groupsScreen:pendingInvitationsTitle").toUpperCase()}
+                  </Text>
+                  {invitations.map((invitation) => {
+                    const name =
+                      `${invitation.user.firstname} ${invitation.user.lastname}`.trim() ||
+                      invitation.user.email
+                    const isPending = invitation.status === "pending"
+                    return (
+                      <XStack
+                        key={invitation.id}
+                        alignItems="center"
+                        gap={12}
+                        paddingVertical={10}
+                        borderBottomWidth={1}
+                        borderBottomColor={eliteForgeColors.carbonBorder}
+                      >
+                        <YStack flex={1}>
+                          <Text color="#FFFFFF" fontWeight="700" fontSize={14} numberOfLines={1}>
+                            {name}
+                          </Text>
+                          <Text
+                            color={isPending ? "rgba(255,255,255,0.45)" : "#E74C3C"}
+                            fontSize={12}
+                          >
+                            {isPending
+                              ? translate("groupsScreen:invitationPendingLabel")
+                              : translate("groupsScreen:invitationDeclinedLabel")}
+                          </Text>
+                        </YStack>
+                        {isPending ? (
+                          <Pressable
+                            onPress={() => handleCancelInvitation(invitation.id)}
+                            disabled={busy}
+                            accessibilityRole="button"
+                          >
+                            <XStack
+                              borderWidth={1}
+                              borderColor="#E74C3C"
+                              borderRadius={10}
+                              paddingHorizontal={12}
+                              paddingVertical={8}
+                              opacity={busy ? 0.6 : 1}
+                            >
+                              <Text color="#E74C3C" fontWeight="800" fontSize={12}>
+                                {translate("groupsScreen:cancelInvitation")}
+                              </Text>
+                            </XStack>
+                          </Pressable>
+                        ) : null}
+                      </XStack>
+                    )
+                  })}
+                </YStack>
+              ) : null}
             </ScrollView>
 
             <YStack paddingBottom={insets.bottom + 16} paddingTop={8}>

@@ -29,6 +29,7 @@ export const EMPTY_PENDING_COUNTS: PendingCounts = {
   groupFriendRequests: 0,
   matchChallenges: 0,
   guestApplications: 0,
+  groupInvites: 0,
 }
 
 export const PENDING_THROTTLE_MS = 60_000

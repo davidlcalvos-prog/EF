@@ -68,6 +68,14 @@ export const MESSAGE_PATTERNS = {
     ACCEPT: 'group_friendships.accept',
     REMOVE: 'group_friendships.remove',
   },
+  GROUP_INVITATIONS: {
+    INVITE: 'group_invitations.invite',
+    LIST_FOR_GROUP: 'group_invitations.list_for_group',
+    CANCEL: 'group_invitations.cancel',
+    LIST_MINE: 'group_invitations.list_mine',
+    ACCEPT: 'group_invitations.accept',
+    DECLINE: 'group_invitations.decline',
+  },
   USER_FRIENDSHIPS: {
     LIST: 'user_friendships.list',
     GET_STATUS: 'user_friendships.get_status',
