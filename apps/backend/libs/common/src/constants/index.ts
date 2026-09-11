@@ -12,6 +12,12 @@ export const MESSAGE_PATTERNS = {
     VALIDATE_TOKEN: 'auth.validate_token',
     REGISTER: 'auth.register',
     GET_ME: 'auth.get_me',
+    // Recuperación / cambio de contraseña (2026-09-11)
+    PASSWORD_FORGOT: 'auth.password_forgot',
+    PASSWORD_RESET: 'auth.password_reset',
+    PASSWORD_CHANGE: 'auth.password_change',
+    /** Estado de sesión por request (activo + passwordChangedAt) para el guard del gateway. */
+    SESSION_STATE: 'auth.session_state',
   },
   USERS: {
     FIND_BY_ID: 'users.find_by_id',

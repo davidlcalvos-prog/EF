@@ -5,9 +5,14 @@ import { MESSAGE_PATTERNS, SERVICE_NAMES, toHttpException } from '@ef/common';
 import {
   AuthMeResponse,
   AuthResponse,
+  ChangePasswordDto,
   CreateVenueOwnerDto,
+  ForgotPasswordDto,
   LoginDto,
+  PasswordActionResponse,
   RegisterDto,
+  ResetPasswordDto,
+  SessionStateResponse,
   ValidateTokenResponse,
   VenueOwnerDto,
 } from '@ef/contracts';
@@ -35,6 +40,27 @@ export class AuthProxyService {
 
   getMe(userId: string): Promise<AuthMeResponse> {
     return this.send<AuthMeResponse>(MESSAGE_PATTERNS.AUTH.GET_ME, { userId });
+  }
+
+  // ── Recuperación y cambio de contraseña (2026-09-11) ──
+
+  forgotPassword(dto: ForgotPasswordDto): Promise<PasswordActionResponse> {
+    return this.send<PasswordActionResponse>(MESSAGE_PATTERNS.AUTH.PASSWORD_FORGOT, dto);
+  }
+
+  resetPassword(dto: ResetPasswordDto): Promise<PasswordActionResponse> {
+    return this.send<PasswordActionResponse>(MESSAGE_PATTERNS.AUTH.PASSWORD_RESET, dto);
+  }
+
+  changePassword(userId: string, dto: ChangePasswordDto): Promise<PasswordActionResponse> {
+    return this.send<PasswordActionResponse>(MESSAGE_PATTERNS.AUTH.PASSWORD_CHANGE, {
+      userId,
+      ...dto,
+    });
+  }
+
+  sessionState(userId: string): Promise<SessionStateResponse> {
+    return this.send<SessionStateResponse>(MESSAGE_PATTERNS.AUTH.SESSION_STATE, { userId });
   }
 
   // ── Fase W.3: dueños de cancha (solo Administrador, ver controller) ──

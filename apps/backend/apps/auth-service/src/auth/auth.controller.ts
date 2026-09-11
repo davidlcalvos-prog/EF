@@ -2,9 +2,12 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { MESSAGE_PATTERNS } from '@ef/common';
 import {
+  ChangePasswordPayload,
   CreateVenueOwnerDto,
+  ForgotPasswordDto,
   LoginDto,
   RegisterDto,
+  ResetPasswordDto,
   SetVenueOwnerStatusPayload,
   ValidateTokenDto,
 } from '@ef/contracts';
@@ -13,6 +16,28 @@ import { AuthService } from './auth.service';
 @Controller()
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  // ── Recuperación y cambio de contraseña (2026-09-11) ──
+
+  @MessagePattern(MESSAGE_PATTERNS.AUTH.PASSWORD_FORGOT)
+  forgotPassword(@Payload() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @MessagePattern(MESSAGE_PATTERNS.AUTH.PASSWORD_RESET)
+  resetPassword(@Payload() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
+  }
+
+  @MessagePattern(MESSAGE_PATTERNS.AUTH.PASSWORD_CHANGE)
+  changePassword(@Payload() payload: ChangePasswordPayload) {
+    return this.authService.changePassword(payload);
+  }
+
+  @MessagePattern(MESSAGE_PATTERNS.AUTH.SESSION_STATE)
+  sessionState(@Payload() data: { userId: string }) {
+    return this.authService.getSessionState(data.userId);
+  }
 
   @MessagePattern(MESSAGE_PATTERNS.AUTH.LOGIN)
   login(@Payload() dto: LoginDto) {
