@@ -34,7 +34,6 @@ import { useAppTheme } from "@/theme/context"
 import { eliteForgeColors } from "@/theme/eliteForgeColors"
 import { flushPendingPushNavigation } from "@/utils/pushNavigation"
 
-import { DemoNavigator } from "./DemoNavigator"
 import type { AppStackParamList, NavigationProps } from "./navigationTypes"
 import { navigationRef, useBackButtonHandler } from "./navigationUtilities"
 
@@ -88,8 +87,6 @@ const AppStack = () => {
           <Stack.Screen name="Tournaments" component={TournamentsScreen} />
           <Stack.Screen name="TournamentDetail" component={TournamentDetailScreen} />
           <Stack.Screen name="TournamentRankings" component={TournamentRankingsScreen} />
-
-          <Stack.Screen name="Demo" component={DemoNavigator} />
         </>
       ) : (
         <>

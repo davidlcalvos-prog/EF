@@ -42,23 +42,14 @@ import * as storage from "./utils/storage"
 
 export const NAVIGATION_PERSISTENCE_KEY = "NAVIGATION_STATE"
 
-// Web linking configuration
+// Esquema `eliteforge://` (app.json). Solo la raíz → Login; los deep links
+// de notificaciones NO pasan por acá: los resuelve utils/pushNavigation.ts
+// a partir del `data` del push (contrato PushData).
 const prefix = Linking.createURL("/")
 const config = {
   screens: {
     Login: {
       path: "",
-    },
-    Welcome: "welcome",
-    Demo: {
-      screens: {
-        DemoShowroom: {
-          path: "showroom/:queryIndex?/:itemIndex?",
-        },
-        DemoDebug: "debug",
-        DemoPodcastList: "podcast",
-        DemoCommunity: "community",
-      },
     },
   },
 }
