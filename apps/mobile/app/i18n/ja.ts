@@ -10,9 +10,9 @@ const ja: Translations = {
   errorScreen: {
     title: "問題が発生しました",
     friendlySubtitle:
-      "本番では、エラーが投げられた時にこのページが表示されます。もし使うならこのメッセージに変更を加えてください(`app/i18n/jp.ts`)レイアウトはこちらで変更できます(`app/screens/ErrorScreen`)。もしこのスクリーンを取り除きたい場合は、`app/app.tsx`にある<ErrorBoundary>コンポーネントをチェックしてください",
-    reset: "リセット",
-    traceTitle: "エラーのスタック: %{name}",
+      "予期しない問題が発生しました。もう一度お試しください。繰り返し発生する場合は soporte@eliteforge.tech までご連絡ください。",
+    reset: "もう一度試す",
+    devDetailsTitle: "技術的な詳細（開発時のみ）",
   },
 
   errors: {
