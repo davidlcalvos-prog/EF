@@ -66,6 +66,11 @@ export class GroupsProxyController {
     return this.groupsProxy.update(id, user.sub, dto);
   }
 
+  /**
+   * RETIRADO el 2026-09-11: users-service responde 410 "Actualizá la app para
+   * invitar a jugadores". Reemplazado por POST /groups/:id/invitations.
+   * BORRAR EN EL BUILD SIGUIENTE (ver BACKEND.md).
+   */
   @Post(':id/members')
   addMember(
     @Param('id') id: string,

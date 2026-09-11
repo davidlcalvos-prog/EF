@@ -23,6 +23,7 @@ export const PENDING_KINDS: readonly PendingKind[] = [
   'groupFriendRequests',
   'matchChallenges',
   'guestApplications',
+  'groupInvites',
 ] as const;
 
 export class GetPendingCountsPayload {

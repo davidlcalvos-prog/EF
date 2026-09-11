@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { join } from 'path';
 import { PrismaModule } from '@ef/database';
 import { GroupFriendshipsModule } from './group-friendships/group-friendships.module';
+import { GroupInvitationsModule } from './group-invitations/group-invitations.module';
 import { UserFriendshipsModule } from './user-friendships/user-friendships.module';
 import { GroupsModule } from './groups/groups.module';
 import { MatchesModule } from './matches/matches.module';
@@ -30,6 +31,7 @@ import { UsersModule } from './users/users.module';
     ProfileStatsModule,
     GroupsModule,
     GroupFriendshipsModule,
+    GroupInvitationsModule,
     UserFriendshipsModule,
     MatchesModule,
     MatchGuestRequestsModule,

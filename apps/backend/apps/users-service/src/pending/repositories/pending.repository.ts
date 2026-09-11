@@ -17,7 +17,7 @@ export class PendingRepository {
   async countForUser(userId: string): Promise<PendingCountsDto> {
     const leaderGroupIds = await this.findLeaderGroupIds(userId);
 
-    const [friendRequests, groupFriendRequests, matchChallenges, guestApplications] =
+    const [friendRequests, groupFriendRequests, matchChallenges, guestApplications, groupInvites] =
       await Promise.all([
         // Solicitudes de amistad que ME mandaron y siguen pendientes.
         this.prisma.userFriendship.count({
@@ -49,9 +49,14 @@ export class PendingRepository {
             request: { requestedBy: userId, status: 'open' },
           },
         }),
+        // Invitaciones a grupo pendientes para mí (2026-09-11) — mismo predicado
+        // que autoriza aceptar/rechazar: userId = yo y status = pending.
+        this.prisma.groupInvitation.count({
+          where: { userId, status: 'pending' },
+        }),
       ]);
 
-    return { friendRequests, groupFriendRequests, matchChallenges, guestApplications };
+    return { friendRequests, groupFriendRequests, matchChallenges, guestApplications, groupInvites };
   }
 
   private async findLeaderGroupIds(userId: string): Promise<string[]> {

@@ -481,6 +481,42 @@ Decisiones: (1) "vacante ocupada", "rechazada" y "cancelada" van a `NearbyGuestR
 
 **Cómo agregar una notificación nueva sin tocar la app:** un `sendToUser(userId, título, cuerpo, { v: 1, type: '<nuevo>', screen: '<pantalla de PushScreen>', params: { ...strings } })`. Agregar el `type` a `PushType` (es un literal: TypeScript lo exige). Si `screen` ya existe en `PushScreen`, la app navega sin cambios. Solo hace falta tocar la app si el destino es una **pantalla nueva** (agregarla a `PushScreen` y a `PUSH_SCREENS` en mobile con su conversor de params) o si la pantalla necesita un param que hoy no acepta.
 
+## Invitaciones a grupo con aceptar / rechazar (2026-09-11)
+
+**Antes:** el creador o un admin agregaban por email y el usuario quedaba dentro al instante, sin aviso ni consentimiento. **Ahora:** invitan, el invitado recibe un push y decide. Mientras la invitación está `pending` **no es miembro a ningún efecto**. **Requiere redeploy del backend con `prisma migrate deploy` (migración `20260911100000_group_invitations`) y build nuevo de la app.**
+
+### Diseño: tabla aparte `group_invitations`, no una columna de estado
+
+`GroupInvitation { groupId, userId, invitedBy, status: pending | accepted | declined, createdAt, respondedAt }`, `@@unique([groupId, userId])`, `@@index([userId, status])`, FKs con `onDelete: Cascade` (`schema.prisma`, modelo `GroupInvitation`). **La membresía se crea recién al aceptar**, en la misma transacción que marca la invitación `accepted` (`GroupInvitationRepository.accept`).
+
+La razón, y la que manda: `group_memberships` sigue significando "es miembro". Los 15 sitios que consultan membresías (permisos de grupos/partidos/comodín/amistad entre grupos vía `findMembership`, lista de miembros, "Mis grupos" y `memberCount`, feed, sugerencias de amistad, listado de partidos, push "partido creado", inscripción a Copa, reserva por grupo, contadores de pendientes, y las dos consultas SQL crudas de "Cerca de mí") **no cambian ni pueden olvidarse de filtrar**: un invitado pendiente no existe en esa tabla. Una consulta futura escrita como siempre es correcta sola. Con una columna `status`, once de esos quince sitios (dos de ellos SQL crudo) habrían quedado mal sin un `WHERE`, y el unique existente estorbaba al reinvitar.
+
+**Migración:** no toca `group_memberships` (ni columnas ni filas). Decisión de producto (David, 2026-09-11) escrita en el encabezado del SQL: las membresías existentes quedan como están y no se les pregunta retroactivamente.
+
+**"Cerca de mí" — verificado, sin cambios:** el comodín entra como `matchParticipant` con `isGuest: true` (`match-guest-request.repository.ts:276`), nunca como miembro. Las dos consultas SQL crudas (`findNotifyCandidates` `:323-326` y `listNearby` `:373-376`) usan `NOT EXISTS (… group_memberships …)`: un invitado pendiente no está ahí, así que sigue viendo vacantes de ese grupo y sigue pudiendo postularse como comodín. No hubo que tocarlas (grep `group_invitations|groupInvitation` en `matches/guest-requests`: cero resultados).
+
+### Endpoints (`api-gateway/src/group-invitations/`, JWT; users-service `src/group-invitations/`)
+
+| Método y ruta | Quién | Comportamiento |
+|---|---|---|
+| `POST /api/groups/:id/invitations` `{ userId }` \| `{ email }` (`InviteToGroupDto`) | creador/admin (`requireLeadership`: grupo 404, no miembro 403, rol 403 — el mismo guard que tenía el alta directa) | 404 email inexistente; **409 ya es miembro**; **409 pendiente duplicada, sin segundo push**; **rechazada (o aceptada y luego expulsado) → se reabre la misma fila a `pending`** con push nuevo. Dos líderes a la vez: el unique corta al segundo con 409. |
+| `GET /api/groups/:id/invitations` | creador/admin | pendientes y rechazadas del grupo |
+| `DELETE /api/groups/:id/invitations/:invitationId` | creador/admin | cancela una pendiente (borra la fila) |
+| `GET /api/group-invitations` | el invitado | mis pendientes, con `group { name, photoBase64, city, memberCount }` e `invitedBy` |
+| `POST /api/group-invitations/:id/accept` | el invitado | 404 si no existe (grupo borrado = cascada); 403 si no es suya; 409 si ya fue respondida; **409 si ya era miembro por otro camino, cerrando la invitación igual**; si no, membresía `member` + `accepted` en transacción |
+| `POST /api/group-invitations/:id/decline` | el invitado | `declined` (se puede reinvitar) |
+
+`invitedBy` es informativo: **la invitación es del grupo**. Si el invitador pierde el rol o sale, la invitación sigue válida y cualquier líder puede cancelarla. No hay límite de miembros, así que aceptar nunca falla por cupo.
+
+**`POST /api/groups/:id/members` (alta directa) — RETIRADO, responde 410.** `GroupsService.addMember` lanza `HttpException(…, 410)` con el mensaje "Actualizá la app para invitar a jugadores: ahora el jugador recibe una invitación y decide si entra al grupo." Decisión: los testers actualizan a distinto ritmo y un 404 genérico es peor que un mensaje que explica qué hacer. **BORRAR EN EL BUILD SIGUIENTE**: el método y la ruta del gateway (`groups-proxy.controller.ts`), `AddMemberDto`/`AddMemberPayload`, `MESSAGE_PATTERNS.GROUPS.ADD_MEMBER`, `GroupRepository.addMembership` (queda sin uso) y `api.addGroupMember` en la app.
+
+### Integración
+
+- **Push** `group_invitation`: "{Nombre} te invitó al grupo {grupo}", `screen: 'Groups'`, `params: { initialSection: 'invitations', invitationId, groupId }`, `pending: 'groupInvites'`. Sale por `NotificationsService.sendToUser` → hereda el filtro de `user_preferences.notifications`: quien las tiene apagadas no recibe push pero **sí ve la invitación en Grupos y el punto naranja** (el contador no depende del push).
+- **`PendingKind` += `groupInvites`**; `GET /api/me/pending` suma `group_invitations WHERE userId = yo AND status = pending` — el mismo predicado que autoriza aceptar/rechazar.
+- **`PushScreen` += `Groups`** (la app lo agrega a su lista blanca con `initialSection`).
+- Tests: `group-invitations.service.spec.ts` (15 casos: guard, 404/409, duplicada sin push, reinvitar tras rechazo, push fallido no rompe, aceptar/403/409/ya miembro, rechazar, cancelar por otro admin).
+
 ## Notificaciones por evento y recordatorios de partido (2026-09-10)
 
 Cuatro bloques sobre el contrato `PushData` (Fase A) y el `PendingProvider` (Fase B). **Todo requiere redeploy del backend en el VPS (las cuatro imágenes se reconstruyen) y `prisma migrate deploy` — dos migraciones nuevas —, no un build de la app.** La app no cambia (los destinos ya están en su lista blanca); solo se espejaron tres literales de `PushType` en `services/api/types.ts`.
@@ -551,6 +587,14 @@ Los grupos que lidero se resuelven una vez (`group_memberships` con `role in (cr
 **Cómo agregar un contador nuevo:** (1) la clave en `PendingKind` (`libs/contracts/src/push`) y en `PENDING_KINDS`; (2) un `count` más en `PendingRepository.countForUser` con el **mismo predicado** que autoriza la acción en su servicio; (3) en el push que lo genera, `pending: '<clave>'`. En la app: la clave en `PENDING_KINDS` de `services/api/types.ts` y su ítem en `PENDING_DRAWER_ITEM` (`FeedDrawer.tsx`); ningún componente cambia. Ver [FRONTEND.md](./FRONTEND.md#indicadores-de-pendientes-fase-b-2026-09-10).
 
 ## Registro de cambios
+
+### 2026-09-11 — Invitaciones a grupo con aceptar/rechazar (requiere redeploy + `migrate deploy` + build de app)
+
+- Tabla `group_invitations` (migración `20260911100000_group_invitations`, no toca `group_memberships` por decisión de producto). Módulo `group-invitations` en users-service (6 message patterns) y proxy en el gateway (6 rutas). La membresía se crea al aceptar, en transacción.
+- `POST /groups/:id/members` responde **410** "Actualizá la app para invitar a jugadores" — borrar en el build siguiente.
+- `PushType` += `group_invitation`, `PushScreen` += `Groups`, `PendingKind` += `groupInvites` (+ conteo en `/me/pending`).
+- "Cerca de mí" verificado sin cambios (comodín = participante `isGuest`, SQL crudo intacto).
+- Ver [Invitaciones a grupo](#invitaciones-a-grupo-con-aceptar--rechazar-2026-09-11).
 
 ### 2026-09-10 — Notificaciones por evento y recordatorios (requiere redeploy + `migrate deploy`)
 
