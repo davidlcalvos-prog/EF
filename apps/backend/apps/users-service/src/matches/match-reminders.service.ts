@@ -70,12 +70,13 @@ export class MatchRemindersService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
+  /** `now` inyectable solo para tests: el cron lo llama sin argumentos. */
   @Cron('*/5 * * * *')
-  async run(): Promise<void> {
+  async run(now: number = Date.now()): Promise<void> {
     const candidates = await this.matchRepository.findMatchesNeedingReminder(REMINDER_WINDOW_MS);
     for (const match of candidates) {
       try {
-        await this.evaluate(match);
+        await this.evaluate(match, now);
       } catch (error) {
         this.logger.error(`Reminder evaluation failed for match ${match.id}: ${String(error)}`);
       }

@@ -151,7 +151,9 @@ describe('MatchRemindersService.run', () => {
     reminderRepository.claim
       .mockRejectedValueOnce(new Error('db hiccup') as never)
       .mockResolvedValueOnce('claim-b' as never);
-    await service.run();
+    // `now` fijo: con Date.now() el test dependía del reloj real y en CI
+    // (día siguiente) los candidatos ya eran partidos pasados.
+    await service.run(NOW);
     expect(matchRepository.findMatchesNeedingReminder).toHaveBeenCalledWith(REMINDER_WINDOW_MS);
     expect(notificationsService.sendToUsers).toHaveBeenCalledTimes(1);
     expect(reminderRepository.markSent).toHaveBeenCalledWith('claim-b', 3);
