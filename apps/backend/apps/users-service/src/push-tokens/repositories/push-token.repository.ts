@@ -19,6 +19,15 @@ export class PushTokenRepository {
     });
   }
 
+  /** Tokens de varios usuarios en una sola consulta (envíos en lote, 2026-09-10). */
+  async findByUserIds(userIds: string[]): Promise<{ userId: string; token: string }[]> {
+    if (userIds.length === 0) return [];
+    return this.prisma.pushToken.findMany({
+      where: { userId: { in: userIds } },
+      select: { userId: true, token: true },
+    });
+  }
+
   async findByUserId(userId: string): Promise<PushTokenRow[]> {
     return this.prisma.pushToken.findMany({
       where: { userId },

@@ -46,6 +46,14 @@ export async function assertRosterHasCapacity(
 
 export type AlertFlagField = 'alertSent6h' | 'alertSent3h' | 'alertSent1h' | 'alertSent30m';
 
+/** Partido en ventana de recordatorio (2026-09-10). `claimedKinds`: umbrales ya reclamados. */
+export interface ReminderCandidate {
+  id: string;
+  scheduledAt: Date;
+  originGroupName: string;
+  claimedKinds: string[];
+}
+
 export interface VsMatchAlertCandidate {
   id: string;
   originGroupId: string;
@@ -160,6 +168,26 @@ export class MatchRepository {
 
   async countParticipants(matchId: string): Promise<number> {
     return this.prisma.matchParticipant.count({ where: { matchId } });
+  }
+
+  /**
+   * Anti-ráfaga del push "partido creado" (2026-09-10): true si el mismo grupo
+   * ya creó OTRO partido hace menos de `withinMs` (crear, borrar, volver a
+   * crear no avisa tres veces a 20 personas).
+   */
+  async hasOtherRecentMatchInGroup(
+    originGroupId: string,
+    excludeMatchId: string,
+    withinMs: number,
+  ): Promise<boolean> {
+    const count = await this.prisma.match.count({
+      where: {
+        originGroupId,
+        id: { not: excludeMatchId },
+        createdAt: { gte: new Date(Date.now() - withinMs) },
+      },
+    });
+    return count > 0;
   }
 
   /**
@@ -339,6 +367,45 @@ export class MatchRepository {
    * que si dos corridas del cron (o dos réplicas) evalúan el mismo partido a
    * la vez, solo UNA logra marcarlo (count === 1) y es la única que notifica.
    */
+  /**
+   * Candidatos a recordatorio (2026-09-10): partidos `scheduled` con hora,
+   * dentro de la ventana [ahora, ahora + windowMs]. Cancelados y jugados
+   * quedan fuera por el `status`, así la cancelación no necesita lógica extra.
+   * Trae qué umbrales ya se reclamaron para decidir en memoria (pocas filas).
+   */
+  async findMatchesNeedingReminder(windowMs: number): Promise<ReminderCandidate[]> {
+    const now = new Date();
+    const rows = await this.prisma.match.findMany({
+      where: {
+        status: 'scheduled',
+        scheduledAt: { gt: now, lte: new Date(now.getTime() + windowMs) },
+      },
+      select: {
+        id: true,
+        scheduledAt: true,
+        originGroup: { select: { name: true } },
+        reminders: { select: { kind: true } },
+      },
+    });
+    return rows
+      .filter((row): row is typeof row & { scheduledAt: Date } => row.scheduledAt !== null)
+      .map((row) => ({
+        id: row.id,
+        scheduledAt: row.scheduledAt,
+        originGroupName: row.originGroup.name,
+        claimedKinds: row.reminders.map((r) => r.kind),
+      }));
+  }
+
+  /** Destinatarios del recordatorio: creador, quienes se unieron y comodines aceptados. */
+  async findParticipantUserIds(matchId: string): Promise<string[]> {
+    const rows = await this.prisma.matchParticipant.findMany({
+      where: { matchId },
+      select: { userId: true },
+    });
+    return rows.map((row) => row.userId);
+  }
+
   async markAlertSent(matchId: string, field: AlertFlagField): Promise<boolean> {
     const { count } = await this.prisma.match.updateMany({
       where: { id: matchId, [field]: false },
