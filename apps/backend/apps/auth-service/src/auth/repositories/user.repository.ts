@@ -156,6 +156,16 @@ export class UserRepository {
     });
   }
 
+  /** Corrección del correo por un Administrador (2026-09-11). El unique de `users.email` corta duplicados con P2002. */
+  async updateEmail(id: string, email: string): Promise<AuthUserRecord> {
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: { email },
+      include: { role: true },
+    });
+    return this.toAuthUserRecord(user);
+  }
+
   private async buildUniqueAlias(email: string, name: string): Promise<string> {
     const raw =
       name

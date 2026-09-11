@@ -2,6 +2,7 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { MESSAGE_PATTERNS } from '@ef/common';
 import {
+  AdminUpdateUserEmailPayload,
   ChangePasswordPayload,
   CreateVenueOwnerDto,
   ForgotPasswordDto,
@@ -74,5 +75,11 @@ export class AuthController {
   @MessagePattern(MESSAGE_PATTERNS.ADMIN_USERS.SET_VENUE_OWNER_STATUS)
   setVenueOwnerStatus(@Payload() payload: SetVenueOwnerStatusPayload) {
     return this.authService.setVenueOwnerStatus(payload.userId, payload.estado);
+  }
+
+  /** Corrección del correo de un usuario (2026-09-11) — el gateway restringe a Administrador. */
+  @MessagePattern(MESSAGE_PATTERNS.ADMIN_USERS.UPDATE_USER_EMAIL)
+  updateUserEmail(@Payload() payload: AdminUpdateUserEmailPayload) {
+    return this.authService.updateUserEmail(payload);
   }
 }

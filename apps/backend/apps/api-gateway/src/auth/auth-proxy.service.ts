@@ -3,6 +3,8 @@ import { ClientProxy } from '@nestjs/microservices';
 import { catchError, firstValueFrom, throwError } from 'rxjs';
 import { MESSAGE_PATTERNS, SERVICE_NAMES, toHttpException } from '@ef/common';
 import {
+  AdminUpdateUserEmailDto,
+  AdminUserEmailDto,
   AuthMeResponse,
   AuthResponse,
   ChangePasswordDto,
@@ -84,6 +86,14 @@ export class AuthProxyService {
       MESSAGE_PATTERNS.ADMIN_USERS.SET_VENUE_OWNER_STATUS,
       { userId, estado },
     );
+  }
+
+  /** Corrección del correo de un usuario (2026-09-11, solo Administrador). */
+  updateUserEmail(userId: string, dto: AdminUpdateUserEmailDto): Promise<AdminUserEmailDto> {
+    return this.send<AdminUserEmailDto>(MESSAGE_PATTERNS.ADMIN_USERS.UPDATE_USER_EMAIL, {
+      userId,
+      ...dto,
+    });
   }
 
   private send<T>(pattern: string, payload: unknown): Promise<T> {

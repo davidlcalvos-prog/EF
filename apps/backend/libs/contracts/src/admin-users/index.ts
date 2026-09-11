@@ -68,3 +68,29 @@ export interface VenueOwnerDto {
   /** Nombre de su complejo si ya lo creó (primero por fecha), para la lista. */
   venueName: string | null;
 }
+
+/**
+ * Corrección del correo de un usuario por un Administrador (2026-09-11).
+ * Hay cuentas registradas con correos mal escritos (@gamil.com,
+ * @eliteforge.com en vez de .tech) que no pueden recuperar su contraseña ni
+ * corregirlo ellas mismas (el email no es editable desde la app). Antes se
+ * hacía por SSH + SQL en producción.
+ */
+export class AdminUpdateUserEmailDto {
+  @Transform(normalizeEmail)
+  @IsEmail({}, { message: 'email must be a valid email address' })
+  @MaxLength(254)
+  email!: string;
+}
+
+export class AdminUpdateUserEmailPayload extends AdminUpdateUserEmailDto {
+  @IsUUID()
+  userId!: string;
+}
+
+export interface AdminUserEmailDto {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+}

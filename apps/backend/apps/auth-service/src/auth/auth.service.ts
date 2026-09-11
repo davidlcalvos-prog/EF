@@ -13,6 +13,8 @@ import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'crypto';
 import { SYSTEM_ROLE_NAMES } from '@ef/common';
 import {
+  AdminUpdateUserEmailPayload,
+  AdminUserEmailDto,
   AuthMeResponse,
   AuthResponse,
   AuthTokenPayload,
@@ -257,6 +259,39 @@ export class AuthService {
       estado: state.estado,
       passwordChangedAt: state.passwordChangedAt ? state.passwordChangedAt.getTime() : null,
     };
+  }
+
+  // ── Administrador: corregir el correo de un usuario (2026-09-11) ─────
+
+  /**
+   * Antes se hacía por SSH + SQL. Valida existencia (404) y unicidad (409):
+   * el `findByEmail` previo da el mensaje claro y el unique de `users.email`
+   * cubre la carrera (P2002 → 409). El correo llega ya normalizado por el DTO.
+   */
+  async updateUserEmail(payload: AdminUpdateUserEmailPayload): Promise<AdminUserEmailDto> {
+    const email = payload.email.trim().toLowerCase();
+    const user = await this.userRepository.findById(payload.userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    if (user.email !== email) {
+      const taken = await this.userRepository.findByEmail(email);
+      if (taken) {
+        throw new ConflictException('Email already registered');
+      }
+    }
+    try {
+      const updated = await this.userRepository.updateEmail(user.id, email);
+      this.logger.log(
+        `Correo corregido por Administrador: usuario ${user.id} ${maskEmail(user.email)} → ${maskEmail(email)}`,
+      );
+      return { id: updated.id, email: updated.email, name: updated.name, role: updated.role };
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Email already registered');
+      }
+      throw error;
+    }
   }
 
   private webBaseUrl(): string {
