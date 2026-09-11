@@ -26,6 +26,7 @@ describe("refresh", () => {
         groupFriendRequests: 0,
         matchChallenges: 1,
         guestApplications: 0,
+        groupInvites: 0,
       },
       total: 3,
       lastSyncedAt: 1_000,

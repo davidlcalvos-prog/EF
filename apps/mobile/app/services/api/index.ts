@@ -29,6 +29,7 @@ import type {
   MatchSummaryApiDto,
   MatchTypeApi,
   MyReservationApiDto,
+  GroupInvitationApiDto,
   PendingCountsApiDto,
   TeamAssignmentWarningApiDto,
   PostApiDto,
@@ -61,6 +62,8 @@ export type {
   GroupMemberRoleApi,
   GroupMemberApiDto,
   GroupSummaryApiDto,
+  GroupInvitationApiDto,
+  GroupInvitationStatusApi,
   GroupDetailApiDto,
   GroupFriendshipStatusApi,
   GroupFriendshipApiDto,
@@ -604,6 +607,11 @@ export class Api {
    * Agrega un miembro por userId o email (uno de los dos). Solo creator/admin
    * pueden hacerlo (403 si no) — validado server-side.
    */
+  /**
+   * @deprecated 2026-09-11 — el backend responde 410 ("Actualizá la app para
+   * invitar a jugadores"). Ya no lo llama ninguna pantalla; usar `inviteToGroup`.
+   * BORRAR EN EL BUILD SIGUIENTE junto con la ruta del backend.
+   */
   async addGroupMember(
     groupId: string,
     identifier: { userId?: string; email?: string },
@@ -762,6 +770,105 @@ export class Api {
     }
     if (!response.data) return { kind: "bad-data" }
     return { kind: "ok", friendships: response.data }
+  }
+
+  // ── Invitaciones a grupo (2026-09-11) ───────────────────────────────────
+  // Reemplazan a `addGroupMember` (el backend responde 410 a esa ruta; se
+  // borra en el build siguiente). El invitado acepta o rechaza.
+
+  /** Líder: invita por email o userId (404 sin usuario, 409 ya miembro / ya pendiente). */
+  async inviteToGroup(
+    groupId: string,
+    identifier: { userId?: string; email?: string },
+  ): Promise<{ kind: "ok"; invitation: GroupInvitationApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<GroupInvitationApiDto>(
+      `groups/${groupId}/invitations`,
+      identifier,
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", invitation: response.data }
+  }
+
+  /** Líder: pendientes y rechazadas del grupo. */
+  async listGroupInvitations(
+    groupId: string,
+  ): Promise<{ kind: "ok"; invitations: GroupInvitationApiDto[] } | GeneralApiProblem> {
+    const response = await this.apisauce.get<GroupInvitationApiDto[]>(
+      `groups/${groupId}/invitations`,
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", invitations: response.data }
+  }
+
+  /** Líder: cancela una invitación pendiente. */
+  async cancelGroupInvitation(
+    groupId: string,
+    invitationId: string,
+  ): Promise<{ kind: "ok" } | GeneralApiProblem> {
+    const response = await this.apisauce.delete(`groups/${groupId}/invitations/${invitationId}`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    return { kind: "ok" }
+  }
+
+  /** Invitado: mis invitaciones pendientes. */
+  async listMyGroupInvitations(): Promise<
+    { kind: "ok"; invitations: GroupInvitationApiDto[] } | GeneralApiProblem
+  > {
+    const response = await this.apisauce.get<GroupInvitationApiDto[]>("group-invitations")
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", invitations: response.data }
+  }
+
+  /** Invitado: acepta (404 grupo borrado, 409 ya respondida / ya miembro). */
+  async acceptGroupInvitation(
+    invitationId: string,
+  ): Promise<{ kind: "ok"; invitation: GroupInvitationApiDto } | GeneralApiProblem> {
+    const response = await this.apisauce.post<GroupInvitationApiDto>(
+      `group-invitations/${invitationId}/accept`,
+    )
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    if (!response.data) return { kind: "bad-data" }
+    return { kind: "ok", invitation: response.data }
+  }
+
+  /** Invitado: rechaza. */
+  async declineGroupInvitation(invitationId: string): Promise<{ kind: "ok" } | GeneralApiProblem> {
+    const response = await this.apisauce.post(`group-invitations/${invitationId}/decline`)
+
+    if (!response.ok) {
+      const problem = getGeneralApiProblem(response)
+      if (problem) return problem
+      return { kind: "unknown", temporary: true }
+    }
+    return { kind: "ok" }
   }
 
   /** Estado de relación con otro usuario, para la ficha pública. */

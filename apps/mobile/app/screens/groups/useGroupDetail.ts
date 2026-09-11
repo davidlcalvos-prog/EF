@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import { api, type GroupDetailApiDto } from "@/services/api"
+import { api, type GroupDetailApiDto, type GroupInvitationApiDto } from "@/services/api"
 import type { GeneralApiProblem } from "@/services/api/apiProblem"
 
 type GroupResult = { kind: "ok"; group: GroupDetailApiDto } | GeneralApiProblem
@@ -38,11 +38,39 @@ export function useGroupDetail(groupId: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupId])
 
-  const addMember = useCallback(
-    async (identifier: { userId?: string; email?: string }): Promise<GroupResult> => {
-      const result = await api.addGroupMember(groupId, identifier)
-      if (result.kind === "ok") setGroup(result.group)
+  // ── Invitaciones (2026-09-11): reemplazan al alta directa de miembros. ──
+  const [invitations, setInvitations] = useState<GroupInvitationApiDto[]>([])
+
+  /** Solo tiene sentido para creador/admin (el backend responde 403 al resto). */
+  const loadInvitations = useCallback(async () => {
+    const result = await api.listGroupInvitations(groupId)
+    if (result.kind === "ok") setInvitations(result.invitations)
+  }, [groupId])
+
+  const invite = useCallback(
+    async (identifier: {
+      userId?: string
+      email?: string
+    }): Promise<{ kind: "ok"; invitation: GroupInvitationApiDto } | GeneralApiProblem> => {
+      const result = await api.inviteToGroup(groupId, identifier)
+      if (result.kind === "ok") {
+        setInvitations((prev) => [
+          result.invitation,
+          ...prev.filter((inv) => inv.id !== result.invitation.id),
+        ])
+      }
       return result
+    },
+    [groupId],
+  )
+
+  const cancelInvitation = useCallback(
+    async (invitationId: string): Promise<SimpleResult> => {
+      const result = await api.cancelGroupInvitation(groupId, invitationId)
+      if (result.kind === "ok" || result.kind === "not-found") {
+        setInvitations((prev) => prev.filter((inv) => inv.id !== invitationId))
+      }
+      return result.kind === "ok" ? { kind: "ok" } : result
     },
     [groupId],
   )
@@ -92,7 +120,10 @@ export function useGroupDetail(groupId: string) {
     loading,
     error,
     refresh,
-    addMember,
+    invite,
+    invitations,
+    loadInvitations,
+    cancelInvitation,
     updateMemberRole,
     removeMember,
     deleteGroup,

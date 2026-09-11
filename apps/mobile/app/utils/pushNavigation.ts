@@ -45,6 +45,9 @@ const PUSH_SCREENS: {
 } = {
   Feed: () => undefined,
   Friends: (p) => (p.initialTab === "requests" ? { initialTab: "requests" } : undefined),
+  // Invitación a grupo (2026-09-11): "Mis grupos" con el bloque de invitaciones arriba.
+  Groups: (p) =>
+    p.initialSection === "invitations" ? { initialSection: "invitations" } : undefined,
   MatchDetail: (p) =>
     p.matchId ? { matchId: p.matchId, openApplicants: p.openApplicants === "1" } : null,
   NearbyGuestRequests: () => undefined,

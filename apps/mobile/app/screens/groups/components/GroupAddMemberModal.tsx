@@ -18,6 +18,11 @@ import { eliteForgeColors } from "@/theme/eliteForgeColors"
 
 export type AddMemberOutcome = "ok" | "not-found" | "conflict" | "error"
 
+/**
+ * Desde el 2026-09-11 este modal INVITA (el jugador acepta o rechaza) en vez
+ * de agregar directo; `onAdd` devuelve el resultado de `inviteToGroup`.
+ * "conflict" cubre "ya es miembro" y "ya tiene una invitación pendiente".
+ */
 export interface GroupAddMemberModalProps {
   visible: boolean
   onClose: () => void
@@ -58,10 +63,10 @@ export function GroupAddMemberModal({ visible, onClose, onAdd }: GroupAddMemberM
 
     setErrorKey(
       outcome === "not-found"
-        ? "groupsScreen:addMemberNotFound"
+        ? "groupsScreen:inviteNotFound"
         : outcome === "conflict"
-          ? "groupsScreen:addMemberConflict"
-          : "groupsScreen:addMemberError",
+          ? "groupsScreen:inviteConflict"
+          : "groupsScreen:inviteError",
     )
   }
 
@@ -128,7 +133,7 @@ export function GroupAddMemberModal({ visible, onClose, onAdd }: GroupAddMemberM
             </Pressable>
 
             <Text color="#FFFFFF" fontWeight="800" fontSize={14}>
-              {translate("groupsScreen:addMemberTitle")}
+              {translate("groupsScreen:inviteTitle")}
             </Text>
 
             <Pressable
@@ -148,8 +153,8 @@ export function GroupAddMemberModal({ visible, onClose, onAdd }: GroupAddMemberM
                 {adding ? <ActivityIndicator size="small" color="#1a1a1a" /> : null}
                 <Text color="#1a1a1a" fontWeight="800" fontSize={12}>
                   {adding
-                    ? translate("groupsScreen:addingMember")
-                    : translate("groupsScreen:addMemberSubmit")}
+                    ? translate("groupsScreen:inviting")
+                    : translate("groupsScreen:inviteSubmit")}
                 </Text>
               </XStack>
             </Pressable>
@@ -163,7 +168,7 @@ export function GroupAddMemberModal({ visible, onClose, onAdd }: GroupAddMemberM
                 if (errorKey) setErrorKey(null)
               }}
               editable={!adding}
-              placeholder={translate("groupsScreen:addMemberPlaceholder")}
+              placeholder={translate("groupsScreen:invitePlaceholder")}
               placeholderTextColor="rgba(255,255,255,0.35)"
               autoFocus
               autoCapitalize="none"

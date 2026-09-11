@@ -24,7 +24,8 @@ export type AppStackParamList = {
   ProfileEdit: undefined
   PsychologicalTest: undefined
   PhysicalTestSession: { testId: PhysicalTestId }
-  Groups: undefined
+  /** `initialSection` lo usa el deep link del push de invitación a grupo (utils/pushNavigation.ts). */
+  Groups: { initialSection?: "invitations" } | undefined
   GroupDetail: { groupId: string }
   GroupFriends: { groupId: string }
   /** `initialTab` lo usa el deep link del push de solicitud de amistad (utils/pushNavigation.ts). */
