@@ -8,11 +8,11 @@ const ko: Translations = {
     logOut: "로그아웃",
   },
   errorScreen: {
-    title: "뭔가 잘못되었습니다!",
+    title: "문제가 발생했습니다!",
     friendlySubtitle:
-      "이 화면은 오류가 발생할 때 프로덕션에서 사용자에게 표시됩니다. 이 메시지를 커스터마이징 할 수 있고(해당 파일은 `app/i18n/ko.ts` 에 있습니다) 레이아웃도 마찬가지로 수정할 수 있습니다(`app/screens/error`). 만약 이 오류화면을 완전히 없에버리고 싶다면 `app/app.tsx` 파일에서 <ErrorBoundary> 컴포넌트를 확인하기 바랍니다.",
-    reset: "초기화",
-    traceTitle: "%{name} 스택에서의 오류",
+      "예상치 못한 문제가 발생했습니다. 다시 시도해 주세요. 계속 반복되면 soporte@eliteforge.tech로 문의해 주세요.",
+    reset: "다시 시도",
+    devDetailsTitle: "기술 세부 정보 (개발 모드에서만)",
   },
 
   errors: {

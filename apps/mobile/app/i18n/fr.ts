@@ -10,9 +10,9 @@ const fr: Translations = {
   errorScreen: {
     title: "Quelque chose s'est mal passé !",
     friendlySubtitle:
-      "C'est l'écran que vos utilisateurs verront en production lorsqu'une erreur sera lancée. Vous voudrez personnaliser ce message (situé dans `app/i18n/fr.ts`) et probablement aussi la mise en page (`app/screens/ErrorScreen`). Si vous voulez le supprimer complètement, vérifiez `app/app.tsx` pour le composant <ErrorBoundary>.",
-    reset: "RÉINITIALISER L'APPLICATION",
-    traceTitle: "Erreur depuis %{name}",
+      "Nous avons rencontré un problème inattendu. Réessayez et, si cela se reproduit, écrivez-nous à soporte@eliteforge.tech.",
+    reset: "Réessayer",
+    devDetailsTitle: "Détails techniques (développement uniquement)",
   },
 
   errors: {

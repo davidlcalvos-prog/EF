@@ -10,9 +10,9 @@ const hi: Translations = {
   errorScreen: {
     title: "कुछ गलत हो गया!",
     friendlySubtitle:
-      "यह वह स्क्रीन है जो आपके उपयोगकर्ता संचालन में देखेंगे जब कोई त्रुटि होगी। आप इस संदेश को बदलना चाहेंगे (जो `app/i18n/hi.ts` में स्थित है) और शायद लेआउट भी (`app/screens/ErrorScreen`)। यदि आप इसे पूरी तरह से हटाना चाहते हैं, तो `app/app.tsx` में <ErrorBoundary> कंपोनेंट की जांच करें।",
-    reset: "ऐप रीसेट करें",
-    traceTitle: "%{name} स्टैक से त्रुटि",
+      "एक अप्रत्याशित समस्या आ गई। फिर से कोशिश करें और अगर यह दोबारा हो, तो हमें soporte@eliteforge.tech पर लिखें।",
+    reset: "फिर से कोशिश करें",
+    devDetailsTitle: "तकनीकी विवरण (केवल डेवलपमेंट में)",
   },
 
   errors: {
