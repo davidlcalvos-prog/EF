@@ -10,10 +10,32 @@
  * El recorte del emblema NO usa coordenadas mágicas: se mide el alfa del PNG
  * fila por fila y se busca el hueco transparente que separa el emblema del
  * bloque de texto inferior; luego se ajusta el bounding box por columnas.
+ *
+ * `sharp` YA NO es devDependency de apps/mobile (2026-09-11): su script de
+ * instalación compila desde fuente cuando no encuentra el binario de la
+ * plataforma y eso tumbó el primer build de iOS en EAS (`npm ci` aborta si
+ * falla una dependencia obligatoria). Se resuelve igual desde el node_modules
+ * hoisteado del monorepo, donde lo instala Next.js (apps/web) como dependencia
+ * opcional. Si al correr este script no está (por ejemplo, un checkout sin el
+ * workspace web), instalarlo de forma temporal:
+ *   npm i -D sharp -w mobile   →  npm run generate:brand  →  npm uninstall -D sharp -w mobile
+ * y no commitear ese cambio en package.json / package-lock.json.
  */
 const fs = require("fs")
 const path = require("path")
-const sharp = require("sharp")
+
+let sharp
+try {
+  sharp = require("sharp")
+} catch {
+  console.error(
+    "[generate:brand] No se encontró `sharp`. Instalalo de forma temporal con " +
+      "`npm i -D sharp -w mobile` (desde la raíz del monorepo), corré el script y " +
+      "después `npm uninstall -D sharp -w mobile`. No lo dejes en package.json: " +
+      "rompe el build de iOS en EAS (ver la cabecera de este archivo).",
+  )
+  process.exit(1)
+}
 
 const CARBON = "#424242"
 const mobileRoot = path.join(__dirname, "..")

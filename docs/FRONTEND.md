@@ -602,7 +602,7 @@ Auditoría posterior a la Fase 12: los dos lugares que seguían mostrando solo i
 
 ## Identidad de marca — íconos, splash y nombre de la app
 
-**Script:** `apps/mobile/scripts/generate-brand-assets.js` (`npm run generate:brand` desde `apps/mobile`; usa `sharp`, devDependency). Genera TODOS los íconos (mobile y web) desde el logo fuente (`assets/images/elite-forge-logo.png`, 1024×1024 RGBA) — reproducible: si cambia el logo, se corre el script y se regenera todo.
+**Script:** `apps/mobile/scripts/generate-brand-assets.js` (`npm run generate:brand` desde `apps/mobile`; usa `sharp`). **`sharp` ya no es devDependency de mobile (2026-09-11):** su script de instalación compila desde fuente cuando no encuentra el binario de la plataforma, y como dependencia obligatoria eso abortó el `npm ci` del primer build de iOS en EAS. El script lo resuelve desde el `node_modules` hoisteado del monorepo, donde Next.js (`apps/web`) lo instala como dependencia opcional — y una opcional que falla al instalarse no tumba el `npm ci`. Si al correrlo no está: `npm i -D sharp -w mobile` → `npm run generate:brand` → `npm uninstall -D sharp -w mobile`, sin commitear ese cambio. Genera TODOS los íconos (mobile y web) desde el logo fuente (`assets/images/elite-forge-logo.png`, 1024×1024 RGBA) — reproducible: si cambia el logo, se corre el script y se regenera todo.
 
 **Decisión de diseño:** los íconos chicos (app, favicon, notificaciones) usan **solo el emblema** (escudo + pelota), sin la franja de texto "ELITE FORGE" — a 32 px el texto es ilegible. El logo completo con texto se usa únicamente en el splash. El recorte del emblema se **mide** (perfil de alfa fila por fila; el hueco transparente más grande separa emblema de texto; bounding box por columnas), sin coordenadas mágicas.
 
@@ -825,6 +825,13 @@ Es idempotente dentro de la sesión de JS (`lastRegisteredToken`: mismo token �
 `utils/pushNotifications.ts` → `registerPushToken()` (se llama una vez al hacer login) es best-effort: si el usuario niega el permiso, Expo no devuelve token (falta `projectId` de EAS) o el backend rechaza el `POST /api/push-tokens`, **no reintenta ni bloquea** — pero ahora deja un `console.warn("[push] ...")` **fuera de `__DEV__`** con el motivo (antes salía en silencio y solo logueaba la excepción en dev). El comportamiento funcional no cambió; el punto es que "no me llegó la solicitud de amistad" sea diagnosticable desde el log del dispositivo (`adb logcat`) en vez de parecer un bug del backend. Contraparte en el backend: [BACKEND.md](./BACKEND.md#registro-de-cambios) (`NotificationsService.sendToUser` loguea warning cuando el destinatario no tiene tokens).
 
 ## Registro de cambios (sesión de implementación)
+
+### 2026-09-11 — `sharp` fuera de las devDependencies de mobile (primer build de iOS bloqueado)
+
+- El build de iOS en EAS moría en "Install dependencies": `sharp@0.34.5` intentaba compilar desde fuente con node-gyp en el worker de macOS y `npm ci --include=dev` aborta cuando falla una dependencia **obligatoria**. La única que la usaba en mobile era `scripts/generate-brand-assets.js`.
+- Quitada de `apps/mobile/package.json`; `package-lock.json` regenerado con `npm install` (solo cambia el flag de `sharp` y sus dos dependencias de `devOptional` a `optional`). `sharp` sigue en el lockfile y en `node_modules` por `next` (`apps/web`), pero como **opcional**: si su instalación falla en un worker, npm avisa y sigue.
+- El script hace `require("sharp")` dentro de un `try` con instrucciones para instalarlo de forma temporal. Ver [Identidad de marca](#identidad-de-marca--íconos-splash-y-nombre-de-la-app).
+- La hipótesis de "el lockfile no tiene la variante de macOS" no se confirmó: el lock incluye las 24 variantes `@img/sharp-*` (darwin arm64 y x64 incluidas) en las versiones que `sharp` pide.
 
 ### 2026-09-11 — Build 7: "¿Olvidaste tu contraseña?", cambiar contraseña, aviso de Copa (A3), limpieza (requiere build nuevo + redeploy del backend con migración)
 
